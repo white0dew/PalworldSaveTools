@@ -1,7 +1,7 @@
 import os, sys, subprocess
 APP_NAME = 'PalworldSaveTools'
-APP_VERSION = '1.1.67'
-GAME_VERSION = '0.7.1'
+APP_VERSION = '1.1.68'
+GAME_VERSION = '0.7.2'
 def get_base_directory():
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def get_src_directory():
