@@ -32,6 +32,28 @@ def _iter_work_savedata_entries(work_root):
     if isinstance(v, dict):
         return v.get('values', []) if isinstance(v.get('values', []), list) else []
     return []
+def _ensure_container_structure(data, container_name, is_map_property=False, has_custom_encoder=False):
+    if container_name not in data or not isinstance(data[container_name], dict):
+        if is_map_property:
+            data[container_name] = {'key_type': 'StructProperty', 'value_type': 'StructProperty', 'key_struct_type': 'Guid', 'value_struct_type': 'StructProperty', 'id': None, 'type': 'MapProperty', 'value': []}
+        else:
+            base = {'array_type': 'StructProperty', 'id': None, 'type': 'ArrayProperty', 'value': {'values': []} if has_custom_encoder else []}
+            if has_custom_encoder:
+                base['custom_type'] = f'.worldSaveData.{container_name}'
+            data[container_name] = base
+    return data[container_name]
+def _get_custom_version_data():
+    return {'array_type': 'ByteProperty', 'id': None, 'value': {'values': [1, 0, 0, 0, 56, 11, 0, 222, 73, 73, 215, 206, 151, 223, 45, 153, 192, 193, 195, 105, 1, 0, 0, 0]}, 'type': 'ArrayProperty'}
+def _create_default_basecamp_modulemap():
+    module_types = ['EPalBaseCampModuleType::Energy', 'EPalBaseCampModuleType::Medical', 'EPalBaseCampModuleType::TransportItemDirector', 'EPalBaseCampModuleType::ResourceCollector', 'EPalBaseCampModuleType::ItemStorages', 'EPalBaseCampModuleType::FacilityReservation', 'EPalBaseCampModuleType::ObjectMaintenance', 'EPalBaseCampModuleType::PassiveEffect', 'EPalBaseCampModuleType::ItemStackInfo']
+    modules = []
+    for mt in module_types:
+        modules.append({'key': mt, 'value': {'RawData': {'array_type': 'ByteProperty', 'id': None, 'value': {'values': []}, 'type': 'ArrayProperty'}, 'CustomVersionData': {'array_type': 'ByteProperty', 'id': None, 'value': {'values': [0, 0, 0, 0]}, 'type': 'ArrayProperty'}}})
+    return {'key_type': 'EnumProperty', 'value_type': 'StructProperty', 'key_struct_type': None, 'value_struct_type': 'StructProperty', 'id': None, 'value': modules, 'type': 'MapProperty'}
+def _create_minimal_basecamp(base_id, group_id, transform, area_range=3500.0, palbox_instance_id=None):
+    return {'key': str(base_id), 'value': {'WorkerDirector': {'struct_type': 'PalBaseCampSaveData_WorkerDirector', 'struct_id': '00000000-0000-0000-0000-000000000000', 'id': None, 'value': {'RawData': {'array_type': 'ByteProperty', 'id': None, 'value': {'id': str(base_id), 'spawn_transform': {'rotation': transform.get('rotation', {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0}), 'translation': transform.get('translation', {'x': 0.0, 'y': 0.0, 'z': 0.0}), 'scale3d': {'x': 1.0, 'y': 1.0, 'z': 1.0}}, 'current_order_type': 0, 'current_battle_type': 0, 'container_id': str(_new_uuid()), 'trailing_bytes': [0, 0, 0, 0]}, 'type': 'ArrayProperty', 'custom_type': '.worldSaveData.BaseCampSaveData.Value.WorkerDirector.RawData'}, 'CustomVersionData': _get_custom_version_data()}, 'type': 'StructProperty'}, 'WorkCollection': {'struct_type': 'PalBaseCampSaveData_WorkCollection', 'struct_id': '00000000-0000-0000-0000-000000000000', 'id': None, 'value': {'RawData': {'array_type': 'ByteProperty', 'id': None, 'value': {'id': str(base_id), 'work_ids': [], 'trailing_bytes': [0, 0, 0, 0]}, 'type': 'ArrayProperty', 'custom_type': '.worldSaveData.BaseCampSaveData.Value.WorkCollection.RawData'}, 'CustomVersionData': _get_custom_version_data()}, 'type': 'StructProperty'}, 'ModuleMap': _create_default_basecamp_modulemap(), 'RawData': {'array_type': 'ByteProperty', 'id': None, 'value': {'id': str(base_id), 'name': 'Imported Base', 'state': 1, 'transform': transform, 'area_range': area_range, 'group_id_belong_to': str(group_id), 'fast_travel_local_transform': {'rotation': {'x': 0.0, 'y': -0.0, 'z': 0.0, 'w': 1.0}, 'translation': {'x': -170.0, 'y': 0.0, 'z': 170.0}, 'scale3d': {'x': 1.0, 'y': 1.0, 'z': 1.0}}, 'owner_map_object_instance_id': str(palbox_instance_id) if palbox_instance_id else str(_zero()), 'trailing_bytes': [0, 0, 0, 0]}, 'type': 'ArrayProperty', 'custom_type': '.worldSaveData.BaseCampSaveData.Value.RawData'}, 'CustomVersionData': _get_custom_version_data()}}
+def _create_minimal_palbox(base_id, group_id, instance_id, concrete_id, transform):
+    return {'MapObjectId': {'id': None, 'value': 'PalBoxV2', 'type': 'NameProperty'}, 'Model': {'struct_type': 'PalMapObjectModelSaveData', 'struct_id': '00000000-0000-0000-0000-000000000000', 'id': None, 'value': {'BuildProcess': {'struct_type': 'PalMapObjectBuildProcessSaveData', 'struct_id': '00000000-0000-0000-0000-000000000000', 'id': None, 'value': {'RawData': {'array_type': 'ByteProperty', 'id': None, 'value': {'state': 1, 'id': '00000000-0000-0000-0000-000000000000', 'trailing_bytes': [0, 0, 0, 0]}, 'type': 'ArrayProperty'}, 'CustomVersionData': _get_custom_version_data()}, 'type': 'StructProperty'}, 'Connector': {'struct_type': 'PalMapObjectConnectorSaveData', 'struct_id': '00000000-0000-0000-0000-000000000000', 'id': None, 'value': {'RawData': {'array_type': 'ByteProperty', 'id': None, 'value': {'supported_level': 1, 'connect': {'index': 254, 'any_place': []}, 'unknown_bytes': [0, 0, 0, 0]}, 'type': 'ArrayProperty'}, 'CustomVersionData': _get_custom_version_data()}, 'type': 'StructProperty'}, 'EffectMap': {'key_type': 'EnumProperty', 'value_type': 'StructProperty', 'key_struct_type': None, 'value_struct_type': 'StructProperty', 'id': None, 'value': [], 'type': 'MapProperty'}, 'Paint': {'struct_type': 'PalMapObjectPaintSaveData', 'struct_id': '00000000-0000-0000-0000-000000000000', 'id': None, 'value': {'RawData': {'array_type': 'ByteProperty', 'id': None, 'value': {'values': []}, 'type': 'ArrayProperty'}, 'CustomVersionData': {'array_type': 'ByteProperty', 'id': None, 'value': {'values': []}, 'type': 'ArrayProperty'}}, 'type': 'StructProperty'}, 'RawData': {'array_type': 'ByteProperty', 'id': None, 'value': {'instance_id': str(instance_id), 'concrete_model_instance_id': str(concrete_id), 'base_camp_id_belong_to': str(base_id), 'group_id_belong_to': str(group_id), 'hp': {'current': 20000, 'max': 20000}, 'initital_transform_cache': transform, 'repair_work_id': '00000000-0000-0000-0000-000000000000', 'owner_spawner_level_object_instance_id': '00000000-0000-0000-0000-000000000000', 'owner_instance_id': '00000000-0000-0000-0000-000000000000', 'build_player_uid': '00000000-0000-0000-0000-000000000001', 'interact_restrict_type': 1, 'deterioration_damage': 0.0, 'stage_instance_id_belong_to': {'id': '00000000-0000-0000-0000-000000000000', 'valid': True}, 'unknown_bytes': [45, 1, 0, 0, 160, 4, 57, 249, 5, 0, 0, 0, 0, 0, 0, 0]}, 'type': 'ArrayProperty'}, 'CustomVersionData': _get_custom_version_data()}, 'type': 'StructProperty'}, 'ConcreteModel': {'struct_type': 'PalMapObjectConcreteModelSaveData', 'struct_id': '00000000-0000-0000-0000-000000000000', 'id': None, 'value': {'ModuleMap': {'key_type': 'EnumProperty', 'value_type': 'StructProperty', 'key_struct_type': None, 'value_struct_type': 'StructProperty', 'id': None, 'value': [], 'type': 'MapProperty'}, 'RawData': {'array_type': 'ByteProperty', 'id': None, 'value': {'instance_id': str(concrete_id), 'model_instance_id': str(instance_id), 'concrete_model_type': 'PalMapObjectBaseCampPoint', 'leading_bytes': [0, 0, 0, 0], 'base_camp_id': str(base_id), 'trailing_bytes': [0, 0, 0, 0]}, 'type': 'ArrayProperty'}, 'CustomVersionData': _get_custom_version_data()}, 'type': 'StructProperty'}}
 def _get_work_raw(work_entry):
     try:
         return work_entry['RawData']['value']
@@ -158,16 +180,23 @@ def import_base_json(loaded_level_json, exported_data, target_guild_id, offset=(
         _deep = copy.deepcopy
     raw_prop = loaded_level_json['properties']['worldSaveData']['value']
     data = raw_prop if isinstance(raw_prop, dict) else {}
-    base_camp_data = data.get('BaseCampSaveData', {}).get('value', [])
-    if not base_camp_data or len(base_camp_data) == 0:
-        return False
-    groups = data.get('GroupSaveDataMap', {}).get('value', [])
-    char_containers = data.get('CharacterContainerSaveData', {}).get('value', [])
-    item_containers = data.get('ItemContainerSaveData', {}).get('value', [])
-    dynamic_item_data = data.get('DynamicItemSaveData', {}).get('value', {}).get('values', [])
-    map_objs = data.get('MapObjectSaveData', {}).get('value', {}).get('values', [])
-    char_map = data.get('CharacterSaveParameterMap', {}).get('value', [])
-    work_root = data.get('WorkSaveData', {})
+    _ensure_container_structure(data, 'BaseCampSaveData', is_map_property=True)
+    _ensure_container_structure(data, 'MapObjectSaveData', has_custom_encoder=True)
+    _ensure_container_structure(data, 'CharacterContainerSaveData')
+    _ensure_container_structure(data, 'ItemContainerSaveData')
+    _ensure_container_structure(data, 'DynamicItemSaveData', has_custom_encoder=True)
+    _ensure_container_structure(data, 'CharacterSaveParameterMap', is_map_property=True)
+    _ensure_container_structure(data, 'GroupSaveDataMap', is_map_property=True)
+    if 'WorkSaveData' not in data or not isinstance(data['WorkSaveData'], dict) or 'value' not in data['WorkSaveData']:
+        data['WorkSaveData'] = {'array_type': 'StructProperty', 'id': None, 'type': 'ArrayProperty', 'custom_type': '.worldSaveData.WorkSaveData', 'value': {'prop_name': 'WorkSaveData', 'prop_type': 'StructProperty', 'type_name': 'PalWorkSaveData', 'id': '00000000-0000-0000-0000-000000000000', 'values': []}}
+    base_camp_data = data['BaseCampSaveData']['value']
+    groups = data['GroupSaveDataMap']['value']
+    char_containers = data['CharacterContainerSaveData']['value']
+    item_containers = data['ItemContainerSaveData']['value']
+    dynamic_item_data = data['DynamicItemSaveData']['value'].setdefault('values', [])
+    map_objs = data['MapObjectSaveData']['value'].setdefault('values', [])
+    char_map = data['CharacterSaveParameterMap']['value']
+    work_root = data['WorkSaveData']
     work_entries = _iter_work_savedata_entries(work_root)
     z = _zero()
     tgt_gid_str = _s(target_guild_id)
@@ -366,7 +395,7 @@ def import_base_json(loaded_level_json, exported_data, target_guild_id, offset=(
                 except:
                     pass
     for nwe in cloned_works:
-        work_entries.append(nwe)
+        work_root['value']['values'].append(nwe)
     for obj in exported_data.get('map_objects', []):
         mr = _get_model_raw(obj)
         if not isinstance(mr, dict):

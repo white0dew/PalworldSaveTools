@@ -1232,11 +1232,6 @@ class MainWindow(QMainWindow):
         self.refresh_all()
         self._show_info(t('Done'), t('guild.leader_changed'))
     def _import_base_to_guild(self, gid):
-        wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
-        base_camp_data = wsd.get('BaseCampSaveData', {}).get('value', [])
-        if not base_camp_data or len(base_camp_data) == 0:
-            self._show_warning(t('warning.title') if t else 'Warning', t('base.import.no_bases') if t else 'Cannot import base to this save.\n\nThis save does not have any bases.\n\nPlease create a base first by placing a Palbox in-game, then try importing again.')
-            return
         file_paths, _ = QFileDialog.getOpenFileNames(self, 'Select Base JSON Files', '', 'JSON Files(*.json)')
         if not file_paths:
             return

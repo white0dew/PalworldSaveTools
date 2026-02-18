@@ -1263,12 +1263,6 @@ class MapTab(QWidget):
             except Exception as e:
                 show_critical(self, t('error.title') if t else 'Error', f'Failed to delete guild: {str(e)}')
     def _import_base_to_guild(self, guild_id):
-        wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
-        base_camp_data = wsd.get('BaseCampSaveData', {}).get('value', [])
-        if not base_camp_data or len(base_camp_data) == 0:
-            parent = self.parent_window if self.parent_window else self
-            show_warning(parent, t('warning.title') if t else 'Warning', t('base.import.no_bases') if t else 'Cannot import base to this save.\n\nThis save does not have any bases.\n\nPlease create a base first by placing a Palbox in-game, then try importing again.')
-            return
         file_paths, _ = QFileDialog.getOpenFileNames(self, t('base.import_multi') if t else 'Import Bases(Multi-File)', '', 'JSON Files(*.json)')
         if not file_paths:
             return
