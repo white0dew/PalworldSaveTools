@@ -896,5 +896,8 @@
     "player.stats_failed": "Fehler beim Aktualisieren der Spielerstatistiken",
     "player.stats_updated": "Spielerstatistiken erfolgreich aktualisiert",
     "player.stats.points": "Statuspunkte:",
-    "player.edit_stats": "Spieler-Statistiken bearbeiten"
+    "player.edit_stats": "Spieler-Statistiken bearbeiten",
+    "deletion.menu.repair_structures": "Alle Strukturen reparieren",
+    "deletion.structures_repaired": "{repaired} Strukturen repariert, {skipped} übersprungen",
+    "loading.repair_structures": "Strukturen werden repariert..."
 }

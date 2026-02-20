@@ -865,5 +865,8 @@
     "player.stats_failed": "Error al actualizar las estadísticas del jugador",
     "player.stats_updated": "Estadísticas del jugador actualizadas con éxito",
     "player.stats.points": "Puntos de atributo:",
-    "player.edit_stats": "Editar estadísticas del jugador"
+    "player.edit_stats": "Editar estadísticas del jugador",
+    "deletion.menu.repair_structures": "Reparar todas las estructuras",
+    "deletion.structures_repaired": "{repaired} estructuras reparadas, {skipped} omitidas",
+    "loading.repair_structures": "Reparando estructuras..."
 }

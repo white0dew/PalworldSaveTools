@@ -1307,6 +1307,36 @@ def modify_container_slots(new_slot_num, parent=None):
         return modified
     except:
         return 0
+def repair_structures(parent=None):
+    if not constants.loaded_level_json:
+        return None
+    try:
+        wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
+    except KeyError:
+        return None
+    map_objs = wsd.get('MapObjectSaveData', {}).get('value', {}).get('values', [])
+    if not map_objs:
+        return {'total': 0, 'repaired': 0}
+    total_structures = 0
+    repaired_structures = 0
+    for obj in map_objs:
+        try:
+            raw_data = obj.get('Model', {}).get('value', {}).get('RawData', {}).get('value', {})
+            if not raw_data:
+                continue
+            if 'hp' in raw_data:
+                total_structures += 1
+                hp_data = raw_data['hp']
+                if isinstance(hp_data, dict) and 'current' in hp_data and ('max' in hp_data):
+                    current = hp_data['current']
+                    max_hp = hp_data['max']
+                    if current < max_hp:
+                        hp_data['current'] = max_hp
+                        repaired_structures += 1
+        except Exception:
+            continue
+    skipped = total_structures - repaired_structures
+    return {'repaired': repaired_structures, 'skipped': skipped}
 def delete_orphaned_dynamic_items(parent=None):
     if not constants.loaded_level_json:
         return 0

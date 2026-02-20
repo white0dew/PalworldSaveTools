@@ -874,5 +874,8 @@
     "player.stats_failed": "プレイヤーステータスの更新に失敗しました",
     "player.stats_updated": "プレイヤーステータスを正常に更新しました",
     "player.stats.points": "ステータスポイント:",
-    "player.edit_stats": "プレイヤー統計を編集"
+    "player.edit_stats": "プレイヤー統計を編集",
+    "deletion.menu.repair_structures": "すべての構造物を修復",
+    "deletion.structures_repaired": "{repaired}個の構造物を修復、{skipped}個をスキップ",
+    "loading.repair_structures": "構造物を修復中..."
 }

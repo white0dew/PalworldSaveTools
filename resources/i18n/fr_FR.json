@@ -854,5 +854,8 @@
     "player.stats_failed": "Échec de la mise à jour des statistiques du joueur",
     "player.stats_updated": "Statistiques du joueur mises à jour avec succès",
     "player.stats.points": "Points de caractéristiques:",
-    "player.edit_stats": "Modifier les statistiques du joueur"
+    "player.edit_stats": "Modifier les statistiques du joueur",
+    "deletion.menu.repair_structures": "Réparer toutes les structures",
+    "deletion.structures_repaired": "{repaired} structures réparées, {skipped} ignorées",
+    "loading.repair_structures": "Réparation des structures..."
 }

@@ -209,6 +209,8 @@
     "deletion.menu.remove_invalid_skins_summary": "已从 Level.sav 中删除 {removed_level_skins} 个皮肤条目。已清理 {fixed_player_files} 个玩家文件。",
     "deletion.menu.remove_invalid_structures": "删除所有无效建筑",
     "deletion.menu.remove_invalid_structures_summary": "已删除 {deleted_count} 个无效的建筑地图对象。剩余 {remaining_count} 个建筑。",
+    "deletion.menu.repair_structures": "修复所有建筑",
+    "deletion.structures_repaired": "已修复 {repaired} 个建筑。跳过 {skipped} 个（已满血或无血量数据）。",
     "deletion.menu.reset_anti_air": "重置防空炮",
     "deletion.menu.reset_dungeons": "重置地下城",
     "deletion.menu.reset_missions": "重置任务",

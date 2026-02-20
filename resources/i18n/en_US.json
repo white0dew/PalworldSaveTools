@@ -231,6 +231,8 @@
     "deletion.menu.remove_invalid_skins_summary": "Deleted {removed_level_skins} skin entries from Level.sav. Cleaned {fixed_player_files} player files.",
     "deletion.menu.remove_invalid_structures": "Remove All Invalid Structures",
     "deletion.menu.remove_invalid_structures_summary": "Deleted {deleted_count} invalid structure map objects. {remaining_count} structures remain.",
+    "deletion.menu.repair_structures": "Repair All Structures",
+    "deletion.structures_repaired": "Repaired {repaired} structures. Skipped {skipped} (already at max HP or no HP data).",
     "deletion.menu.reset_anti_air": "Reset Anti-Air Turrets",
     "deletion.menu.reset_dungeons": "Reset Dungeons",
     "deletion.menu.reset_missions": "Reset Missions",

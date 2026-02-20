@@ -872,5 +872,8 @@
     "player.boss_tech_points": "Очки технологий боссов",
     "player.stats_failed": "Не удалось обновить статистику игрока",
     "player.stats_updated": "Статистика игрока успешно обновлена",
-    "player.stats.points": "Очки характеристик:"
+    "player.stats.points": "Очки характеристик:",
+    "deletion.menu.repair_structures": "Починить все структуры",
+    "deletion.structures_repaired": "{repaired} структур починено, {skipped} пропущено",
+    "loading.repair_structures": "Починка структур..."
 }

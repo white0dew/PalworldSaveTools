@@ -873,5 +873,8 @@
     "player.stats_failed": "플레이어 통계 업데이트 실패",
     "player.stats_updated": "플레이어 통계가 성공적으로 업데이트되었습니다",
     "player.stats.points": "스탯 포인트:",
-    "player.edit_stats": "플레이어 통계 편집"
+    "player.edit_stats": "플레이어 통계 편집",
+    "deletion.menu.repair_structures": "모든 구조물 수리",
+    "deletion.structures_repaired": "{repaired}개 구조물 수리됨, {skipped}개 건너뜀",
+    "loading.repair_structures": "구조물 수리 중..."
 }
