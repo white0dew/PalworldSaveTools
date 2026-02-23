@@ -1,72 +1,76 @@
 <div align="center">
 
-![PalworldSaveTools ロゴ](https://github.com/deafdudecomputers/PalworldSaveTools/blob/main/resources/PalworldSaveTools_Blue.png)
+![PalworldSaveTools Logo](../PalworldSaveTools_Blue.png)
 
 # PalworldSaveTools
 
-**Palworld 用の包括的な保存ファイル編集ツールキット**
+**Palworld 用の包括的なセーブファイル編集ツールキット**
 
-[![ダウンロード](https://img.shields.io/github/downloads/deafdudecomputers/PalworldSaveTools/total)](https://github.com/deafdudecomputers/PalworldTools/releases/latest)
-[![ライセンス](https://img.shields.io/github/license/deafdudecomputers/PalworldSaveTools)](LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/deafdudecomputers/PalworldSaveTools/total)](https://github.com/deafdudecomputers/PalworldTools/releases/latest)
+[![License](https://img.shields.io/github/license/deafdudecomputers/PalworldSaveTools)](LICENSE)
 [![Discord](https://img.shields.io/badge/Discord-Join_for_support-blue)](https://discord.gg/sYcZwcT4cT)
 [![NexusMods](https://img.shields.io/badge/NexusMods-Download-orange)](https://www.nexusmods.com/palworld/mods/3190)
 
-[English](https://github.com/deafdudecomputers/PalworldSaveTools/blob/main/README.md) | [zh-CN](https://github.com/deafdudecomputers/PalworldSaveTools/tree/main/resources/readme/README.zh_CN.md) | [de-DE](https://github.com/deafdudecomputers/PalworldSaveTools/tree/main/resources/readme/README.de_DE.md) | [es-ES](https://github.com/deafdudecomputers/PalworldSaveTools/tree/main/resources/readme/README.es_ES.md) | [fr-FR](https://github.com/deafdudecomputers/PalworldSaveTools/tree/main/resources/readme/README.fr_FR.md) | [ru-RU](https://github.com/deafdudecomputers/PalworldSaveTools/tree/main/resources/readme/README.ru_RU.md) | [ja-JP](https://github.com/deafdudecomputers/PalworldSaveTools/tree/main/resources/readme/README.ja_JP.md) | [ko-KR](https://github.com/deafdudecomputers/PalworldSaveTools/tree/main/resources/readme/README.ko_KR.md)
+[English](../../README.md) | [简体中文](README.zh_CN.md) | [Deutsch](README.de_DE.md) | [Español](README.es_ES.md) | [Français](README.fr_FR.md) | [Русский](README.ru_RU.md) | [日本語](README.ja_JP.md) | [한국어](README.ko_KR.md)
 
 ---
 
-### **Download the standalone version from [GitHub リリース](https://github.com/deafdudecomputers/PalworldSaveTools/releases/latest)**
+### **スタンドアロン バージョンを [GitHub Releases](https://github.com/deafdudecomputers/PalworldSaveTools/releases/latest)** からダウンロードします
 
 ---
 
 </div>
 
-## Table of Contents
+## 目次
 
-- [Features]
-- [Installation]
-- [Quick Start]
-- [Tools Overview]
-- [Guides]
-- [Troubleshooting]
-- [Contributing]
-- [License]
+- [特徴](#特徴)
+- [インストール](#インストール)
+- [クイックスタート](#クイックスタート)
+- [ツールの概要](#ツールの概要)
+- [ガイド](#ガイド)
+- [トラブルシューティング](#トラブルシューティング)
+- [スタンドアロン実行可能ファイルのビルド (Windows のみ)](#スタンドアロン実行可能ファイルのビルド-windows-のみ)
+- [貢献する](#貢献する)
+- [免責事項](#免責事項)
+- [サポート](#サポート)
+- [ライセンス](#ライセンス)
+- [謝辞](#謝辞)
 
 ---
 
-## Features
+## 特徴
 
 ### コア機能
 
-| 特徴 | 説明 |
-| --------- | ------------- |
-| **高速保存解析** | 利用可能な保存ファイル リーダーの中で最も速いものの 1 つ |
-| **プレイヤー管理** | 表示、編集、名前変更、レベル変更、テクノロジーのロック解除、プレーヤーの管理 |
-| **ギルド管理** | プレイヤーの作成、名前変更、移動、ラボ研究のロック解除、ギルドの管理 |
-| **Pal 編集者** | ステータス、スキル、IV、ランク、ソウル、性別、ボス/ラッキー切り替えの完全エディター |
-| **ベースキャンプツール** | エクスポート、インポート、クローン作成、半径の調整、およびベースの管理 |
-| **マップビューア** | 座標と詳細を含むインタラクティブなベースとプレーヤーのマップ |
-| **キャラクター転送** | 異なるワールド/サーバー間でキャラクターを転送 (クロスセーブ) |
-| **変換を保存** | Steam 形式と GamePass 形式間の変換 |
-| **ワールド設定** | WorldOption および LevelMeta 設定を編集する |
-| **タイムスタンプ ツール** | 負のタイムスタンプを修正し、プレーヤーの時間をリセットします |
+|特集 |説明 |
+|----------|---------------|
+| **高速保存解析** |利用可能な保存ファイル リーダーの中で最も速いものの 1 つ |
+| **プレイヤー管理** |表示、編集、名前変更、レベル変更、テクノロジーのロック解除、プレーヤーの管理 |
+| **ギルド管理** |プレイヤーの作成、名前変更、移動、ラボ研究のロック解除、ギルドの管理 |
+| **Pal 編集者** |ステータス、スキル、個体値、ランク、ソウル、性別、ボス/ラッキー切り替えの完全エディター |
+| **ベースキャンプツール** |エクスポート、インポート、クローン作成、半径の調整、およびベースの管理 |
+| **マップビューア** |座標と詳細を含むインタラクティブなベースとプレーヤーのマップ |
+| **キャラクター転送** |異なるワールド/サーバー間でキャラクターを転送する (クロスセーブ) |
+| **変換を保存** | Steam と GamePass 形式間の変換 |
+| **ワールド設定** | WorldOption と LevelMeta 設定を編集する |
+| **タイムスタンプ ツール** |負のタイムスタンプを修正し、プレーヤーの時間をリセットする |
 
 ### オールインワン ツール
 
 **オールインワン ツール** スイートは、包括的な保存管理を提供します。
 
 - **削除ツール**
-  - Players、拠点、またはギルドを削除します
+  - プレイヤー、拠点、またはギルドを削除する
   - 時間のしきい値に基づいて非アクティブなプレーヤーを削除します
-  - 重複したプレイヤーと空のギルドを削除する
+  - 重複したプレイヤーと空のギルドを削除します
   - 参照されていない/孤立したデータを削除する
 
-- **クリーンアップツール**
-  - 無効な/変更されたアイテムを削除する
-  - 無効な仲間とパッシブを削除する
+- **クリーンアップ ツール**
+  - 無効な/変更されたアイテムを削除します
+  - 無効な仲間とパッシブを削除します
   - 違法な仲間を修正（合法的な最大ステータスに制限）
   - 無効な構造を削除する
-  - 対空砲塔をリセットする
+  - 対空砲塔をリセット
   - プライベートチェストのロックを解除する
 
 - **ギルドツール**
@@ -75,40 +79,38 @@
   - プレイヤーのギルドリーダーを作る
   - ギルド名の変更
   - 最大ギルドレベル
-  - すべての研究室の研究をロック解除する
+  - すべての研究室の研究をアンロック
 
 - **プレーヤーツール**
-  - プレイヤー仲間のステータスとスキルを編集する
+  - プレイヤー仲間のステータスとスキルを編集
   - すべてのテクノロジーのロックを解除する
-  - 視聴ケージのロックを解除する
+  - 観察ケージのロックを解除する
   - プレイヤーのレベルアップ/レベルダウン
   - プレイヤーの名前を変更する
 
 - **ユーティリティの保存**
-  - ミッションをリセットする
-  - ダンジョンをリセットする
-  - タイムスタンプを修正する
+  - ミッションをリセット
+  - ダンジョンのリセット
+  - タイムスタンプを修正
   - 過剰な在庫を削減する
   - PalDefender コマンドを生成する
 
 ### 追加ツール
 
-| 道具 | 説明 |
-| ------ | ------------- |
-| **プレイヤー仲間を編集** | ステータス、スキル、個体値、タレント、ソウル、ランク、性別を備えた完全な仲間エディター |
-| **SteamID コンバーター** | Steam ID を Palworld UID に変換します |
-| **ホスト保存を修正** | 2 人のプレイヤー間で UID を交換します (ホスト交換など) |
-| **プレイヤー UIDs を交換します** | 2 人のプレイヤー間で UID を交換します |
-| **スロットインジェクター** | プレイヤーごとのパルボックススロットを増やす |
-| **マップを復元** | ロック解除されたマップの進行状況をすべてのワールド/サーバーに適用します |
+|ツール |説明 |
+|------|---------------|
+| **プレイヤー仲間を編集** |ステータス、スキル、個体値、タレント、ソウル、ランク、性別を備えた完全な仲間エディタ |
+| **SteamIDコンバータ** | Steam ID を Palworld UID に変換 |
+| **ホストの保存を修正** | 2 人のプレーヤー間で UID を交換します (ホスト交換など)。
+| **スロット インジェクター** |プレイヤーごとの Palbox スロットを増やす |
+| **マップを復元** |ロック解除されたマップの進行状況をすべてのワールド/サーバーに適用 |
 | **ワールドの名前を変更** | LevelMeta でワールド名を変更する |
-| **WorldOption 編集者** | ワールドの設定と構成を編集する |
-| **LevelMeta 編集者** | ワールドのメタデータ (名前、ホスト、レベル) を編集します |
-| **座標コンバータ** | ゲーム内座標を変換する |
+| **WorldOption エディター** |ワールドの設定と構成を編集する |
+| **レベルメタエディタ** |ワールドのメタデータ (名前、ホスト、レベル) を編集 |
 
 ---
 
-## Installation
+## インストール
 
 ### 前提条件
 
@@ -116,44 +118,59 @@
 - Windows 10/11
 - [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version) (2015-2022)
 
-**ソースから実行する場合 (Linux または開発):**
-- Python 3.10 以降
-- pip (Python パッケージ マネージャー)
+**ソースから実行する場合 (すべてのプラットフォーム):**
+- Python 3.11以降
 
 ### スタンドアロン (Windows - 推奨)
 
-1. [GitHub リリース](https://github.com/deafdudecomputers/PalworldSaveTools/releases/latest) から最新リリースをダウンロードします。
-2. zipファイルを解凍します
-3. 「PalworldSaveTools.exe」を実行します。
+1. [GitHub Releases](https://github.com/deafdudecomputers/PalworldSaveTools/releases/latest) から最新リリースをダウンロードします。
+2.zipファイルを解凍します。
+3. `PalworldSaveTools.exe` を実行します。
 
-### ソースから (Linux または開発用)
+### ソースから (すべてのプラットフォーム)
 
+起動スクリプトは自動的に仮想環境を作成し、すべての依存関係をインストールします。
+
+**Windows:**
 ```bash
 git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
 cd PalworldSaveTools
-pip install -r requirements.txt
-python start.py
+start_win.cmd
 ```
+
+**Linux:**
+```bash
+git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
+cd PalworldSaveTools
+chmod +x start_linux.sh
+./start_linux.sh
+```
+
+### 支店
+
+- **安定** (推奨): `git clone https://github.com/deafdudecomputers/PalworldSaveTools.git`
+- **ベータ** (最新機能): `git clone -b beta https://github.com/deafdudecomputers/PalworldSaveTools.git`
 
 ---
 
-## Quick Start
+## クイックスタート
 
 1. **セーブデータをロード**
-   - **[ファイル] → [読み込み] [保存]** をクリックします。
+   - ヘッダーのメニューボタンをクリックします
+   - **読み込み保存**を選択します
    - Palworld 保存フォルダーに移動します
-   - 「Level.sav」を選択します
+   - `Level.sav` を選択します
 
 2. **データを探索する**
-   - タブを使用して、Players、ギルド、拠点、またはマップを表示します
+   - タブを使用して、プレイヤー、ギルド、基地、またはマップを表示します
    - 特定のエントリを見つけるための検索とフィルタリング
 
 3. **変更を加える**
    - 編集、削除、または変更する項目を選択します
-   - 追加オプションについてはコンテキスト メニューを使用する
+   - 右クリックすると、追加オプションを含むコンテキスト メニューが表示されます
 
 4. **変更を保存**
-   - **[ファイル] → [変更を保存]** をクリックします。
+   - メニュー ボタン → **変更を保存** をクリックします。
    - バックアップは自動的に作成されます
 
 ---
@@ -164,45 +181,45 @@ python start.py
 
 包括的な保存管理のためのメイン インターフェイスには 3 つのタブがあります。
 
-**Players タブ** - サーバー上のすべてのプレーヤーを表示および管理します
-- プレイヤー名、レベル、仲間数を編集する
+**「プレイヤー」タブ** - サーバー上のすべてのプレイヤーを表示および管理します
+- プレイヤー名、レベル、仲間数を編集
 - 非アクティブなプレイヤーを削除する
-- プレイヤーのギルドと前回のオンライン時間を表示
+- プレイヤーのギルドと前回のオンライン時間を表示します
 
 **ギルド タブ** - ギルドとその拠点を管理します
-- ギルドの名前を変更し、リーダーを変更する
-- 拠点の場所とレベルを表示する
-- 空のギルドまたは非アクティブなギルドを削除する
+- ギルドの名前を変更し、リーダーを変更します
+- 拠点の場所とレベルを表示
+- 空のギルドまたは非アクティブなギルドを削除します
 
 **「ベース」タブ** - すべてのベースキャンプを表示
 - ベースブループリントのエクスポート/インポート
-- 他のギルドに基地のクローンを作成する
-- ベース半径を調整する
+- 他のギルドに基地のクローンを作成
+- ベースの半径を調整する
 
 ### マップビューア
 
 あなたの世界をインタラクティブに視覚化:
-- すべての拠点の場所とプレーヤーの位置を表示する
-- ギルド名またはプレイヤー名でフィルタリングする
+- すべての基地の場所とプレーヤーの位置を表示
+- ギルド名またはプレイヤー名でフィルタリングします
 - マーカーをクリックすると詳細情報が表示されます
-- PalDefender の `killnearestbase` コマンドを生成する
+- PalDefender の `killnearestbase` コマンドを生成します
 
 ### キャラクター転送
 
 異なるワールド/サーバー間でキャラクターを転送する (クロスセーブ):
-- 1 人のプレイヤーまたは全員のプレイヤーを転送する
+- 一人または全員のプレイヤーを転送します
 - キャラクター、仲間、インベントリ、テクノロジーを保存します
-- 協力プレイと dedicated server の間の移行に役立ちます
+- 協力サーバーと専用サーバー間の移行に役立ちます
 
 ### ホスト保存を修正
 
-2 人のプレイヤー間で UID を交換します:
+2 人のプレイヤー間で UID を交換します。
 - 進行状況をあるプレイヤーから別のプレイヤーに転送する
-- host/co-op からサーバーへの転送に必須
+- ホスト/協力プレイからサーバーへの転送に必須
 - プレイヤー間でホストの役割を交換するのに役立ちます
 - プラットフォームの交換に便利 (Xbox ↔ Steam)
-- ホスト/サーバー UID 割り当ての問題を解決します
-- **注記：** Affected player must have a character created on the target save first
+- ホスト/サーバーの UID 割り当ての問題を解決します。
+- **注意:** 影響を受けるプレイヤーは、最初にターゲットセーブでキャラクターを作成する必要があります。
 
 ---
 
@@ -222,156 +239,147 @@ steamapps\common\Palworld\Pal\Saved\SaveGames\0\RANDOMSERVERID\
 
 ### マップのロック解除
 
-<詳細>
-<summary>クリックしてマップのロック解除手順を展開します</summary>
+<details>
+<summary>クリックしてマップのロック解除手順を展開</summary>
 
-1. `src\resources\` から `LocalData.sav` をコピーします
-2. サーバー/ワールド保存フォルダーを見つけます
-3. 既存の LocalData.sav をコピーしたファイルで置き換えます
+1. `resources\` から `LocalData.sav` をコピーします
+2.サーバー/ワールド保存フォルダーを見つけます
+3. 既存の `LocalData.sav` をコピーしたファイルで置き換えます
 4. 完全にロックが解除されたマップでゲームを起動します
 
-> **注:** PST の **ツール → マップの復元** オプションを使用して、自動バックアップを使用してロック解除されたマップをすべてのワールド/サーバーに一度に適用します。
+> **注:** [ツール] タブの [**マップの復元**] ツールを使用すると、ロック解除されたマップが自動バックアップですべてのワールド/サーバーに一度に適用されます。
 
-</詳細>
+</details>
 
 ### ホスト→サーバー転送
 
-<詳細>
-<summary>クリックしてホストからサーバーへの転送ガイドを展開します</summary>
+<details>
+<summary>クリックしてホストからサーバーへの転送ガイドを展開</summary>
 
-1. ホスト保存から「Level.sav」フォルダと「Players」フォルダをコピーします
-2. dedicated server 保存フォルダーに貼り付けます
-3. サーバーを起動し、新しいキャラクターを作成します
+1. `Level.sav` および `Players` フォルダーをホストの保存場所からコピーします。
+2. 専用サーバーの保存フォルダーに貼り付けます
+3.サーバーを起動し、新しいキャラクターを作成します
 4. 自動保存されるまで待ってから閉じます
-5. **ホスト保存の修正** を使用して GUID を移行します
-6. ファイルをコピーして戻して起動する
+5. **ホスト保存の修正**を使用して GUID を移行します
+6. ファイルをコピーして戻して起動します
 
 **修正ホスト保存の使用:**
-- 一時フォルダーから「Level.sav」を選択します
-- **古いキャラクター** (元のセーブから) を選択してください
+- 一時フォルダーから `Level.sav` を選択します
+- **古いキャラクター** (元のセーブから) を選択します
 - **新しいキャラクター** (先ほど作成したもの) を選択します
-- [**移行**] をクリックします
+- [**移行**] をクリックします。
 
-</詳細>
+</details>
 
 ### ホストスワップ (ホストの変更)
 
-<詳細>
-<summary>クリックしてホスト スワップ ガイドを展開します</summary>
+<details>
+<summary>クリックしてホスト スワップ ガイドを展開</summary>
 
-**背景：**
+**背景:**
 - ホストは常に `0001.sav` を使用します - 誰がホストしても同じ UID
-- 各クライアントは、固有の通常の UID セーブ (例: `123xxx.sav`、`987xxx.sav`) を使用します。
+- 各クライアントは固有の通常の UID 保存を使用します (例: `123xxx.sav`、`987xxx.sav`)。
 
 **前提条件:**
 両方のプレーヤー (古いホストと新しいホスト) が通常のセーブを生成する必要があります。これは、ホストの世界に参加し、新しいキャラクターを作成することで発生します。
 
 **手順:**
 
-1. **定期的な保存が存在することを確認してください**
-   - プレーヤー A (古いホスト) には通常のセーブ (例: `123xxx.sav`) が必要です。
-   - プレーヤー B (新しいホスト) には通常のセーブ (例: `987xxx.sav`) が必要です。
+1. **定期的な保存が存在することを確認します**
+   - プレイヤー A (旧ホスト) には通常のセーブが必要です (例: `123xxx.sav`)
+   - プレーヤー B (新しいホスト) には通常のセーブが必要です (例: `987xxx.sav`)
 
 2. **古いホストのホスト セーブを通常のセーブに交換**
-   - PalworldSaveTools **ホスト保存を修正** を使用して交換します。
-   - 旧ホストの「0001.sav」→「123xxx.sav」
+   - PalworldSaveTools **ホスト セーブを修正** を使用して以下を交換します。
+   - 古いホストの `0001.sav` → `123xxx.sav`
    - (これにより、古いホストの進行状況がホスト スロットから通常のプレイヤー スロットに移動します)
 
 3. **新しいホストの通常の保存をホストの保存に交換**
-   - PalworldSaveTools **ホスト保存を修正** を使用して交換します。
+   - PalworldSaveTools **ホスト セーブを修正** を使用して以下を交換します。
    - 新しいホストの `987xxx.sav` → `0001.sav`
    - (これにより、新しいホストの進行状況がホスト スロットに移動されます)
 
-**結果：**
-- プレイヤー B はホストとなり、「0001.sav」内に自分のキャラクターと仲間がいます。
-- プレイヤー A は、`123xxx.sav` にある元の進行状況を持つクライアントになります。
+**結果:**
+- プレーヤー B は、`0001.sav` で独自のキャラクターと仲間を持つホストになりました。
+- プレーヤー A は、`123xxx.sav` の元の進行状況でクライアントになります。
 
-</詳細>
+</details>
 
 ### 基本エクスポート/インポート
 
-<詳細>
-<summary>クリックして基本的なエクスポート/インポート ガイドを展開します</summary>
+<details>
+<summary>クリックして基本エクスポート/インポート ガイドを展開</summary>
 
 **ベースのエクスポート:**
-1. セーブデータを PST にロードします
-2. 「拠点」タブに移動します
+1. PST でセーブデータをロードします
+2.「拠点」タブに移動します
 3. ベースを右クリック → ベースのエクスポート
-4. `.json` ファイルとして保存
+4. `.json` ファイルとして保存します
 
 **ベースのインポート:**
 1. 「Bases」タブまたは「Base Map Viewer」に移動します。
-2. 拠点をインポートしたいギルドを右クリックします
-3. インポートベースの選択
-4. エクスポートした「.json」ファイルを選択します
+2. 拠点をインポートしたいギルドを右クリックします。
+3. インポートベースを選択します
+4. エクスポートした `.json` ファイルを選択します
 
 **ベースのクローン作成:**
 1. ベースを右クリック→「ベースのクローン」
-2. 対象ギルドを選択
-3. ベースはオフセット配置で複製されます
+2.対象ギルドを選択
+3. ベースはオフセット配置で複製されます。
 
 **ベース半径の調整:**
 1. ベースを右クリック → 半径を調整
-2. 新しい半径を入力してください (50% - 1000%)
-3. 再割り当てする構造物については、ゲーム内で保存してロードします。
+2. 新しい半径を入力します (50% ～ 1000%)
+3. 構造物を再割り当てするには、ゲーム内で保存してロードします。
 
-</詳細>
+</details>
 
 ---
 
-## Troubleshooting
+## トラブルシューティング
 
 ### 「VCRUNTIME140.dll が見つかりませんでした」
 
-**Solution:** Install [マイクロソフト Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version)
+**解決策:** [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version) をインストールします
 
-### `struct.error` when parsing save
+### `struct.error` 保存解析時
 
-**原因:** 保存ファイル形式が古い
+**原因:** 保存ファイル形式が古いです
 
-**解決：**
+**解決策:**
 1. ゲームにセーブデータをロードします (ソロ、コープ、または専用サーバー モード)
 2. これにより、構造の自動更新がトリガーされます
-3. 最新のゲームパッチ以降にセーブデータが更新されていることを確認してください
+3. セーブデータが最新のゲームパッチ以降に更新されていることを確認します。
 
-### GamePass コンバータが動作しない
+### GamePass コンバーターが動作しない
 
-**解決：**
-1. Palworld の GamePass バージョンを閉じます
+**解決策:**
+1. GamePass バージョンの Palworld を閉じます
 2. 数分待ちます
-3. Steam → GamePass コンバータを実行します
-4. GamePass で Palworld を起動して確認してください
+3. Steam → GamePassコンバータを実行します
+4. GamePass で Palworld を起動して確認します。
 
 ---
 
-## ソースからのビルド
+## スタンドアロン実行可能ファイルのビルド (Windows のみ)
+
+ビルド スクリプトを実行して、スタンドアロンの実行可能ファイルを作成します。
 
 ```bash
-# Clone the repository
-git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the application
-python start.py
+scripts\build.cmd
 ```
 
-スタンドアロンの実行可能ファイルをビルドするには、ビルド スクリプトを使用します。
-```bash
-python scripts/build.py
-```
+これにより、プロジェクト ルートに `PST_standalone_v{version}.7z` が作成されます。
 
 ---
 
-## Contributing
-
-貢献は大歓迎です!お気軽にプルリクエストを送信してください。
+## 貢献する
+貢献は大歓迎です！お気軽にプルリクエストを送信してください。
 
 1. リポジトリをフォークする
 2. 機能ブランチを作成します (`git checkout -b feature/AmazingFeature`)
 3. 変更をコミットします (`git commit -m 'Add some AmazingFeature'`)
-4. ブランチにプッシュします (`git Push Origin feature/AmazingFeature`)
+4. ブランチにプッシュします (`git push origin feature/AmazingFeature`)
 5. プルリクエストを開く
 
 ---
@@ -384,23 +392,23 @@ python scripts/build.py
 
 ---
 
-＃＃ サポート
+## サポート
 
-- **Discord:** [Join us for support, base builds, and more!](https://discord.gg/sYcZwcT4cT)
-- **GitHub 問題:** [Report a bug](https://github.com/deafdudecomputers/PalworldSaveTools/issues)
-- **ドキュメント:** [Wiki](https://github.com/deafdudecomputers/PalworldSaveTools/wiki) *(Currently in development)*
+- **ディスコード:** [Join us for support, base builds, and more!](https://discord.gg/sYcZwcT4cT)
+- **GitHub の問題:** [Report a bug](https://github.com/deafdudecomputers/PalworldSaveTools/issues)
+- **ドキュメント:** [Wiki](https://github.com/deafdudecomputers/PalworldSaveTools/wiki) *(現在開発中)*
 
 ---
 
 ## ライセンス
 
-このプロジェクトは MIT License に基づいてライセンスされています。詳細については、[LICENSE](LICENSE) ファイルを参照してください。
+このプロジェクトは MIT ライセンスに基づいてライセンスされています。詳細については、[LICENSE](LICENSE) ファイルを参照してください。
 
 ---
 
 ## 謝辞
 
-- **Palworld** developed by Pocketpair, Inc.
+- **Palworld** は Pocketpair, Inc. によって開発されました。
 - このツールの改善に協力してくれたすべての貢献者とコミュニティ メンバーに感謝します
 
 ---
@@ -409,6 +417,6 @@ python scripts/build.py
 
 **Palworld コミュニティのために ❤️ で作成されました**
 
-⬆ トップに戻る
+[⬆ Back to Top](#palworldsavetools)
 
 </div>

@@ -3,7 +3,7 @@ from import_libs import *
 from loading_manager import run_with_loading, show_information
 from PySide6.QtCore import QEventLoop
 from PySide6.QtWidgets import QApplication, QFileDialog
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'palworld_save_tools', 'commands'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'palworld_save_tools', 'commands'))
 from convert import main as convert_main
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing

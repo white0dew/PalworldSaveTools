@@ -11,7 +11,7 @@
 [![Discord](https://img.shields.io/badge/Discord-Join_for_support-blue)](https://discord.gg/sYcZwcT4cT)
 [![NexusMods](https://img.shields.io/badge/NexusMods-Download-orange)](https://www.nexusmods.com/palworld/mods/3190)
 
-[English](resources/readme/README.en_US.md) | [简体中文](resources/readme/README.zh_CN.md) | [Deutsch](resources/readme/README.de_DE.md) | [Español](resources/readme/README.es_ES.md) | [Français](resources/readme/README.fr_FR.md) | [Русский](resources/readme/README.ru_RU.md) | [日本語](resources/readme/README.ja_JP.md) | [한국어](resources/readme/README.ko_KR.md)
+[English](README.md) | [简体中文](resources/readme/README.zh_CN.md) | [Deutsch](resources/readme/README.de_DE.md) | [Español](resources/readme/README.es_ES.md) | [Français](resources/readme/README.fr_FR.md) | [Русский](resources/readme/README.ru_RU.md) | [日本語](resources/readme/README.ja_JP.md) | [한국어](resources/readme/README.ko_KR.md)
 
 ---
 
@@ -23,14 +23,15 @@
 
 ## Table of Contents
 
-- [Features]
-- [Installation]
-- [Quick Start]
-- [Tools Overview]
-- [Guides]
-- [Troubleshooting]
-- [Contributing]
-- [License]
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Tools Overview](#tools-overview)
+- [Guides](#guides)
+- [Troubleshooting](#troubleshooting)
+- [Building Standalone Executable](#building-standalone-executable-windows-only)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
@@ -98,13 +99,11 @@ The **All-in-One Tools** suite provides comprehensive save management:
 | **Edit Player Pals** | Full pal editor with stats, skills, IVs, talents, souls, rank, and gender |
 | **SteamID Converter** | Convert Steam IDs to Palworld UIDs |
 | **Fix Host Save** | Swap UIDs between two players (e.g., for host swap) |
-| **Swap Player UIDs** | Swap UIDs between two players |
 | **Slot Injector** | Increase palbox slots per player |
 | **Restore Map** | Apply unlocked map progress across all worlds/servers |
 | **Rename World** | Change world name in LevelMeta |
 | **WorldOption Editor** | Edit world settings and configuration |
 | **LevelMeta Editor** | Edit world metadata (name, host, level) |
-| **Coordinate Converter** | Convert in-game coordinates |
 
 ---
 
@@ -116,9 +115,8 @@ The **All-in-One Tools** suite provides comprehensive save management:
 - Windows 10/11
 - [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version) (2015-2022)
 
-**For running from source (Linux or development):**
-- Python 3.10 or higher
-- pip (Python package manager)
+**For running from source (all platforms):**
+- Python 3.11 or higher
 
 ### Standalone (Windows - Recommended)
 
@@ -126,21 +124,37 @@ The **All-in-One Tools** suite provides comprehensive save management:
 2. Extract the zip file
 3. Run `PalworldSaveTools.exe`
 
-### From Source (Linux or for development)
+### From Source (All Platforms)
 
+The start scripts automatically create a virtual environment and install all dependencies.
+
+**Windows:**
 ```bash
 git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
 cd PalworldSaveTools
-pip install -r requirements.txt
-python start.py
+start_win.cmd
 ```
+
+**Linux:**
+```bash
+git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
+cd PalworldSaveTools
+chmod +x start_linux.sh
+./start_linux.sh
+```
+
+### Branches
+
+- **Stable** (recommended): `git clone https://github.com/deafdudecomputers/PalworldSaveTools.git`
+- **Beta** (latest features): `git clone -b beta https://github.com/deafdudecomputers/PalworldSaveTools.git`
 
 ---
 
 ## Quick Start
 
 1. **Load Your Save**
-   - Click **File → Load Save**
+   - Click the menu button in the header
+   - Select **Load Save**
    - Navigate to your Palworld save folder
    - Select `Level.sav`
 
@@ -150,10 +164,10 @@ python start.py
 
 3. **Make Changes**
    - Select items to edit, delete, or modify
-   - Use context menus for additional options
+   - Right-click for context menus with additional options
 
 4. **Save Your Changes**
-   - Click **File → Save Changes**
+   - Click the menu button → **Save Changes**
    - Backups are created automatically
 
 ---
@@ -225,12 +239,12 @@ steamapps\common\Palworld\Pal\Saved\SaveGames\0\RANDOMSERVERID\
 <details>
 <summary>Click to expand map unlock instructions</summary>
 
-1. Copy `LocalData.sav` from `src\resources\`
+1. Copy `LocalData.sav` from `resources\`
 2. Find your server/world save folder
 3. Replace the existing `LocalData.sav` with the copied file
 4. Launch the game with a fully unlocked map
 
-> **Note:** Use the **Tools → Restore Map** option in PST to apply the unlocked map to ALL your worlds/servers at once with automatic backups.
+> **Note:** Use the **Restore Map** tool in the Tools tab to apply the unlocked map to ALL your worlds/servers at once with automatic backups.
 
 </details>
 
@@ -344,23 +358,15 @@ Both players (old host and new host) must have their regular saves generated. Th
 
 ---
 
-## Building from Source
+## Building Standalone Executable (Windows Only)
+
+Run the build script to create a standalone executable:
 
 ```bash
-# Clone the repository
-git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the application
-python start.py
+scripts\build.cmd
 ```
 
-For building the standalone executable, use the build script:
-```bash
-python scripts/build.py
-```
+This creates `PST_standalone_v{version}.7z` in the project root.
 
 ---
 

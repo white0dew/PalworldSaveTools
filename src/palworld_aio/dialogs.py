@@ -7,8 +7,26 @@ from i18n import t
 from loading_manager import show_critical
 from palworld_aio import constants
 from palworld_aio.utils import sav_to_json, extract_value, get_pal_data, calculate_max_hp, calculate_attack, calculate_defense, format_character_key
-class InputDialog(QDialog):
-    def __init__(self, title, prompt, parent=None, mode='text'):
+DARK_THEME_STYLESHEET = '\n    QDialog {\n        background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                    stop:0 #07080a, stop:0.5 #08101a, stop:1 #05060a);\n        color: #dfeefc;\n    }\n    QLabel {\n        color: #dfeefc;\n    }\n    QLineEdit {\n        background-color: rgba(255,255,255,0.1);\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.2);\n        border-radius: 4px;\n        padding: 6px;\n    }\n    QSpinBox {\n        background-color: rgba(255,255,255,0.1);\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.2);\n        border-radius: 4px;\n        padding: 4px;\n    }\n    QComboBox {\n        background-color: rgba(255,255,255,0.1);\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.2);\n        border-radius: 4px;\n        padding: 6px;\n    }\n    QComboBox QAbstractItemView {\n        background-color: #2a2a2a;\n        color: #dfeefc;\n        selection-background-color: #3a3a3a;\n    }\n    QCheckBox {\n        color: #dfeefc;\n    }\n    QRadioButton {\n        color: #dfeefc;\n    }\n    QGroupBox {\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.2);\n        border-radius: 6px;\n        margin-top: 10px;\n        padding-top: 10px;\n    }\n    QGroupBox::title {\n        subcontrol-origin: margin;\n        left: 10px;\n        padding: 0 5px;\n    }\n    QTextEdit {\n        background-color: rgba(255,255,255,0.05);\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.1);\n        border-radius: 4px;\n    }\n    QPushButton {\n        background-color: #3a3a3a;\n        color: #dfeefc;\n        border: 1px solid #555555;\n        border-radius: 4px;\n        padding: 6px 16px;\n        min-width: 70px;\n    }\n    QPushButton:hover {\n        background-color: #4a4a4a;\n    }\n    QFrame {\n        background-color: rgba(255,255,255,0.03);\n        border: 1px solid rgba(255,255,255,0.08);\n        border-radius: 6px;\n    }\n'
+class ThemedDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._apply_theme()
+    def _apply_theme(self):
+        self.setStyleSheet(DARK_THEME_STYLESHEET)
+    def showEvent(self, event):
+        super().showEvent(event)
+        if not event.spontaneous():
+            try:
+                from palworld_aio.ui.tools_tab import center_on_parent
+                center_on_parent(self)
+            except ImportError:
+                from ..ui.tools_tab import center_on_parent
+                center_on_parent(self)
+            self.activateWindow()
+            self.raise_()
+class InputDialog(ThemedDialog):
+    def __init__(self, title, prompt, parent=None, mode='text', initial_text=''):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setModal(True)
@@ -19,6 +37,8 @@ class InputDialog(QDialog):
         label = QLabel(prompt)
         layout.addWidget(label)
         self.input_field = QLineEdit()
+        self.input_field.setText(initial_text)
+        self.input_field.selectAll()
         layout.addWidget(self.input_field)
         button_layout = QHBoxLayout()
         ok_btn = QPushButton(t('button.ok') if t else 'OK')
@@ -32,24 +52,13 @@ class InputDialog(QDialog):
     def accept(self):
         self.result_value = self.input_field.text()
         super().accept()
-    def showEvent(self, event):
-        super().showEvent(event)
-        if not event.spontaneous():
-            try:
-                from palworld_aio.ui.tools_tab import center_on_parent
-                center_on_parent(self)
-            except ImportError:
-                from ..ui.tools_tab import center_on_parent
-                center_on_parent(self)
-            self.activateWindow()
-            self.raise_()
     @staticmethod
-    def get_text(title, prompt, parent=None, mode='text'):
-        dialog = InputDialog(title, prompt, parent, mode)
+    def get_text(title, prompt, parent=None, mode='text', initial_text=''):
+        dialog = InputDialog(title, prompt, parent, mode, initial_text)
         if dialog.exec() == QDialog.Accepted:
             return dialog.result_value
         return None
-class DaysInputDialog(QDialog):
+class DaysInputDialog(ThemedDialog):
     def __init__(self, title, prompt, parent=None):
         super().__init__(parent)
         self.setWindowTitle(title)
@@ -77,24 +86,13 @@ class DaysInputDialog(QDialog):
     def accept(self):
         self.result_value = self.spin_box.value()
         super().accept()
-    def showEvent(self, event):
-        super().showEvent(event)
-        if not event.spontaneous():
-            try:
-                from palworld_aio.ui.tools_tab import center_on_parent
-                center_on_parent(self)
-            except ImportError:
-                from ..ui.tools_tab import center_on_parent
-                center_on_parent(self)
-            self.activateWindow()
-            self.raise_()
     @staticmethod
     def get_days(title, prompt, parent=None):
         dialog = DaysInputDialog(title, prompt, parent)
         if dialog.exec() == QDialog.Accepted:
             return dialog.result_value
         return None
-class LevelInputDialog(QDialog):
+class LevelInputDialog(ThemedDialog):
     def __init__(self, title, prompt, current_level, parent=None):
         super().__init__(parent)
         self.setWindowTitle(title)
@@ -122,24 +120,13 @@ class LevelInputDialog(QDialog):
     def accept(self):
         self.result_value = self.spin_box.value()
         super().accept()
-    def showEvent(self, event):
-        super().showEvent(event)
-        if not event.spontaneous():
-            try:
-                from palworld_aio.ui.tools_tab import center_on_parent
-                center_on_parent(self)
-            except ImportError:
-                from ..ui.tools_tab import center_on_parent
-                center_on_parent(self)
-            self.activateWindow()
-            self.raise_()
     @staticmethod
     def get_level(title, prompt, current_level, parent=None):
         dialog = LevelInputDialog(title, prompt, current_level, parent)
         if dialog.exec() == QDialog.Accepted:
             return dialog.result_value
         return None
-class KillNearestBaseDialog(QDialog):
+class KillNearestBaseDialog(ThemedDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(t('kill_nearest_base.title') if t else 'Kill Nearest Base Config')
@@ -199,18 +186,7 @@ class KillNearestBaseDialog(QDialog):
         from PySide6.QtWidgets import QApplication
         clipboard = QApplication.clipboard()
         clipboard.setText(self.output_text.toPlainText())
-    def showEvent(self, event):
-        super().showEvent(event)
-        if not event.spontaneous():
-            try:
-                from palworld_aio.ui.tools_tab import center_on_parent
-                center_on_parent(self)
-            except ImportError:
-                from ..ui.tools_tab import center_on_parent
-                center_on_parent(self)
-            self.activateWindow()
-            self.raise_()
-class ConfirmDialog(QDialog):
+class ConfirmDialog(ThemedDialog):
     def __init__(self, title, message, parent=None):
         super().__init__(parent)
         self.setWindowTitle(title)
@@ -230,22 +206,11 @@ class ConfirmDialog(QDialog):
         button_layout.addWidget(yes_btn)
         button_layout.addWidget(no_btn)
         layout.addLayout(button_layout)
-    def showEvent(self, event):
-        super().showEvent(event)
-        if not event.spontaneous():
-            try:
-                from palworld_aio.ui.tools_tab import center_on_parent
-                center_on_parent(self)
-            except ImportError:
-                from ..ui.tools_tab import center_on_parent
-                center_on_parent(self)
-            self.activateWindow()
-            self.raise_()
     @staticmethod
     def confirm(title, message, parent=None):
         dialog = ConfirmDialog(title, message, parent)
         return dialog.exec() == QDialog.Accepted
-class RadiusInputDialog(QDialog):
+class RadiusInputDialog(ThemedDialog):
     DEFAULT_RADIUS = 3500.0
     def __init__(self, title, prompt, current_radius, parent=None):
         super().__init__(parent)
@@ -299,24 +264,13 @@ class RadiusInputDialog(QDialog):
         percent = self.spin_box.value()
         self.result_value = float(percent * 35.0)
         super().accept()
-    def showEvent(self, event):
-        super().showEvent(event)
-        if not event.spontaneous():
-            try:
-                from palworld_aio.ui.tools_tab import center_on_parent
-                center_on_parent(self)
-            except ImportError:
-                from ..ui.tools_tab import center_on_parent
-                center_on_parent(self)
-            self.activateWindow()
-            self.raise_()
     @staticmethod
     def get_radius(title, prompt, current_radius, parent=None):
         dialog = RadiusInputDialog(title, prompt, current_radius, parent)
         if dialog.exec() == QDialog.Accepted:
             return dialog.result_value
         return None
-class PalDefenderDialog(QDialog):
+class PalDefenderDialog(ThemedDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(t('paldefender.title') if t else 'PalDefender - Generate Commands')
@@ -387,15 +341,6 @@ class PalDefenderDialog(QDialog):
         self.output_text.setFont(QFont('Consolas', 10))
         self.output_text.setStyleSheet(f'background-color: {constants.GLASS}; color: {constants.TEXT};')
         layout.addWidget(self.output_text)
-    def showEvent(self, event):
-        super().showEvent(event)
-        if not event.spontaneous():
-            try:
-                from palworld_aio.ui.tools_tab import center_on_parent
-                center_on_parent(self)
-            except ImportError:
-                from ..ui.tools_tab import center_on_parent
-                center_on_parent(self)
     def _append_output(self, text):
         self.output_text.append(text)
     def _clear_output(self):
@@ -524,4 +469,44 @@ class PalDefenderDialog(QDialog):
             self._append_output(f'\nFilter: Max Level <= {max_level}')
         self._append_output(f'\nExcluded guilds: {len(excluded_guilds)}')
         self._append_output(f'Excluded bases: {len(excluded_bases)}')
+class GuildSelectionDialog(ThemedDialog):
+    def __init__(self, guilds_data, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(t('base.import.select_guild') if t else 'Select Guild')
+        self.setModal(True)
+        self.setMinimumWidth(400)
+        if os.path.exists(constants.ICON_PATH):
+            self.setWindowIcon(QIcon(constants.ICON_PATH))
+        layout = QVBoxLayout(self)
+        label = QLabel(t('base.import.select_guild_prompt') if t else 'Select a guild to import the base(s) to:')
+        label.setWordWrap(True)
+        layout.addWidget(label)
+        self.guild_combo = QComboBox()
+        self.guild_combo.setMinimumHeight(30)
+        self.guild_ids = []
+        for guild_id, guild_info in guilds_data.items():
+            guild_name = guild_info.get('guild_name', 'Unknown')
+            base_count = len(guild_info.get('bases', []))
+            display_text = f'{guild_name} ({base_count} bases)'
+            self.guild_combo.addItem(display_text, guild_id)
+            self.guild_ids.append(guild_id)
+        layout.addWidget(self.guild_combo)
+        button_layout = QHBoxLayout()
+        ok_btn = QPushButton(t('button.ok') if t else 'OK')
+        ok_btn.clicked.connect(self.accept)
+        cancel_btn = QPushButton(t('button.cancel') if t else 'Cancel')
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(ok_btn)
+        button_layout.addWidget(cancel_btn)
+        layout.addLayout(button_layout)
+        self.selected_guild_id = None
+    def accept(self):
+        self.selected_guild_id = self.guild_combo.currentData()
+        super().accept()
+    @staticmethod
+    def get_guild(guilds_data, parent=None):
+        dialog = GuildSelectionDialog(guilds_data, parent)
+        if dialog.exec() == QDialog.Accepted:
+            return dialog.selected_guild_id
+        return None
 from .edit_pals import EditPalsDialog, PalFrame

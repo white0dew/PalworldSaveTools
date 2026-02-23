@@ -1,62 +1,66 @@
 <div align="center">
 
-![PalworldSaveTools Logo](https://github.com/deafdudecomputers/PalworldSaveTools/blob/main/resources/PalworldSaveTools_Blue.png)
+![PalworldSaveTools Logo](../PalworldSaveTools_Blue.png)
 
 # PalworldSaveTools
 
 **Ein umfassendes Toolkit zur Bearbeitung gespeicherter Dateien für Palworld**
 
 [![Downloads](https://img.shields.io/github/downloads/deafdudecomputers/PalworldSaveTools/total)](https://github.com/deafdudecomputers/PalworldTools/releases/latest)
-[![Lizenz](https://img.shields.io/github/license/deafdudecomputers/PalworldSaveTools)](LICENSE)
+[![License](https://img.shields.io/github/license/deafdudecomputers/PalworldSaveTools)](LICENSE)
 [![Discord](https://img.shields.io/badge/Discord-Join_for_support-blue)](https://discord.gg/sYcZwcT4cT)
 [![NexusMods](https://img.shields.io/badge/NexusMods-Download-orange)](https://www.nexusmods.com/palworld/mods/3190)
 
-[English](https://github.com/deafdudecomputers/PalworldSaveTools/blob/main/README.md) | [zh-CN](https://github.com/deafdudecomputers/PalworldSaveTools/tree/main/resources/readme/README.zh_CN.md) | [de-DE](https://github.com/deafdudecomputers/PalworldSaveTools/tree/main/resources/readme/README.de_DE.md) | [es-ES](https://github.com/deafdudecomputers/PalworldSaveTools/tree/main/resources/readme/README.es_ES.md) | [fr-FR](https://github.com/deafdudecomputers/PalworldSaveTools/tree/main/resources/readme/README.fr_FR.md) | [ru-RU](https://github.com/deafdudecomputers/PalworldSaveTools/tree/main/resources/readme/README.ru_RU.md) | [ja-JP](https://github.com/deafdudecomputers/PalworldSaveTools/tree/main/resources/readme/README.ja_JP.md) | [ko-KR](https://github.com/deafdudecomputers/PalworldSaveTools/tree/main/resources/readme/README.ko_KR.md)
+[English](../../README.md) | [简体中文](README.zh_CN.md) | [Deutsch](README.de_DE.md) | [Español](README.es_ES.md) | [Français](README.fr_FR.md) | [Русский](README.ru_RU.md) | [日本語](README.ja_JP.md) | [한국어](README.ko_KR.md)
 
 ---
 
-### **Download the standalone version from [GitHub Veröffentlichungen](https://github.com/deafdudecomputers/PalworldSaveTools/releases/latest)**
+### **Laden Sie die Standalone-Version von [GitHub Releases](https://github.com/deafdudecomputers/PalworldSaveTools/releases/latest)** herunter
 
 ---
 
 </div>
 
-## Table of Contents
+## Inhaltsverzeichnis
 
-- [Features]
-- [Installation]
-- [Quick Start]
-- [Tools Overview]
-- [Guides]
-- [Troubleshooting]
-- [Contributing]
-- [License]
+- [Funktionen](#funktionen)
+- [Installation](#installation)
+- [Schnellstart](#schnellstart)
+- [Tools-Übersicht](#tools-übersicht)
+- [Anleitungen](#anleitungen)
+- [Fehlerbehebung](#fehlerbehebung)
+- [Erstellen einer eigenständigen ausführbaren Datei (nur Windows)](#erstellen-einer-eigenständigen-ausführbaren-datei-nur-windows)
+- [Mitwirken](#mitwirken)
+- [Haftungsausschluss](#haftungsausschluss)
+- [Unterstützung](#unterstützung)
+- [Lizenz](#lizenz)
+- [Danksagungen](#danksagungen)
 
 ---
 
-## Features
+## Funktionen
 
 ### Kernfunktionalität
 
-| Besonderheit | Beschreibung |
-| --------- | ------------- |
+| Funktion | Beschreibung |
+|---------|-------------|
 | **Schnelles Speichern-Parsen** | Einer der schnellsten verfügbaren Lesegeräte für gespeicherte Dateien |
-| **Spielerverwaltung** | Anzeigen, Bearbeiten, Umbenennen, Levelwechsel, Freischalten von Technologien und Verwalten von Spielern |
-| **Gildenverwaltung** | Erstellen Sie Spieler, benennen Sie sie um, verschieben Sie sie, schalten Sie Laborforschung frei und verwalten Sie Gilden |
-| **Kumpel-Editor** | Vollständiger Editor für Statistiken, Fertigkeiten, IVs, Rang, Seelen, Geschlecht, Boss/Glücksbringer-Umschaltung |
+| **Spielerverwaltung** | Anzeigen, Bearbeiten, Umbenennen, Level ändern, Technologien freischalten und Spieler verwalten |
+| **Gildenverwaltung** | Spieler erstellen, umbenennen, verschieben, Laborforschung freischalten und Gilden verwalten |
+| **Pal Editor** | Vollständiger Editor für Statistiken, Fähigkeiten, IVs, Rang, Seelen, Geschlecht, Boss/Glücksbringer-Umschaltung |
 | **Basislager-Werkzeuge** | Exportieren, importieren, klonen, Radius anpassen und Basen verwalten |
 | **Kartenbetrachter** | Interaktive Basis- und Spielerkarte mit Koordinaten und Details |
 | **Charakterübertragung** | Charaktere zwischen verschiedenen Welten/Servern übertragen (Cross-Save) |
-| **Konvertierung speichern** | Konvertieren Sie zwischen den Formaten Steam und GamePass |
-| **Welteinstellungen** | Bearbeiten Sie die Einstellungen für WorldOption und LevelMeta |
-| **Zeitstempel-Tools** | Korrigieren Sie negative Zeitstempel und setzen Sie die Spielerzeiten zurück |
+| **Konvertierung speichern** | Konvertieren zwischen Steam- und GamePass-Formaten |
+| **Welteinstellungen** | WorldOption- und LevelMeta-Einstellungen bearbeiten |
+| **Zeitstempel-Tools** | Negative Zeitstempel korrigieren und Spielerzeiten zurücksetzen |
 
 ### All-in-One-Tools
 
 Die Suite **All-in-One Tools** bietet umfassende Speicherverwaltung:
 
-- **Löschwerkzeuge**
-  - Löschen Sie Players, Basen oder Gilden
+- **Löschtools**
+  - Löschen Sie Spieler, Basen oder Gilden
   - Löschen Sie inaktive Spieler basierend auf Zeitschwellen
   - Entfernen Sie doppelte Spieler und leere Gilden
   - Löschen Sie nicht referenzierte/verwaiste Daten
@@ -64,14 +68,14 @@ Die Suite **All-in-One Tools** bietet umfassende Speicherverwaltung:
 - **Bereinigungstools**
   - Entfernen Sie ungültige/modifizierte Elemente
   - Entfernen Sie ungültige Kumpels und Passive
-  - Illegale Freunde reparieren (Grenze auf legale Maximalwerte)
+  - Illegale Freunde reparieren (Obergrenze auf legale Maximalwerte)
   - Entfernen Sie ungültige Strukturen
   - Luftabwehrtürme zurücksetzen
   - Schalte private Truhen frei
 
 - **Gildenwerkzeuge**
   - Alle Gilden neu aufbauen
-  - Verschiebe Spieler zwischen Gilden
+  - Verschieben Sie Spieler zwischen Gilden
   - Ernenne den Spieler zum Gildenführer
   - Gilden umbenennen
   - Maximales Gildenlevel
@@ -84,27 +88,25 @@ Die Suite **All-in-One Tools** bietet umfassende Speicherverwaltung:
   - Spieler im Level auf-/absteigen
   - Spieler umbenennen
 
-- **Speichern Sie Dienstprogramme**
+- **Dienstprogramme speichern**
   - Missionen zurücksetzen
   - Dungeons zurücksetzen
   - Zeitstempel korrigieren
-  - Reduzieren Sie überfüllte Lagerbestände
+  - Abbau überfüllter Lagerbestände
   - Generieren Sie PalDefender-Befehle
 
 ### Zusätzliche Tools
 
 | Werkzeug | Beschreibung |
-| ------ | ------------- |
+|------|-------------|
 | **Spielerfreunde bearbeiten** | Vollständiger Kumpel-Editor mit Statistiken, Fähigkeiten, IVs, Talenten, Seelen, Rang und Geschlecht |
-| **SteamID-Konverter** | Konvertieren Sie Steam-IDs in Palworld UIDs |
-| **Host-Speicherung beheben** | Tauschen Sie UIDs zwischen zwei Spielern aus (z. B. für den Host-Tausch) |
-| **Spieler tauschen UIDs** | Tausche UIDs zwischen zwei Spielern |
-| **Schlitzinjektor** | Erhöhen Sie die Palbox-Slots pro Spieler |
+| **SteamID-Konverter** | Konvertieren Sie Steam-IDs in Palworld-UIDs |
+| **Host-Speicherung beheben** | UIDs zwischen zwei Spielern austauschen (z. B. für Host-Swap) |
+| **Schlitzinjektor** | Palbox-Slots pro Spieler erhöhen |
 | **Karte wiederherstellen** | Wende den freigeschalteten Kartenfortschritt auf alle Welten/Server an |
-| **Welt umbenennen** | Weltnamen in LevelMeta ändern |
-| **WorldOption Herausgeber** | Bearbeiten Sie die Welteinstellungen und -konfiguration |
-| **LevelMeta Herausgeber** | Weltmetadaten bearbeiten (Name, Host, Level) |
-| **Koordinatenkonverter** | Konvertieren Sie Koordinaten im Spiel |
+| **Welt umbenennen** | Ändern Sie den Weltnamen in LevelMeta |
+| **WorldOption-Editor** | Welteinstellungen und Konfiguration bearbeiten |
+| **LevelMeta-Editor** | Weltmetadaten bearbeiten (Name, Host, Ebene) |
 
 ---
 
@@ -114,46 +116,61 @@ Die Suite **All-in-One Tools** bietet umfassende Speicherverwaltung:
 
 **Für Standalone (Windows):**
 - Windows 10/11
-- [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version) (2015–2022)
+- [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version) (2015-2022)
 
-**Zur Ausführung aus dem Quellcode (Linux oder Entwicklung):**
-- Python 3.10 oder höher
-- pip (Python Paketmanager)
+**Zur Ausführung von der Quelle (alle Plattformen):**
+- Python 3.11 oder höher
 
 ### Eigenständig (Windows – empfohlen)
 
-1. Laden Sie die neueste Version von [GitHub Releases](https://github.com/deafdudecomputers/PalworldSaveTools/releases/latest) herunter.
+1. Laden Sie die neueste Version von [GitHub Releases](https://github.com/deafdudecomputers/PalworldSaveTools/releases/latest) herunter
 2. Extrahieren Sie die ZIP-Datei
-3. Führen Sie „PalworldSaveTools.exe“ aus
+3. Führen Sie `PalworldSaveTools.exe` aus
 
-### Aus der Quelle (Linux oder für die Entwicklung)
+### Aus der Quelle (Alle Plattformen)
 
+Die Startskripte erstellen automatisch eine virtuelle Umgebung und installieren alle Abhängigkeiten.
+
+**Windows:**
 ```bash
 git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
 cd PalworldSaveTools
-pip install -r requirements.txt
-python start.py
+start_win.cmd
 ```
+
+**Linux:**
+```bash
+git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
+cd PalworldSaveTools
+chmod +x start_linux.sh
+./start_linux.sh
+```
+
+### Zweige
+
+- **Stabil** (empfohlen): `git clone https://github.com/deafdudecomputers/PalworldSaveTools.git`
+- **Beta** (neueste Funktionen): `git clone -b beta https://github.com/deafdudecomputers/PalworldSaveTools.git`
 
 ---
 
-## Quick Start
+## Schnellstart
 
 1. **Laden Sie Ihren Speicherstand**
-   - Klicken Sie auf **Datei → Laden und Speichern**
+   - Klicken Sie auf die Menüschaltfläche in der Kopfzeile
+   - Wählen Sie **Laden speichern**
    - Navigieren Sie zu Ihrem Palworld-Speicherordner
-   - Wählen Sie „Level.sav“.
+   - Wählen Sie `Level.sav`
 
 2. **Erkunden Sie Ihre Daten**
-   - Verwenden Sie die Registerkarten, um Players, Gilden, Stützpunkte oder die Karte anzuzeigen
+   - Verwenden Sie die Registerkarten, um Spieler, Gilden, Stützpunkte oder die Karte anzuzeigen
    - Suchen und filtern Sie, um bestimmte Einträge zu finden
 
 3. **Änderungen vornehmen**
    - Wählen Sie Elemente zum Bearbeiten, Löschen oder Ändern aus
-   - Verwenden Sie Kontextmenüs für zusätzliche Optionen
+   - Klicken Sie mit der rechten Maustaste, um Kontextmenüs mit zusätzlichen Optionen anzuzeigen
 
 4. **Speichern Sie Ihre Änderungen**
-   - Klicken Sie auf **Datei → Änderungen speichern**.
+   - Klicken Sie auf die Menüschaltfläche → **Änderungen speichern**
    - Backups werden automatisch erstellt
 
 ---
@@ -164,18 +181,18 @@ python start.py
 
 Die Hauptoberfläche für eine umfassende Speicherverwaltung mit drei Registerkarten:
 
-**Players Tab** – Alle Spieler auf dem Server anzeigen und verwalten
+**Registerkarte „Spieler“** – Alle Spieler auf dem Server anzeigen und verwalten
 - Bearbeiten Sie Spielernamen, Level und Freundeszahlen
 - Löschen Sie inaktive Spieler
 - Spielergilden und letzte Onlinezeit anzeigen
 
 **Registerkarte „Gilden“** – Gilden und ihre Basen verwalten
 - Gilden umbenennen, Anführer wechseln
-- Zeigen Sie Basisstandorte und -ebenen an
-- Leere oder inaktive Gilden löschen
+- Basisstandorte und -ebenen anzeigen
+- Löschen Sie leere oder inaktive Gilden
 
 **Registerkarte „Stützpunkte“** – Alle Basislager anzeigen
-- Basis-Blaupausen exportieren/importieren
+- Basispläne exportieren/importieren
 - Klonen Sie Basen für andere Gilden
 - Basisradius anpassen
 
@@ -185,24 +202,24 @@ Interaktive Visualisierung Ihrer Welt:
 - Alle Basisstandorte und Spielerpositionen anzeigen
 - Filtern Sie nach Gilde oder Spielername
 - Klicken Sie auf die Markierungen, um detaillierte Informationen zu erhalten
-- Generieren Sie „killnearestbase“-Befehle für PalDefender
+- Generieren Sie `killnearestbase`-Befehle für PalDefender
 
 ### Charakterübertragung
 
 Charaktere zwischen verschiedenen Welten/Servern übertragen (Cross-Save):
-- Übertragen Sie einzelne oder alle Spieler
-- Behält Charaktere, Freunde, Inventar und Technologie bei
-- Nützlich für die Migration zwischen Genossenschaft und dedicated servers
+- Transfer einzelner oder aller Spieler
+- Bewahrt Charaktere, Freunde, Inventar und Technologie
+– Nützlich für die Migration zwischen Koop- und dedizierten Servern
 
 ### Host-Speicherung beheben
 
-Tausche UIDs zwischen zwei Spielern:
+UIDs zwischen zwei Spielern tauschen:
 - Übertragen Sie den Fortschritt von einem Spieler auf einen anderen
-- Unverzichtbar für host/co-op-zu-Server-Übertragungen
-- Nützlich für den Austausch der Host-Rolle zwischen Spielern
+- Unverzichtbar für Host-/Koop-zu-Server-Übertragungen
+– Nützlich für den Austausch der Host-Rolle zwischen Spielern
 - Nützlich für Plattformwechsel (Xbox ↔ Steam)
-- Behebt Probleme bei der Zuordnung von Host/Server UID
-- **Notiz:** Affected player must have a character created on the target save first
+– Behebt Probleme bei der Host/Server-UID-Zuweisung
+- **Hinweis:** Der betroffene Spieler muss zuerst einen Charakter auf dem Zielspeicher erstellt haben
 
 ---
 
@@ -222,46 +239,46 @@ steamapps\common\Palworld\Pal\Saved\SaveGames\0\RANDOMSERVERID\
 
 ### Kartenfreischaltung
 
-<Details>
+<details>
 <summary>Klicken Sie hier, um die Anweisungen zum Entsperren der Karte zu erweitern</summary>
 
-1. Kopieren Sie „LocalData.sav“ aus „src\resources\“.
+1. Kopieren Sie `LocalData.sav` von `resources\`
 2. Suchen Sie Ihren Server-/Weltspeicherordner
-3. Ersetzen Sie die vorhandene Datei „LocalData.sav“ durch die kopierte Datei
+3. Ersetzen Sie die vorhandene Datei `LocalData.sav` durch die kopierte Datei
 4. Starten Sie das Spiel mit einer vollständig freigeschalteten Karte
 
-> **Hinweis:** Verwenden Sie die Option **Extras → Karte wiederherstellen** in PST, um die freigeschaltete Karte mit automatischen Backups auf ALLE Ihre Welten/Server gleichzeitig anzuwenden.
+> **Hinweis:** Verwenden Sie das Tool **Karte wiederherstellen** auf der Registerkarte „Extras“, um die freigeschaltete Karte mit automatischen Backups auf ALLE Ihre Welten/Server gleichzeitig anzuwenden.
 
 </details>
 
 ### Host → Serverübertragung
 
-<Details>
+<details>
 <summary>Klicken Sie hier, um die Host-zu-Server-Übertragungsanleitung zu erweitern</summary>
 
-1. Kopieren Sie die Ordner „Level.sav“ und „Players“ vom Hostspeicher
-2. In den Speicherordner dedicated server einfügen
+1. Kopieren Sie die Ordner `Level.sav` und `Players` vom Hostspeicher
+2. In den Speicherordner des dedizierten Servers einfügen
 3. Server starten, neuen Charakter erstellen
 4. Warten Sie auf die automatische Speicherung und schließen Sie dann
 5. Verwenden Sie **Fix Host Save**, um GUIDs zu migrieren
-6. Kopieren Sie die Dateien zurück und starten Sie sie
+6. Dateien zurückkopieren und starten
 
 **Fix Host Save verwenden:**
-- Wählen Sie „Level.sav“ aus Ihrem temporären Ordner aus
+- Wählen Sie `Level.sav` aus Ihrem temporären Ordner aus
 - Wähle den **alten Charakter** (aus dem Originalspeicher)
-- Wählen Sie den **neuen Charakter** (den Sie gerade erstellt haben)
+- Wähle den **neuen Charakter** (den du gerade erstellt hast)
 - Klicken Sie auf **Migrieren**
 
 </details>
 
 ### Host Swap (Host wechseln)
 
-<Details>
-<summary>Klicken Sie hier, um die Host-Swap-Anleitung zu erweitern</summary>
+<details>
+<summary>Klicken Sie hier, um den Host-Swap-Leitfaden zu erweitern</summary>
 
 **Hintergrund:**
-- Der Host verwendet immer „0001.sav“ – dasselbe UID für jeden Host
-- Jeder Client verwendet einen eindeutigen regulären UID-Speicher (z. B. „123xxx.sav“, „987xxx.sav“).
+– Der Host verwendet immer `0001.sav` – dieselbe UID für jeden Host
+- Jeder Client verwendet eine eindeutige reguläre UID-Speicherung (z. B. `123xxx.sav`, `987xxx.sav`)
 
 **Voraussetzungen:**
 Für beide Spieler (alter Host und neuer Host) müssen ihre regulären Spielstände generiert werden. Dies geschieht, indem man sich der Welt des Gastgebers anschließt und einen neuen Charakter erstellt.
@@ -269,43 +286,43 @@ Für beide Spieler (alter Host und neuer Host) müssen ihre regulären Spielstä
 **Schritte:**
 
 1. **Stellen Sie sicher, dass regelmäßige Speicherungen vorhanden sind**
-   - Spieler A (alter Host) sollte einen regulären Speicherstand haben (z. B. „123xxx.sav“)
-   - Spieler B (neuer Host) sollte einen regulären Speicherstand haben (z. B. „987xxx.sav“)
+   - Spieler A (alter Host) sollte einen regulären Speicherstand haben (z. B. `123xxx.sav`)
+   - Spieler B (neuer Host) sollte einen regulären Speicherstand haben (z. B. `987xxx.sav`)
 
 2. **Host-Speicherung des alten Hosts gegen reguläre Speicherung austauschen**
    - Verwenden Sie PalworldSaveTools **Fix Host Save**, um Folgendes auszutauschen:
-   - „0001.sav“ des alten Hosts → „123xxx.sav“.
-   - (Dadurch wird der Fortschritt des alten Hosts vom Host-Slot auf den regulären Spieler-Slot verschoben.)
+   - `0001.sav` → `123xxx.sav` des alten Gastgebers
+   - (Dies verschiebt den Fortschritt des alten Hosts vom Host-Slot auf seinen regulären Spielerslot)
 
-3. **Tauschen Sie den regulären Save des neuen Gastgebers gegen den Host Save um**
+3. **Tauschen Sie den regulären Speicher des neuen Hosts gegen den Host-Speicher aus**
    - Verwenden Sie PalworldSaveTools **Fix Host Save**, um Folgendes auszutauschen:
-   - Neuer Host: „987xxx.sav“ → „0001.sav“.
-   - (Dadurch wird der Fortschritt des neuen Hosts in den Host-Slot verschoben.)
+   - `987xxx.sav` → `0001.sav` des neuen Gastgebers
+   - (Dies verschiebt den Fortschritt des neuen Hosts in den Host-Slot)
 
 **Ergebnis:**
-- Spieler B ist jetzt der Gastgeber mit seinem eigenen Charakter und seinen eigenen Freunden in „0001.sav“.
-- Spieler A wird mit seinem ursprünglichen Fortschritt in „123xxx.sav“ zum Client
+– Spieler B ist jetzt der Gastgeber mit seinem eigenen Charakter und seinen eigenen Freunden in `0001.sav`
+- Spieler A wird mit seinem ursprünglichen Fortschritt in `123xxx.sav` Kunde.
 
 </details>
 
 ### Basis-Export/Import
 
-<Details>
+<details>
 <summary>Klicken Sie hier, um die Basis-Export-/Importanleitung zu erweitern</summary>
 
 **Eine Basis exportieren:**
-1. Laden Sie Ihren Speicherstand in PST
+1. Laden Sie Ihren Speicherstand im PST-Format
 2. Gehen Sie zur Registerkarte „Basen“.
 3. Klicken Sie mit der rechten Maustaste auf eine Basis → Basis exportieren
-4. Als „.json“-Datei speichern
+4. Als `.json`-Datei speichern
 
 **Eine Basis importieren:**
 1. Gehen Sie zur Registerkarte „Basen“ oder zum Base Map Viewer
 2. Klicken Sie mit der rechten Maustaste auf die Gilde, in die Sie die Basis importieren möchten
 3. Wählen Sie Basis importieren
-4. Wählen Sie Ihre exportierte „.json“-Datei aus
+4. Wählen Sie Ihre exportierte `.json`-Datei aus
 
-**Eine Basis klonen:**
+**Klonen einer Basis:**
 1. Klicken Sie mit der rechten Maustaste auf eine Basis → Basis klonen
 2. Zielgilde auswählen
 3. Die Basis wird mit versetzter Positionierung geklont
@@ -319,13 +336,13 @@ Für beide Spieler (alter Host und neuer Host) müssen ihre regulären Spielstä
 
 ---
 
-## Troubleshooting
+## Fehlerbehebung
 
 ### „VCRUNTIME140.dll wurde nicht gefunden“
 
-**Solution:** Install [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version)
+**Lösung:** Installieren Sie [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version)
 
-### `struct.error` when parsing save
+### `struct.error` beim Parsen und Speichern
 
 **Ursache:** Veraltetes Speicherdateiformat
 
@@ -334,44 +351,35 @@ Für beide Spieler (alter Host und neuer Host) müssen ihre regulären Spielstä
 2. Dadurch wird eine automatische Strukturaktualisierung ausgelöst
 3. Stellen Sie sicher, dass der Speicherstand mit oder nach dem neuesten Spiel-Patch aktualisiert wurde
 
-### GamePass Konverter funktioniert nicht
+### GamePass-Konverter funktioniert nicht
 
 **Lösung:**
 1. Schließen Sie die GamePass-Version von Palworld
-2. Warten Sie ein paar Minuten
-3. Führen Sie den Konverter Steam → GamePass aus
-4. Starten Sie zur Überprüfung Palworld auf GamePass
+2. Warten Sie einige Minuten
+3. Führen Sie den Steam → GamePass-Konverter aus
+4. Starten Sie Palworld zur Überprüfung auf GamePass
 
 ---
 
-## Aufbau aus der Quelle
+## Erstellen einer eigenständigen ausführbaren Datei (nur Windows)
+
+Führen Sie das Build-Skript aus, um eine eigenständige ausführbare Datei zu erstellen:
 
 ```bash
-# Clone the repository
-git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the application
-python start.py
+scripts\build.cmd
 ```
 
-Verwenden Sie zum Erstellen der eigenständigen ausführbaren Datei das Build-Skript:
-```bash
-python scripts/build.py
-```
+Dadurch wird `PST_standalone_v{version}.7z` im Projektstamm erstellt.
 
 ---
 
-## Contributing
-
+## Mitwirken
 Beiträge sind willkommen! Bitte senden Sie gerne einen Pull Request.
 
 1. Forken Sie das Repository
-2. Erstellen Sie Ihren Feature-Zweig („git checkout -b feature/AmazingFeature“)
+2. Erstellen Sie Ihren Feature-Zweig (`git checkout -b feature/AmazingFeature`)
 3. Übernehmen Sie Ihre Änderungen (`git commit -m 'Add some AmazingFeature'`)
-4. Zum Zweig pushen („git push origin feature/AmazingFeature“)
+4. Push zur Verzweigung (`git push origin feature/AmazingFeature`)
 5. Öffnen Sie eine Pull-Anfrage
 
 ---
@@ -386,29 +394,29 @@ Die Entwickler sind nicht verantwortlich für den Verlust gespeicherter Daten od
 
 ## Unterstützung
 
-- **Discord:** [Join us for support, base builds, and more!](https://discord.gg/sYcZwcT4cT)
-- **GitHub Probleme:** [Report a bug](https://github.com/deafdudecomputers/PalworldSaveTools/issues)
-- **Dokumentation:** [Wiki](https://github.com/deafdudecomputers/PalworldSaveTools/wiki) *(Currently in development)*
+- **Zwietracht:** [Join us for support, base builds, and more!](https://discord.gg/sYcZwcT4cT)
+- **GitHub-Probleme:** [Report a bug](https://github.com/deafdudecomputers/PalworldSaveTools/issues)
+- **Dokumentation:** [Wiki](https://github.com/deafdudecomputers/PalworldSaveTools/wiki) *(Derzeit in Entwicklung)*
 
 ---
 
 ## Lizenz
 
-Dieses Projekt ist unter der Lizenz MIT License lizenziert – Einzelheiten finden Sie in der Datei [LICENSE](LICENSE).
+Dieses Projekt ist unter der MIT-Lizenz lizenziert – Einzelheiten finden Sie in der Datei [LICENSE](LICENSE).
 
 ---
 
 ## Danksagungen
 
-- **Palworld** developed by Pocketpair, Inc.
+- **Palworld** entwickelt von Pocketpair, Inc.
 - Vielen Dank an alle Mitwirkenden und Community-Mitglieder, die zur Verbesserung dieses Tools beigetragen haben
 
 ---
 
 <div align="center">
 
-**Erstellt mit ❤️ für die Palworld-Community**
+**Hergestellt mit ❤️ für die Palworld-Community**
 
-⬆ Zurück nach oben
+[⬆ Back to Top](#palworldsavetools)
 
 </div>

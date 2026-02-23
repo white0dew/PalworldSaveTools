@@ -560,9 +560,30 @@ def _get_effective_parent(parent):
         if widget.isVisible() and widget.isWindow() and widget.windowTitle() and (not isinstance(widget, QDialog)):
             return widget
     return None
+_MSG_BOX_DARK_STYLESHEET = '\n    QMessageBox {\n        background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                    stop:0 #07080a, stop:0.5 #08101a, stop:1 #05060a);\n        color: #dfeefc;\n    }\n    QMessageBox QLabel {\n        color: #dfeefc;\n    }\n    QPushButton {\n        background-color: #3a3a3a;\n        color: #dfeefc;\n        border: 1px solid #555555;\n        border-radius: 4px;\n        padding: 6px 16px;\n        min-width: 70px;\n    }\n    QPushButton:hover {\n        background-color: #4a4a4a;\n    }\n'
+_MSG_BOX_LIGHT_STYLESHEET = '\n    QMessageBox {\n        background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                    stop:0 #e6ecef, stop:0.5 #bdd5df, stop:1 #a7c9da);\n        color: #1a1a2e;\n    }\n    QMessageBox QLabel {\n        color: #1a1a2e;\n    }\n    QPushButton {\n        background-color: #e0e0e0;\n        color: #1a1a2e;\n        border: 1px solid #b0b0b0;\n        border-radius: 4px;\n        padding: 6px 16px;\n        min-width: 70px;\n    }\n    QPushButton:hover {\n        background-color: #d0d0d0;\n    }\n'
+def _load_theme_to_msg_box(msg_box):
+    try:
+        import json
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        cfg_path = os.path.join(base_dir, 'src', 'data', 'configs', 'user.cfg')
+        is_dark = True
+        if os.path.exists(cfg_path):
+            try:
+                with open(cfg_path, 'r') as f:
+                    is_dark = json.load(f).get('theme') == 'dark'
+            except:
+                pass
+        if is_dark:
+            msg_box.setStyleSheet(_MSG_BOX_DARK_STYLESHEET)
+        else:
+            msg_box.setStyleSheet(_MSG_BOX_LIGHT_STYLESHEET)
+    except Exception as e:
+        print(f'Failed to load theme for message box: {e}')
 def show_information(parent, title, text):
     parent = _get_effective_parent(parent)
     dialog = QMessageBox(parent)
+    _load_theme_to_msg_box(dialog)
     dialog.setWindowFlags(Qt.Dialog | Qt.WindowType.Window | Qt.WindowStaysOnTopHint)
     dialog.setWindowModality(Qt.ApplicationModal)
     dialog.setWindowTitle(title)
@@ -575,6 +596,7 @@ def show_information(parent, title, text):
 def show_warning(parent, title, text):
     parent = _get_effective_parent(parent)
     dialog = QMessageBox(parent)
+    _load_theme_to_msg_box(dialog)
     dialog.setWindowFlags(Qt.Dialog | Qt.WindowType.Window | Qt.WindowStaysOnTopHint)
     dialog.setWindowModality(Qt.ApplicationModal)
     dialog.setWindowTitle(title)
@@ -587,6 +609,7 @@ def show_warning(parent, title, text):
 def show_critical(parent, title, text):
     parent = _get_effective_parent(parent)
     dialog = QMessageBox(parent)
+    _load_theme_to_msg_box(dialog)
     dialog.setWindowFlags(Qt.Dialog | Qt.WindowType.Window | Qt.WindowStaysOnTopHint)
     dialog.setWindowModality(Qt.ApplicationModal)
     dialog.setWindowTitle(title)
@@ -599,6 +622,7 @@ def show_critical(parent, title, text):
 def show_question(parent, title, text):
     parent = _get_effective_parent(parent)
     dialog = QMessageBox(parent)
+    _load_theme_to_msg_box(dialog)
     dialog.setWindowFlags(Qt.Dialog | Qt.WindowType.Window | Qt.WindowStaysOnTopHint)
     dialog.setWindowModality(Qt.ApplicationModal)
     dialog.setWindowTitle(title)

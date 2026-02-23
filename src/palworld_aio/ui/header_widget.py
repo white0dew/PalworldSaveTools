@@ -8,7 +8,7 @@ except:
     class nf:
         icons = {'nf-cod-github': '\ue708', 'nf-fa-save': '\uf0c7', 'nf-md-menu': '\U000f035c', 'nf-md-theme_light_dark': '\U000f0cde', 'nf-md-cog': '\U000f0493', 'nf-md-information': '\U000f02fd', 'nf-md-circle_medium': '\U000f09df', 'nf-fa-window_maximize': '\uf2d0', 'nf-fa-close': '\uf00d', 'nf-fa-discord': '\uf392', 'nf-cod-triangle_left': '\ueb9b', 'nf-cod-triangle_right': '\ueb9c'}
 from i18n import t
-from common import get_versions
+from common import get_versions, get_display_version
 try:
     from palworld_aio import constants
 except ImportError:
@@ -57,12 +57,13 @@ class HeaderWidget(QWidget):
         layout.addSpacing(8)
         self._menu_popup = None
         tools_version, game_version = get_versions()
-        self.app_version_label = QLabel(f"{nf.icons['nf-cod-github']} {tools_version}")
+        display_version = get_display_version()
+        self.app_version_label = QLabel(f"{nf.icons['nf-cod-github']} {display_version}")
         self.app_version_label.setObjectName('versionChip')
         self.app_version_label.setCursor(QCursor(Qt.PointingHandCursor))
         self.app_version_label.setFont(QFont('Hack Nerd Font', 11))
         self.app_version_label.setToolTip(t('github.tooltip') if t else 'Click to open GitHub repository')
-        self.app_version_label.mousePressEvent = self._open_github
+        self.app_version_label.mousePressEvent = self._on_version_click
         layout.addWidget(self.app_version_label, alignment=Qt.AlignVCenter)
         self.game_version_label = QLabel(f"{nf.icons['nf-fa-save']} {game_version}")
         self.game_version_label.setObjectName('gameVersionChip')
@@ -125,10 +126,34 @@ class HeaderWidget(QWidget):
         self.close_btn.setFont(QFont('Hack Nerd Font', 14))
         self.close_btn.clicked.connect(self.close_clicked.emit)
         layout.addWidget(self.close_btn)
-    def _open_github(self, event):
+    def _on_version_click(self, event):
+        from common import BRANCH_VERSION
+        if BRANCH_VERSION == 'beta':
+            self._show_branch_menu(event)
+        else:
+            self._open_stable()
+    def _show_branch_menu(self, event):
+        from PySide6.QtWidgets import QMenu
+        menu = QMenu(self)
+        menu.setStyleSheet(self._get_menu_style())
+        beta_action = menu.addAction('Beta Branch')
+        stable_action = menu.addAction('Stable Branch')
+        beta_action.triggered.connect(self._open_beta)
+        stable_action.triggered.connect(self._open_stable)
+        menu.exec(event.globalPosition().toPoint())
+    def _get_menu_style(self):
+        if self.is_dark_mode:
+            return 'QMenu { background-color: #1a1a2e; color: #e0e0e0; border: 1px solid #333; } QMenu::item:selected { background-color: #4a90e2; }'
+        else:
+            return 'QMenu { background-color: #ffffff; color: #333333; border: 1px solid #ccc; } QMenu::item:selected { background-color: #4a90e2; color: white; }'
+    def _open_beta(self):
         import webbrowser
+        webbrowser.open('https://github.com/deafdudecomputers/PalworldSaveTools/tree/beta')
+    def _open_stable(self):
         import webbrowser
         webbrowser.open('https://github.com/deafdudecomputers/PalworldSaveTools/releases/latest')
+    def _open_github(self, event):
+        self._open_stable()
     def _open_discord(self):
         import webbrowser
         webbrowser.open('https://discord.gg/sYcZwcT4cT')
@@ -188,6 +213,7 @@ class HeaderWidget(QWidget):
         self._menu_popup.show_at(btn_pos)
     def refresh_labels(self):
         tools_version, game_version = get_versions()
+        display_version = get_display_version()
         if hasattr(self, 'menu_chip_btn'):
             self.menu_chip_btn.setText(f"{nf.icons['nf-md-menu']} {(t('menu_button') if t else 'Menu')}")
             self.menu_chip_btn.setToolTip(t('Open Menu') if t else 'Open Menu')
@@ -206,6 +232,7 @@ class HeaderWidget(QWidget):
         if hasattr(self, 'close_btn'):
             self.close_btn.setToolTip(t('button.close') if t else 'Close')
         if hasattr(self, 'app_version_label'):
+            self.app_version_label.setText(f"{nf.icons['nf-cod-github']} {display_version}")
             self.app_version_label.setToolTip(t('github.tooltip') if t else 'Click to open GitHub repository')
     def set_menu_actions(self, actions_dict):
         from ..widgets import MenuPopup

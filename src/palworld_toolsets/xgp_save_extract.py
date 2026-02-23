@@ -9,7 +9,7 @@ def read_game_list() -> Dict[str, Any] | None:
     try:
         games_json_path = Path('games.json')
         if not games_json_path.exists():
-            games_json_path = Path(__file__).resolve().with_name('games.json')
+            games_json_path = Path(__file__).resolve().parent.parent / 'games.json'
         if not games_json_path.exists():
             return None
         with games_json_path.open('r') as f:

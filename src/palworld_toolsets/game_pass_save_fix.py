@@ -1,6 +1,6 @@
 from import_libs import *
 from palworld_aio.utils import sav_to_json, json_to_sav, extract_value
-from fix_host_save import ask_string_with_icon
+from palworld_toolsets.fix_host_save import ask_string_with_icon
 from common import get_src_directory, get_base_directory
 from loading_manager import run_with_loading, show_information, show_critical
 import nerdfont as nf
@@ -237,7 +237,7 @@ class GamePassSaveFixWidget(QWidget):
         import gc
         global save_info_map
         try:
-            import xgp_save_extract as extractor
+            from palworld_toolsets import xgp_save_extract as extractor
             extractor.main(self.xgp_source_folder)
             zip_files = [f for f in os.listdir(base_dir) if f.startswith('palworld_') and f.endswith('.zip')]
             if not zip_files:

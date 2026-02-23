@@ -326,27 +326,27 @@ class ToolsTab(QWidget):
                 result = options_dialog.exec()
                 if result == QDialog.Accepted and options_dialog.selected_option is not None:
                     if options_dialog.selected_option == 0:
-                        self._import_and_call('convert_level_location_finder', 'convert_level_location_finder', 'json')
+                        self._import_and_call('palworld_toolsets.convert_level_location_finder', 'convert_level_location_finder', 'json')
                     elif options_dialog.selected_option == 1:
-                        self._import_and_call('convert_level_location_finder', 'convert_level_location_finder', 'sav')
+                        self._import_and_call('palworld_toolsets.convert_level_location_finder', 'convert_level_location_finder', 'sav')
                     elif options_dialog.selected_option == 2:
-                        self._import_and_call('convert_players_location_finder', 'convert_players_location_finder', 'json')
+                        self._import_and_call('palworld_toolsets.convert_players_location_finder', 'convert_players_location_finder', 'json')
                     elif options_dialog.selected_option == 3:
-                        self._import_and_call('convert_players_location_finder', 'convert_players_location_finder', 'sav')
+                        self._import_and_call('palworld_toolsets.convert_players_location_finder', 'convert_players_location_finder', 'sav')
                     elif options_dialog.selected_option == 4:
-                        self._import_and_call('convert_levelmeta', 'convert_levelmeta_to_json')
+                        self._import_and_call('palworld_toolsets.convert_levelmeta', 'convert_levelmeta_to_json')
                     elif options_dialog.selected_option == 5:
-                        self._import_and_call('convert_levelmeta', 'convert_levelmeta_to_sav')
+                        self._import_and_call('palworld_toolsets.convert_levelmeta', 'convert_levelmeta_to_sav')
                     elif options_dialog.selected_option == 6:
-                        self._import_and_call('convert_worldoption', 'convert_worldoption_to_json')
+                        self._import_and_call('palworld_toolsets.convert_worldoption', 'convert_worldoption_to_json')
                     elif options_dialog.selected_option == 7:
-                        self._import_and_call('convert_worldoption', 'convert_worldoption_to_sav')
+                        self._import_and_call('palworld_toolsets.convert_worldoption', 'convert_worldoption_to_sav')
             elif index == 1:
-                dialog = self._import_and_call('game_pass_save_fix', 'game_pass_save_fix')
+                dialog = self._import_and_call('palworld_toolsets.game_pass_save_fix', 'game_pass_save_fix')
             elif index == 2:
-                dialog = self._import_and_call('convertids', 'convert_steam_id')
+                dialog = self._import_and_call('palworld_toolsets.convertids', 'convert_steam_id')
             elif index == 3:
-                dialog = self._import_and_call('restore_map', 'restore_map')
+                dialog = self._import_and_call('palworld_toolsets.restore_map', 'restore_map')
             if dialog is not None:
                 self._animate_dialog_slide_in(dialog)
                 if not hasattr(self, '_active_dialogs'):
@@ -358,13 +358,13 @@ class ToolsTab(QWidget):
         try:
             dialog = None
             if index == 0:
-                dialog = self._import_and_call('slot_injector', 'slot_injector')
+                dialog = self._import_and_call('palworld_toolsets.slot_injector', 'slot_injector')
             elif index == 1:
-                dialog = self._import_and_call('modify_save', 'modify_save')
+                dialog = self._import_and_call('palworld_toolsets.modify_save', 'modify_save')
             elif index == 2:
-                dialog = self._import_and_call('character_transfer', 'character_transfer')
+                dialog = self._import_and_call('palworld_toolsets.character_transfer', 'character_transfer')
             elif index == 3:
-                dialog = self._import_and_call('fix_host_save', 'fix_host_save')
+                dialog = self._import_and_call('palworld_toolsets.fix_host_save', 'fix_host_save')
             if dialog is not None:
                 self._animate_dialog_slide_in(dialog)
                 if not hasattr(self, '_active_dialogs'):
