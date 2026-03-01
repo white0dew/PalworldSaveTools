@@ -15,6 +15,9 @@ APP_BETA_VERSION = '1.1.73'
 BETA_SUBVERSION = '1'
 GAME_VERSION = '0.7.2'
 BRANCH_VERSION = 'stable'
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 def get_base_directory():
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

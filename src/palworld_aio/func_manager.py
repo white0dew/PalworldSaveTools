@@ -41,8 +41,12 @@ except ImportError:
     )
     from .data_manager import delete_base_camp
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
 
+=======
+    from .dialogs import GameDaysInputDialog
+>>>>>>> Stashed changes
 =======
     from .dialogs import GameDaysInputDialog
 >>>>>>> Stashed changes
@@ -2934,5 +2938,9 @@ def edit_game_days(parent=None):
         gtsd['GameDateTimeTicks']['value'] = int(new_ticks)
         return {'old': current_days, 'new': new_days}
     except Exception as e:
+<<<<<<< Updated upstream
+        return None
+>>>>>>> Stashed changes
+=======
         return None
 >>>>>>> Stashed changes
