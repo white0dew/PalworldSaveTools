@@ -1,9 +1,8 @@
 import sys
-import logging
+from loguru import logger
 from palworld_save_tools.commands.convert import convert_json_to_sav, convert_sav_to_json
 from palworld_save_tools.palsav import decompress_sav_to_gvas
 from palworld_save_tools.paltypes import DISABLED_PROPERTIES, PALWORLD_CUSTOM_PROPERTIES
-logger = logging.getLogger(__name__)
 def main():
     if len(sys.argv) != 2:
         logger.error(f'Usage: {sys.argv[0]} <input>')

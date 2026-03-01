@@ -1,8 +1,7 @@
 import base64
 from typing import Any, Callable
-import logging
+from loguru import logger
 from palworld_save_tools.archive import FArchiveReader, FArchiveWriter
-logger = logging.getLogger(__name__)
 def custom_version_reader(reader: FArchiveReader):
     return (reader.guid(), reader.i32())
 def custom_version_writer(writer: FArchiveWriter, value: tuple[str, int]):
@@ -29,7 +28,7 @@ class GvasHeader:
             raise Exception('invalid magic')
         header.save_game_version = reader.i32()
         if header.save_game_version != 3:
-            raise Exception(f'expected save game version 3,got {header.save_game_version}')
+            raise Exception(f'expected save game version 3, got {header.save_game_version}')
         header.package_file_version_ue4 = reader.i32()
         header.package_file_version_ue5 = reader.i32()
         header.engine_version_major = reader.u16()
@@ -39,7 +38,7 @@ class GvasHeader:
         header.engine_version_branch = reader.fstring()
         header.custom_version_format = reader.i32()
         if header.custom_version_format != 3:
-            raise Exception(f'expected custom version format 3,got {header.custom_version_format}')
+            raise Exception(f'expected custom version format 3, got {header.custom_version_format}')
         header.custom_versions = reader.tarray(custom_version_reader)
         header.save_game_class_name = reader.fstring()
         return header
@@ -86,7 +85,7 @@ class GvasFile:
             gvas_file.properties = reader.properties_until_end()
             gvas_file.trailer = reader.read_to_end()
             if gvas_file.trailer != b'\x00\x00\x00\x00':
-                logger.debug(f'{len(gvas_file.trailer)} bytes of trailer data,file may not have fully parsed')
+                logger.debug(f'{len(gvas_file.trailer)} bytes of trailer data, file may not have fully parsed')
         return gvas_file
     @staticmethod
     def load(dict: dict[str, Any]) -> 'GvasFile':

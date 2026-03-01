@@ -1,12 +1,11 @@
 from typing import Any, Sequence
-import logging
+from loguru import logger
 from palworld_save_tools.archive import FArchiveReader, FArchiveWriter
-logger = logging.getLogger(__name__)
 from palworld_save_tools.rawdata.common import pal_item_and_num_read, pal_item_and_slot_writer
 NO_OP_TYPES = ['EPalBaseCampModuleType::Energy', 'EPalBaseCampModuleType::Medical', 'EPalBaseCampModuleType::ResourceCollector', 'EPalBaseCampModuleType::ItemStorages', 'EPalBaseCampModuleType::FacilityReservation', 'EPalBaseCampModuleType::ObjectMaintenance', 'EPalBaseCampModuleType::ItemStackInfo']
 def decode(reader: FArchiveReader, type_name: str, size: int, path: str) -> dict[str, Any]:
     if type_name != 'MapProperty':
-        raise Exception(f'Expected MapProperty,got {type_name}')
+        raise Exception(f'Expected MapProperty, got {type_name}')
     value = reader.property(type_name, size, path, nested_caller_path=path)
     module_map = value['value']
     for module in module_map:
@@ -36,25 +35,25 @@ def decode_bytes(parent_reader: FArchiveReader, b_bytes: Sequence[int], module_t
             data['transport_item_character_infos'] = reader.tarray(transport_item_character_info_reader)
             data['trailing_bytes'] = reader.byte_list(4)
         except Exception as e:
-            logger.debug(f'Failed to decode transport item director,please report this: {e}({bytes(b_bytes)!r})')
+            logger.debug(f'Failed to decode transport item director, please report this: {e} ({bytes(b_bytes)!r})')
             return {'values': b_bytes}
     elif module_type == 'EPalBaseCampModuleType::PassiveEffect':
         try:
             data['passive_effects'] = reader.tarray(module_passive_effect_reader)
         except Exception as e:
             reader.data.seek(0)
-            logger.debug(f'Failed to decode passive effect,please report this: {e}({bytes(b_bytes)!r})')
+            logger.debug(f'Failed to decode passive effect, please report this: {e} ({bytes(b_bytes)!r})')
             return {'values': b_bytes}
     else:
-        logger.debug(f'Unknown base camp module type {module_type},falling back to raw bytes')
+        logger.debug(f'Unknown base camp module type {module_type}, falling back to raw bytes')
         return {'values': b_bytes}
     if not reader.eof():
-        logger.debug(f'EOF not reached for {module_type},falling back to raw bytes')
+        logger.debug(f'EOF not reached for {module_type}, falling back to raw bytes')
         return {'values': b_bytes}
     return data
 def encode(writer: FArchiveWriter, property_type: str, properties: dict[str, Any]) -> int:
     if property_type != 'MapProperty':
-        raise Exception(f'Expected MapProperty,got {property_type}')
+        raise Exception(f'Expected MapProperty, got {property_type}')
     del properties['custom_type']
     module_map = properties['value']
     for module in module_map:

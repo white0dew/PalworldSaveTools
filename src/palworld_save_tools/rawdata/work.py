@@ -1,11 +1,10 @@
 from typing import Any, Sequence
-import logging
+from loguru import logger
 from palworld_save_tools.archive import *
-logger = logging.getLogger(__name__)
 WORK_BASE_TYPES = set(['EPalWorkableType::Progress', 'EPalWorkableType::TransportItemInBaseCamp', 'EPalWorkableType::ReviveCharacter', 'EPalWorkableType::Booth', 'EPalWorkableType::LevelObject', 'EPalWorkableType::Repair', 'EPalWorkableType::Defense', 'EPalWorkableType::BootUp', 'EPalWorkableType::OnlyJoin', 'EPalWorkableType::OnlyJoinAndWalkAround', 'EPalWorkableType::RemoveMapObjectEffect', 'EPalWorkableType::MonsterFarm'])
 def decode(reader: FArchiveReader, type_name: str, size: int, path: str) -> dict[str, Any]:
     if type_name != 'ArrayProperty':
-        raise Exception(f'Expected ArrayProperty,got {type_name}')
+        raise Exception(f'Expected ArrayProperty, got {type_name}')
     value = reader.property(type_name, size, path, nested_caller_path=path)
     for work_element in value['value']['values']:
         work_bytes = work_element['RawData']['value']['values']
@@ -62,7 +61,7 @@ def decode_bytes(parent_reader: FArchiveReader, b_bytes: Sequence[int], work_typ
         if work_type == 'EPalWorkableType::LevelObject':
             data['target_map_object_model_id'] = reader.guid()
     if len(data.keys()) == 0:
-        logger.debug(f'Unable to parse {work_type},falling back to raw bytes')
+        logger.debug(f'Unable to parse {work_type}, falling back to raw bytes')
         return {'values': b_bytes}
     transform_type = reader.byte()
     data['transform'] = {'type': transform_type}
@@ -71,7 +70,7 @@ def decode_bytes(parent_reader: FArchiveReader, b_bytes: Sequence[int], work_typ
             data['transform']['map_object_instance_id'] = reader.guid()
             data['transform']['trailing_bytes'] = reader.byte_list(8)
     if not reader.eof():
-        raise Exception(f'Warning: EOF not reached for {work_type},remaining bytes: {reader.read_to_end()!r}')
+        raise Exception(f'Warning: EOF not reached for {work_type}, remaining bytes: {reader.read_to_end()!r}')
     return data
 def decode_work_assign_bytes(parent_reader: FArchiveReader, b_bytes: Sequence[int]) -> dict[str, Any]:
     reader = parent_reader.internal_copy(bytes(b_bytes), debug=False)
@@ -88,7 +87,7 @@ def decode_work_assign_bytes(parent_reader: FArchiveReader, b_bytes: Sequence[in
     return data
 def encode(writer: FArchiveWriter, property_type: str, properties: dict[str, Any]) -> int:
     if property_type != 'ArrayProperty':
-        raise Exception(f'Expected ArrayProperty,got {property_type}')
+        raise Exception(f'Expected ArrayProperty, got {property_type}')
     del properties['custom_type']
     for work_element in properties['value']['values']:
         work_type = work_element['WorkableType']['value']['value']

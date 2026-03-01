@@ -37,7 +37,7 @@ def _ensure_container_structure(data, container_name, is_map_property=False, has
         if is_map_property:
             data[container_name] = {'key_type': 'StructProperty', 'value_type': 'StructProperty', 'key_struct_type': 'Guid', 'value_struct_type': 'StructProperty', 'id': None, 'type': 'MapProperty', 'value': []}
         else:
-            base = {'array_type': 'StructProperty', 'id': None, 'type': 'ArrayProperty', 'value': {'values': []} if has_custom_encoder else []}
+            base = {'array_type': 'StructProperty', 'id': None, 'value': {'values': []} if has_custom_encoder else [], 'type': 'ArrayProperty'}
             if has_custom_encoder:
                 base['custom_type'] = f'.worldSaveData.{container_name}'
             data[container_name] = base

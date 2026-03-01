@@ -2592,7 +2592,10 @@ class EditPalsDialog(FramelessDialog):
             self._populate_tab(tab, tab.pal_data, tab_name)
     def _clone_pal(self):
         show_information(self, 'Info', 'Clone Pal functionality not implemented yet')
-    def accept(self):
+    def closeEvent(self, event):
+        self._process_pending_changes()
+        super().closeEvent(event)
+    def _process_pending_changes(self):
         try:
             if hasattr(self, '_pending_deletions') and self._pending_deletions:
                 cmap = constants.loaded_level_json['properties']['worldSaveData']['value']['CharacterSaveParameterMap']['value']
@@ -2613,17 +2616,18 @@ class EditPalsDialog(FramelessDialog):
                             cmap.remove(pal_item)
                         raw = pal_item['value']['RawData']['value']['object']['SaveParameter']['value']
                         container_id = raw.get('SlotId', {}).get('value', {}).get('ContainerId', {}).get('value', {}).get('ID', {}).get('value')
+                        instance_id = pal_item['key']['InstanceId']['value']
                         if 'CharacterContainerSaveData' in wsd:
                             for container in wsd['CharacterContainerSaveData']['value']:
                                 cont_id = container['key']['ID']['value']
                                 if cont_id == container_id:
                                     slots = container['value']['Slots']['value']['values']
-                                    slots[:] = [s for s in slots if s.get('RawData', {}).get('value', {}).get('instance_id') != raw.get('InstanceId', {}).get('value')]
+                                    slots[:] = [s for s in slots if s.get('RawData', {}).get('value', {}).get('instance_id') != instance_id]
                                     break
                         if 'GroupSaveDataMap' in wsd:
                             for group in wsd['GroupSaveDataMap']['value']:
                                 handle_ids = group['value']['RawData']['value'].get('individual_character_handle_ids', [])
-                                handle_ids[:] = [h for h in handle_ids if h.get('instance_id') != raw.get('InstanceId', {}).get('value')]
+                                handle_ids[:] = [h for h in handle_ids if h.get('instance_id') != instance_id]
                                 group['value']['RawData']['value']['individual_character_handle_ids'] = handle_ids
                 self._pending_deletions.clear()
             if hasattr(self, '_pending_additions') and self._pending_additions:
@@ -2668,11 +2672,12 @@ class EditPalsDialog(FramelessDialog):
                                     group['value']['RawData']['value']['individual_character_handle_ids'] = handle_ids
                                 break
                 self._pending_additions.clear()
-            pass
         except Exception as e:
-            print(f'Error in accept(): {e}')
+            print(f'Error processing pending changes: {e}')
             import traceback
             traceback.print_exc()
+    def accept(self):
+        self._process_pending_changes()
         super().accept()
     def _rename_pal(self):
         tab_index = self.tabs.currentIndex()

@@ -91,7 +91,19 @@ class GvasFileWrapper:
             import base64
             return base64.b64encode(self._gvas_file.trailer).decode('utf-8')
         else:
-            raise KeyError(key)
+            return self._gvas_file.properties[key]
+    def __contains__(self, key):
+        return key in self._gvas_file.properties
+    def __iter__(self):
+        return iter(self._gvas_file.properties)
+    def __len__(self):
+        return len(self._gvas_file.properties)
+    def keys(self):
+        return self._gvas_file.properties.keys()
+    def values(self):
+        return self._gvas_file.properties.values()
+    def items(self):
+        return self._gvas_file.properties.items()
     def get(self, key, default=None):
         try:
             return self[key]

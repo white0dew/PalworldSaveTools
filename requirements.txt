@@ -5,5 +5,7 @@ pyside6-essentials
 cx-freeze>=8.3.0
 nerdfont
 py7zr
+pydantic
+loguru
 
 git+https://github.com/oMaN-Rod/pyooz.git#egg=pyooz

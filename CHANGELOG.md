@@ -22,6 +22,30 @@ All notable changes to PalworldSaveTools will be documented in this file.
   - Non-English READMEs: English links to `../../README.md` (root), other languages link within same directory
 - Fixed corrupted badge links in all non-English README files
 
+## [1.1.72] - 2026-02-23
+
+### Added
+- **Player Inventory Editor** - Full-featured inventory management system
+  - New `src/palworld_aio/ui/inventory_tab.py` - Main inventory tab widget
+  - New `src/palworld_aio/inventory_manager.py` - Inventory data management and parsing
+  - Equipment slots display: Weapons (4), Accessories (4), Armor (Head/Body/Shield/Glider/Module), Food (4)
+  - Inventory grid with dynamic slot count based on key items owned (42-54 slots)
+  - Key items tab for special items
+  - Stats panel with editable HP, Stamina, Attack, Defense, Work Speed, Weight
+  - Level editor with +/- buttons and EXP bar visualization
+  - Auto-save on all edits (stats, level, item quantities)
+  - Context menus for adding/editing/deleting items
+  - Player search and selection dropdown
+  - Translation support with `inventory.*` i18n keys
+- `scripts/update_inventory_i18n.py` - Script to update inventory-related translation keys
+- Translation keys for inventory added to `resources/i18n/en_US.json`
+
+### Changed
+- Slot Injector: Now has player name / player uid / slots for easier management.
+
+### Fixed
+- Edit Pal. It wasn't saving on x button, at close window - causing the incomplete edit/save situation.
+
 ## [1.1.71] - 2026-02-22
 
 ### Added

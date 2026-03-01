@@ -90,6 +90,9 @@ class SaveManager(QObject):
             t0 = time.perf_counter()
             constants.loaded_level_json = sav_to_gvas_wrapper(p)
             t1 = time.perf_counter()
+            from palworld_aio.dynamic_item_manager import get_dynamic_item_manager
+            dynamic_manager = get_dynamic_item_manager()
+            dynamic_manager.sync_with_save_data(constants.loaded_level_json)
             self._build_player_levels()
             if not constants.loaded_level_json:
                 self.load_finished.emit(False)

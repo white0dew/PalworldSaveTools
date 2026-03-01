@@ -1,10 +1,9 @@
 from typing import Any, Optional, Sequence
-import logging
+from loguru import logger
 from palworld_save_tools.archive import FArchiveReader, FArchiveWriter
-logger = logging.getLogger(__name__)
 def decode(reader: FArchiveReader, type_name: str, size: int, path: str) -> dict[str, Any]:
     if type_name != 'ArrayProperty':
-        raise Exception(f'Expected ArrayProperty,got {type_name}')
+        raise Exception(f'Expected ArrayProperty, got {type_name}')
     value = reader.property(type_name, size, path, nested_caller_path=path)
     data_bytes = value['value']['values']
     value['value'] = decode_bytes(reader, data_bytes)
@@ -40,7 +39,7 @@ def decode_bytes(parent_reader: FArchiveReader, c_bytes: Sequence[int]) -> Optio
                 raise Exception('Warning: EOF not reached')
             data |= temp_data
         except Exception as e:
-            logger.debug(f'Failed to parse weapon data,continuing as raw data {buf!r}: {e}')
+            logger.debug(f'Failed to parse weapon data, continuing as raw data {buf!r}: {e}')
             reader.data.seek(cur_pos)
             data['trailer'] = [int(b) for b in reader.read_to_end()]
     return data
@@ -62,7 +61,7 @@ def try_read_egg(reader: FArchiveReader) -> Optional[dict[str, Any]]:
         return None
 def encode(writer: FArchiveWriter, property_type: str, properties: dict[str, Any]) -> int:
     if property_type != 'ArrayProperty':
-        raise Exception(f'Expected ArrayProperty,got {property_type}')
+        raise Exception(f'Expected ArrayProperty, got {property_type}')
     del properties['custom_type']
     encoded_bytes = encode_bytes(properties['value'])
     properties['value'] = {'values': [b for b in encoded_bytes]}

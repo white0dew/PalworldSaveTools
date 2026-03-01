@@ -1,7 +1,6 @@
 from typing import Tuple
-import logging
+from loguru import logger
 from palworld_save_tools.compressor.enums import SaveType, MagicBytes
-logger = logging.getLogger(__name__)
 class Compressor:
     def __init__(self):
         pass
@@ -45,7 +44,7 @@ class Compressor:
         if len(sav_data) < 12:
             return None
         magic = sav_data[8:11]
-        logger.debug(f'Checking SAV format,magic bytes: {magic!r}')
+        logger.debug(f'Checking SAV format, magic bytes: {magic!r}')
         match magic:
             case MagicBytes.PLZ.value:
                 return SaveType.PLZ
@@ -57,12 +56,12 @@ class Compressor:
                 logger.debug(f'Unknown magic bytes: {magic!r}')
                 return None
     def build_sav(self, compressed_data: bytes, uncompressed_len: int, compressed_len: int, magic_bytes: bytes, save_type: int) -> bytes:
-        logger.debug('Building.sav file...')
+        logger.debug('Building .sav file...')
         result = bytearray()
         result.extend(uncompressed_len.to_bytes(4, 'little'))
         result.extend(compressed_len.to_bytes(4, 'little'))
         result.extend(magic_bytes)
         result.extend(bytes([save_type]))
         result.extend(compressed_data)
-        logger.debug('Finished building.sav file.')
+        logger.debug('Finished building .sav file.')
         return bytes(result)

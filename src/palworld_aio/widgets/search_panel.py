@@ -9,6 +9,7 @@ except ImportError:
 class SearchPanel(QWidget):
     item_selected = Signal(object)
     item_double_clicked = Signal(object)
+    search_requested = Signal(str)
     def __init__(self, label_key, column_keys, column_widths=None, parent=None):
         super().__init__(parent)
         self.label_key = label_key

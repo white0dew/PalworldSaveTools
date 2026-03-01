@@ -1,7 +1,6 @@
 from typing import Any, Optional, Sequence
-import logging
+from loguru import logger
 from palworld_save_tools.archive import FArchiveReader, FArchiveWriter, uuid_reader, uuid_writer
-logger = logging.getLogger(__name__)
 from palworld_save_tools.rawdata.common import pal_item_and_num_read, pal_item_and_slot_writer, pal_item_booth_trade_info_read, pal_item_booth_trade_info_writer
 def pal_instance_id_reader(reader: FArchiveReader) -> dict[str, Any]:
     return {'player_uid': reader.guid(), 'instance_id': reader.guid()}
@@ -15,7 +14,7 @@ def decode_bytes(parent_reader: FArchiveReader, m_bytes: Sequence[int], object_i
     reader = parent_reader.internal_copy(bytes(m_bytes), debug=False)
     data: dict[str, Any] = {}
     if object_id.lower() not in MAP_OBJECT_NAME_TO_CONCRETE_MODEL_CLASS:
-        logger.debug(f"Map object '{object_id}' not in database,skipping")
+        logger.debug(f"Map object '{object_id}' not in database, skipping")
         return {'values': m_bytes}
     data['instance_id'] = reader.guid()
     data['model_instance_id'] = reader.guid()
@@ -152,7 +151,7 @@ def decode_bytes(parent_reader: FArchiveReader, m_bytes: Sequence[int], object_i
         case 'PalMapObjectPlayerBedModel' | 'PalBuildObject' | 'PalMapObjectCharacterStatusOperatorModel' | 'PalMapObjectRankUpCharacterModel' | 'BlueprintGeneratedClass' | 'PalMapObjectMedicalPalBedModel' | 'PalMapObjectDoorModel' | 'PalMapObjectMonsterFarmModel' | 'PalMapObjectAmusementModel' | 'PalMapObjectLampModel' | 'PalMapObjectLabModel' | 'PalMapObjectRepairItemModel' | 'PalMapObjectBaseCampPassiveWorkHardModel' | 'PalMapObjectBaseCampPassiveEffectModel' | 'PalMapObjectBaseCampItemDispenserModel' | 'PalMapObjectGuildChestModel' | 'PalMapObjectCharacterMakeModel' | 'PalMapObjectPalFoodBoxModel' | 'PalMapObjectPlayerSitModel' | 'PalMapObjectBaseCampWorkerDirectorModel' | 'PalMapObjectPalMedicineBoxModel' | 'PalMapObjectDefenseWaitModel' | 'PalMapObjectHeatSourceModel' | 'PalMapObjectDisplayCharacterModel' | 'Default_PalMapObjectConcreteModelBase' | 'PalMapObjectDamagedScarecrowModel' | 'PalMapObjectGlobalPalStorageModel':
             data['trailing_bytes'] = reader.byte_list(4)
         case _:
-            logger.debug(f'Unknown map object concrete model {map_object_concrete_model},skipping')
+            logger.debug(f'Unknown map object concrete model {map_object_concrete_model}, skipping')
             return {'values': m_bytes}
     if not reader.eof():
         raise Exception(f"Warning: EOF not reached for {object_id} {map_object_concrete_model}: ori: {''.join((f'{b:02x}' for b in m_bytes))} remaining: {reader.size - reader.data.tell()}")

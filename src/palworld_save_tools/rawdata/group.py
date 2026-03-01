@@ -8,7 +8,7 @@ def player_info_writer(writer: FArchiveWriter, p: dict[str, Any]) -> None:
     writer.fstring(p['player_info']['player_name'])
 def decode(reader: FArchiveReader, type_name: str, size: int, path: str) -> dict[str, Any]:
     if type_name != 'MapProperty':
-        raise Exception(f'Expected MapProperty,got {type_name}')
+        raise Exception(f'Expected MapProperty, got {type_name}')
     value = reader.property(type_name, size, path, nested_caller_path=path)
     group_map = value['value']
     for group in group_map:
@@ -36,7 +36,7 @@ def decode_bytes(parent_reader: FArchiveReader, group_bytes: Sequence[int], grou
     return group_data
 def encode(writer: FArchiveWriter, property_type: str, properties: dict[str, Any]) -> int:
     if property_type != 'MapProperty':
-        raise Exception(f'Expected MapProperty,got {property_type}')
+        raise Exception(f'Expected MapProperty, got {property_type}')
     del properties['custom_type']
     group_map = properties['value']
     for group in group_map:

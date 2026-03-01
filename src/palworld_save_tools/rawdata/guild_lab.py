@@ -3,7 +3,7 @@ from palworld_save_tools.archive import FArchiveReader, FArchiveWriter
 from palworld_save_tools.rawdata.common import lab_research_rep_info_read, lab_research_rep_info_writer
 def decode(reader: FArchiveReader, type_name: str, size: int, path: str) -> dict[str, Any]:
     if type_name != 'ArrayProperty':
-        raise Exception(f'Expected ArrayProperty,got {type_name}')
+        raise Exception(f'Expected ArrayProperty, got {type_name}')
     value = reader.property(type_name, size, path, nested_caller_path=path)
     data_bytes = value['value']['values']
     value['value'] = decode_bytes(reader, data_bytes)
@@ -18,7 +18,7 @@ def decode_bytes(parent_reader: FArchiveReader, m_bytes: Sequence[int]) -> dict[
     return data
 def encode(writer: FArchiveWriter, property_type: str, properties: dict[str, Any]) -> int:
     if property_type != 'ArrayProperty':
-        raise Exception(f'Expected ArrayProperty,got {property_type}')
+        raise Exception(f'Expected ArrayProperty, got {property_type}')
     del properties['custom_type']
     encoded_bytes = encode_bytes(properties['value'])
     properties['value'] = {'values': [b for b in encoded_bytes]}

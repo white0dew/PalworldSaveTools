@@ -16,7 +16,9 @@ dependencies = [
     "pyside6-essentials",
     "pyooz @ git+https://github.com/oMaN-Rod/pyooz.git",
     "cx-freeze>=8.3.0",
-    "nerdfont"
+    "nerdfont",
+    "pydantic",
+    "loguru"
 ]
 [tool.setuptools.packages.find]
 where = ["."]

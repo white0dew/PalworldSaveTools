@@ -3,7 +3,7 @@ from palworld_save_tools.archive import FArchiveReader, FArchiveWriter
 from palworld_save_tools.rawdata import build_process, connector, map_concrete_model, map_concrete_model_module, map_model
 def decode(reader: FArchiveReader, type_name: str, size: int, path: str) -> dict[str, Any]:
     if type_name != 'ArrayProperty':
-        raise Exception(f'Expected ArrayProperty,got {type_name}')
+        raise Exception(f'Expected ArrayProperty, got {type_name}')
     value = reader.property(type_name, size, path, nested_caller_path=path)
     for map_object in value['value']['values']:
         map_object['Model']['value']['RawData']['value'] = map_model.decode_bytes(reader, map_object['Model']['value']['RawData']['value']['values'])
@@ -18,7 +18,7 @@ def decode(reader: FArchiveReader, type_name: str, size: int, path: str) -> dict
     return value
 def encode(writer: FArchiveWriter, property_type: str, properties: dict[str, Any]) -> int:
     if property_type != 'ArrayProperty':
-        raise Exception(f'Expected ArrayProperty,got {property_type}')
+        raise Exception(f'Expected ArrayProperty, got {property_type}')
     del properties['custom_type']
     for map_object in properties['value']['values']:
         if 'values' not in map_object['Model']['value']['RawData']['value']:

@@ -5,8 +5,7 @@ import struct
 import sys
 import uuid
 from typing import Any, Callable, Optional, Sequence, Union
-import logging
-logger = logging.getLogger(__name__)
+from loguru import logger
 _float = float
 _bytes = bytes
 try:
@@ -54,6 +53,7 @@ else:
     @as_dataclass(hashable=True, fast_new=True)
     class UUID:
         raw_bytes: bytes
+        'Wrapper around uuid.UUID to delay evaluation of UUIDs until necessary'
         @staticmethod
         def from_str(s: str) -> 'UUID':
             b = uuid.UUID(s).bytes
@@ -313,6 +313,8 @@ class FArchiveReader:
             return self.quat_dict()
         elif struct_type == 'LinearColor':
             return {'r': self.float(), 'g': self.float(), 'b': self.float(), 'a': self.float()}
+        elif struct_type == 'Color':
+            return {'b': self.byte(), 'g': self.byte(), 'r': self.byte(), 'a': self.byte()}
         else:
             if self.debug:
                 logger.debug(f'Assuming struct type: {struct_type} ({path})')
@@ -616,6 +618,11 @@ class FArchiveWriter:
             self.float(value['g'])
             self.float(value['b'])
             self.float(value['a'])
+        elif struct_type == 'Color':
+            self.byte(value['b'])
+            self.byte(value['g'])
+            self.byte(value['r'])
+            self.byte(value['a'])
         else:
             if self.debug:
                 logger.debug(f'Assuming struct type: {struct_type}')

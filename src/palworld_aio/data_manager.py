@@ -364,3 +364,467 @@ def load_exclusions():
 def save_exclusions():
     with open(constants.EXCLUSIONS_FILE, 'w', encoding='utf-8') as f:
         json.dump(constants.exclusions, f, indent=4)
+def get_base_containers(base_id):
+    if not constants.loaded_level_json:
+        return []
+    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
+    base_id_str = str(base_id)
+    base_id_low = base_id_str.replace('-', '').lower()
+    containers = []
+    map_objs = wsd.get('MapObjectSaveData', {}).get('value', {}).get('values', [])
+    for obj in map_objs:
+        map_object_id = obj.get('MapObjectId', {}).get('value', '')
+        if not map_object_id:
+            continue
+        is_container = any((container_type in map_object_id for container_type in ['ItemChest', 'StorageBox', 'ItemBox', 'ItemContainer']))
+        if not is_container:
+            continue
+        bp = obj.get('Model', {}).get('value', {}).get('BuildProcess', {}).get('value', {}).get('RawData', {}).get('value', {})
+        if bp.get('state') != 1:
+            continue
+        raw_data = obj.get('Model', {}).get('value', {}).get('RawData', {}).get('value', {})
+        base_camp_id = raw_data.get('base_camp_id_belong_to')
+        if not base_camp_id or str(base_camp_id).replace('-', '').lower() != base_id_low:
+            continue
+        module_map = obj.get('ConcreteModel', {}).get('value', {}).get('ModuleMap', {}).get('value', [])
+        container_id = None
+        for module in module_map:
+            if module.get('key') == 'EPalMapObjectConcreteModelModuleType::ItemContainer':
+                module_raw = module.get('value', {}).get('RawData', {}).get('value', {})
+                container_id = module_raw.get('target_container_id')
+                break
+        if not container_id:
+            continue
+        container_type = 'Unknown'
+        container_name = 'Unknown Container'
+        if 'ItemChest' in map_object_id:
+            container_type = 'ItemChest'
+            container_name = t('base_inventory.chest') if t else 'Chest'
+        elif 'StorageBox' in map_object_id:
+            container_type = 'StorageBox'
+            container_name = t('base_inventory.storage_box') if t else 'Storage Box'
+        elif 'ItemBox' in map_object_id:
+            container_type = 'ItemBox'
+            container_name = t('base_inventory.item_box') if t else 'Item Box'
+        elif 'ItemContainer' in map_object_id:
+            container_type = 'ItemContainer'
+            container_name = t('base_inventory.container') if t else 'Container'
+        slot_count = get_container_slot_count(str(container_id))
+        location = get_container_location(obj)
+        containers.append({'id': str(container_id), 'name': container_name, 'type': container_type, 'slot_count': slot_count, 'location': location, 'map_object_id': map_object_id, 'is_guild_chest': False})
+    guild_id = get_base_guild_id(base_id)
+    if guild_id:
+        guild_chest = get_guild_chest(guild_id)
+        if guild_chest:
+            containers.append(guild_chest)
+    return containers
+def get_base_guild_id(base_id):
+    if not constants.loaded_level_json:
+        return None
+    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
+    base_list = wsd.get('BaseCampSaveData', {}).get('value', [])
+    base_id_str = str(base_id)
+    base_id_low = base_id_str.replace('-', '').lower()
+    for base in base_list:
+        if str(base['key']).replace('-', '').lower() == base_id_low:
+            return base['value']['RawData']['value'].get('group_id_belong_to')
+    return None
+def get_guild_chest(guild_id):
+    if not constants.loaded_level_json:
+        return None
+    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
+    guild_extra_map = wsd.get('GuildExtraSaveDataMap', {}).get('value', [])
+    guild_id_str = str(guild_id)
+    guild_id_low = guild_id_str.replace('-', '').lower()
+    for guild_entry in guild_extra_map:
+        try:
+            guild_key = str(guild_entry.get('key', '')).replace('-', '').lower()
+            if guild_key == guild_id_low:
+                guild_storage = guild_entry.get('value', {}).get('GuildItemStorage', {})
+                raw_data = guild_storage.get('value', {}).get('RawData', {}).get('value', {})
+                container_id = raw_data.get('container_id')
+                if container_id:
+                    slot_count = get_container_slot_count(str(container_id))
+                    return {'id': str(container_id), 'name': t('base_inventory.guild_chest') if t else 'Guild Chest', 'type': 'GuildChest', 'slot_count': slot_count, 'location': t('base_inventory.guild_storage') if t else 'Guild Storage', 'map_object_id': 'GuildChest', 'is_guild_chest': True}
+        except:
+            continue
+    return None
+def get_container_slot_count(container_id):
+    if not constants.loaded_level_json:
+        return 0
+    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
+    item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
+    container_id_str = str(container_id)
+    container_id_low = container_id_str.replace('-', '').lower()
+    for cont in item_containers:
+        try:
+            cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
+            if cont_id == container_id_low:
+                return cont['value'].get('SlotNum', {}).get('value', 0)
+        except:
+            continue
+    return 0
+def get_container_location(map_obj):
+    try:
+        transform = map_obj.get('Model', {}).get('value', {}).get('RawData', {}).get('value', {}).get('transform', {})
+        if transform and 'translation' in transform:
+            trans = transform['translation']
+            from palworld_coord import sav_to_map
+            return palworld_coord.sav_to_map(trans['x'], trans['y'], new=True)
+    except:
+        pass
+    return t('base_inventory.unknown_location') if t else 'Unknown Location'
+def get_container_contents(container_id):
+    if not constants.loaded_level_json:
+        return []
+    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
+    item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
+    container_id_str = str(container_id)
+    container_id_low = container_id_str.replace('-', '').lower()
+    for cont in item_containers:
+        try:
+            cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
+            if cont_id == container_id_low:
+                return cont['value'].get('Slots', {}).get('value', {}).get('values', [])
+        except:
+            continue
+    return []
+def update_container_contents(container_id, items):
+    if not constants.loaded_level_json:
+        return False
+    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
+    item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
+    container_id_str = str(container_id)
+    container_id_low = container_id_str.replace('-', '').lower()
+    for cont in item_containers:
+        try:
+            cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
+            if cont_id == container_id_low:
+                cont['value']['Slots']['value']['values'] = items
+                return True
+        except:
+            continue
+    return False
+def gather_and_update_dynamic_containers():
+    print('🔍 [DEBUG] gather_and_update_dynamic_containers() - Enhanced version called')
+    if not constants.loaded_level_json:
+        print('❌ [DEBUG] constants.loaded_level_json is None - returning False')
+        return False
+    print('✅ [DEBUG] constants.loaded_level_json is not None')
+    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
+    print(f'✅ [DEBUG] Retrieved worldSaveData, type: {type(wsd)}')
+    print('🔍 [DEBUG] Step 1: Scanning all ItemContainerSaveData entries...')
+    item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
+    print(f'   [DEBUG] Found {len(item_containers)} item containers')
+    all_dynamic_ids = set()
+    container_items_count = 0
+    for i, container in enumerate(item_containers):
+        try:
+            container_id = str(container['key']['ID']['value'])
+            slots = container['value'].get('Slots', {}).get('value', {}).get('values', [])
+            print(f'   [DEBUG] Processing container {i + 1}/{len(item_containers)} (ID: {container_id})')
+            print(f'      [DEBUG] Container has {len(slots)} slots')
+            for slot_index, slot in enumerate(slots):
+                try:
+                    raw_data = slot.get('RawData', {})
+                    if not raw_data:
+                        continue
+                    raw_value = raw_data.get('value', {})
+                    if not raw_value:
+                        continue
+                    item_data = raw_value.get('item', {})
+                    if not item_data:
+                        continue
+                    dynamic_id = item_data.get('dynamic_id', {})
+                    if not dynamic_id:
+                        continue
+                    local_id = dynamic_id.get('local_id_in_created_world')
+                    if local_id and local_id != '00000000-0000-0000-0000-000000000000':
+                        all_dynamic_ids.add(str(local_id))
+                        container_items_count += 1
+                        print(f'      [DEBUG] Found dynamic item ID: {local_id} (slot {slot_index})')
+                except Exception as e:
+                    print(f'      ⚠️  [DEBUG] Error processing slot {slot_index}: {e}')
+                    continue
+        except Exception as e:
+            print(f'   ⚠️  [DEBUG] Error processing container {i + 1}: {e}')
+            continue
+    print(f'📊 [DEBUG] Step 1 Complete:')
+    print(f'   [DEBUG] Total dynamic item IDs found: {len(all_dynamic_ids)}')
+    print(f'   [DEBUG] Total container items processed: {container_items_count}')
+    print('🔍 [DEBUG] Step 2: Getting current DynamicItemSaveData...')
+    src_containers = wsd.get('DynamicItemSaveData', {}).get('value', {}).get('values', [])
+    print(f'   [DEBUG] Current DynamicItemSaveData entries: {len(src_containers)}')
+    if src_containers is None:
+        print('⚠️  [DEBUG] src_containers is None - creating empty list')
+        src_containers = []
+    print('🔍 [DEBUG] Step 3: Building registry of existing dynamic containers...')
+    existing_dynamic_guids = set()
+    existing_containers_by_id = {}
+    orphaned_containers = []
+    valid_containers = 0
+    empty_guid_containers = 0
+    invalid_containers = 0
+    for i, dc in enumerate(src_containers):
+        try:
+            if not isinstance(dc, dict):
+                print(f'      ❌ [DEBUG] Container {i + 1} is not a dict, skipping')
+                invalid_containers += 1
+                continue
+            raw_data = dc.get('RawData', {})
+            if not isinstance(raw_data, dict):
+                print(f'      ❌ [DEBUG] Container {i + 1} RawData is not a dict, skipping')
+                invalid_containers += 1
+                continue
+            raw_value = raw_data.get('value', {})
+            if not isinstance(raw_value, dict):
+                print(f'      ❌ [DEBUG] Container {i + 1} RawData.value is not a dict, skipping')
+                invalid_containers += 1
+                continue
+            id_data = raw_value.get('id', {})
+            if not isinstance(id_data, dict):
+                print(f'      ❌ [DEBUG] Container {i + 1} id is not a dict, skipping')
+                invalid_containers += 1
+                continue
+            lid = id_data.get('local_id_in_created_world', '')
+            if lid == b'\x00' * 16 or not lid or lid == '00000000-0000-0000-0000-000000000000':
+                print(f'      ⚠️  [DEBUG] Container {i + 1} has empty/invalid GUID, marking as orphaned')
+                orphaned_containers.append(dc)
+                empty_guid_containers += 1
+                continue
+            if str(lid) in all_dynamic_ids:
+                existing_dynamic_guids.add(str(lid))
+                existing_containers_by_id[str(lid)] = dc
+                valid_containers += 1
+                print(f'      ✅ [DEBUG] Container {i + 1} is referenced by containers, keeping: {lid}')
+            else:
+                orphaned_containers.append(dc)
+                print(f'      ⚠️  [DEBUG] Container {i + 1} is orphaned (not referenced by any container): {lid}')
+        except Exception as e:
+            print(f'      ❌ [DEBUG] Error processing dynamic container {i + 1}: {e}')
+            invalid_containers += 1
+            continue
+    print(f'📊 [DEBUG] Step 3 Complete:')
+    print(f'   [DEBUG] Valid containers: {valid_containers}')
+    print(f'   [DEBUG] Empty GUID containers: {empty_guid_containers}')
+    print(f'   [DEBUG] Invalid containers: {invalid_containers}')
+    print(f'   [DEBUG] Orphaned containers: {len(orphaned_containers)}')
+    print(f'   [DEBUG] Existing dynamic GUIDs: {len(existing_dynamic_guids)}')
+    print('🔍 [DEBUG] Step 4: Building complete registry of all dynamic items...')
+    missing_dynamic_ids = all_dynamic_ids - existing_dynamic_guids
+    print(f'   [DEBUG] Missing dynamic IDs that need to be added: {len(missing_dynamic_ids)}')
+    new_containers = []
+    for missing_id in missing_dynamic_ids:
+        try:
+            new_container = {'RawData': {'array_type': 'ByteProperty', 'id': None, 'value': {'type': 'unknown', 'id': {'created_world_id': '00000000-0000-0000-0000-000000000000', 'local_id_in_created_world': missing_id, 'static_id': '00000000-0000-0000-0000-000000000000', 'system_unique_id': '00000000-0000-0000-0000-000000000000'}, 'item': {'dynamic_id': {'created_world_id': '00000000-0000-0000-0000-000000000000', 'local_id_in_created_world': missing_id}}, 'container_id': '00000000-0000-0000-0000-000000000000', 'trailer': [0] * 20}, 'type': 'ArrayProperty', 'custom_type': '.worldSaveData.DynamicItemSaveData.DynamicItemSaveData.RawData'}, 'CustomVersionData': {'array_type': 'ByteProperty', 'id': None, 'value': {'values': [2, 0, 0, 0, 126, 180, 234, 18, 154, 27, 90, 255, 113, 170, 113, 188, 223, 51, 214, 14, 1, 0, 0, 0, 56, 11, 0, 222, 73, 73, 215, 206, 151, 223, 45, 153, 192, 193, 195, 105, 1, 0, 0, 0]}, 'type': 'ArrayProperty'}}
+            new_containers.append(new_container)
+            print(f'      ✅ [DEBUG] Created new dynamic container for missing ID: {missing_id}')
+        except Exception as e:
+            print(f'      ❌ [DEBUG] Error creating dynamic container for {missing_id}: {e}')
+            continue
+    print(f'📊 [DEBUG] Step 4 Complete:')
+    print(f'   [DEBUG] New containers created: {len(new_containers)}')
+    print('🔍 [DEBUG] Step 5: Updating DynamicItemSaveData with complete registry...')
+    final_containers = list(existing_containers_by_id.values()) + new_containers
+    print(f'   [DEBUG] Final container count: {len(final_containers)}')
+    print(f'   [DEBUG] Removed orphaned containers: {len(orphaned_containers)}')
+    print(f'   [DEBUG] Added new containers: {len(new_containers)}')
+    wsd['DynamicItemSaveData']['value']['values'] = final_containers
+    print(f'💾 [DEBUG] Successfully updated DynamicItemSaveData')
+    print('🔍 [DEBUG] Step 6: Verifying the update...')
+    updated_containers = wsd.get('DynamicItemSaveData', {}).get('value', {}).get('values', [])
+    updated_dynamic_guids = set()
+    for container in updated_containers:
+        try:
+            raw_data = container.get('RawData', {})
+            raw_value = raw_data.get('value', {})
+            id_data = raw_value.get('id', {})
+            lid = id_data.get('local_id_in_created_world', '')
+            if lid and lid != '00000000-0000-0000-0000-000000000000':
+                updated_dynamic_guids.add(str(lid))
+        except:
+            continue
+    print(f'   [DEBUG] Updated DynamicItemSaveData entries: {len(updated_containers)}')
+    print(f'   [DEBUG] Updated dynamic GUIDs: {len(updated_dynamic_guids)}')
+    print(f'   [DEBUG] All container dynamic IDs: {len(all_dynamic_ids)}')
+    missing_after_update = all_dynamic_ids - updated_dynamic_guids
+    if missing_after_update:
+        print(f'   ⚠️  [DEBUG] WARNING: {len(missing_after_update)} dynamic IDs still missing after update!')
+        for missing in missing_after_update:
+            print(f'      [DEBUG] Missing: {missing}')
+    else:
+        print(f'   ✅ [DEBUG] SUCCESS: All dynamic IDs are now properly registered!')
+    print(f'\n✅ [DEBUG] gather_and_update_dynamic_containers completed successfully!')
+    print(f'📊 [DEBUG] Final Summary:')
+    print(f'   [DEBUG] Total dynamic items in containers: {len(all_dynamic_ids)}')
+    print(f'   [DEBUG] Dynamic containers in registry: {len(updated_containers)}')
+    print(f'   [DEBUG] Dynamic GUIDs in registry: {len(updated_dynamic_guids)}')
+    print(f'   [DEBUG] Orphaned containers removed: {len(orphaned_containers)}')
+    print(f'   [DEBUG] New containers added: {len(new_containers)}')
+    return True
+def gather_update_dynamic_containers_with_reporting():
+    print('🔍 [DEBUG] gather_update_dynamic_containers_with_reporting() - Enhanced version with reporting called')
+    report = {'missing_items': [], 'orphaned_items': [], 'total_missing': 0, 'total_orphaned': 0, 'total_items_in_containers': 0, 'total_items_in_registry': 0, 'success': False}
+    if not constants.loaded_level_json:
+        print('❌ [DEBUG] constants.loaded_level_json is None - returning False')
+        return report
+    print('✅ [DEBUG] constants.loaded_level_json is not None')
+    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
+    print(f'✅ [DEBUG] Retrieved worldSaveData, type: {type(wsd)}')
+    print('🔍 [DEBUG] Step 1: Scanning all ItemContainerSaveData entries...')
+    item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
+    print(f'   [DEBUG] Found {len(item_containers)} item containers')
+    all_dynamic_ids = set()
+    container_items_count = 0
+    for i, container in enumerate(item_containers):
+        try:
+            container_id = str(container['key']['ID']['value'])
+            slots = container['value'].get('Slots', {}).get('value', {}).get('values', [])
+            print(f'   [DEBUG] Processing container {i + 1}/{len(item_containers)} (ID: {container_id})')
+            print(f'      [DEBUG] Container has {len(slots)} slots')
+            for slot_index, slot in enumerate(slots):
+                try:
+                    raw_data = slot.get('RawData', {})
+                    if not raw_data:
+                        continue
+                    raw_value = raw_data.get('value', {})
+                    if not raw_value:
+                        continue
+                    item_data = raw_value.get('item', {})
+                    if not item_data:
+                        continue
+                    dynamic_id = item_data.get('dynamic_id', {})
+                    if not dynamic_id:
+                        continue
+                    local_id = dynamic_id.get('local_id_in_created_world')
+                    if local_id and local_id != '00000000-0000-0000-0000-000000000000':
+                        all_dynamic_ids.add(str(local_id))
+                        container_items_count += 1
+                        print(f'      [DEBUG] Found dynamic item ID: {local_id} (slot {slot_index})')
+                except Exception as e:
+                    print(f'      ⚠️  [DEBUG] Error processing slot {slot_index}: {e}')
+                    continue
+        except Exception as e:
+            print(f'   ⚠️  [DEBUG] Error processing container {i + 1}: {e}')
+            continue
+    print(f'📊 [DEBUG] Step 1 Complete:')
+    print(f'   [DEBUG] Total dynamic item IDs found: {len(all_dynamic_ids)}')
+    print(f'   [DEBUG] Total container items processed: {container_items_count}')
+    report['total_items_in_containers'] = len(all_dynamic_ids)
+    print('🔍 [DEBUG] Step 2: Getting current DynamicItemSaveData...')
+    src_containers = wsd.get('DynamicItemSaveData', {}).get('value', {}).get('values', [])
+    print(f'   [DEBUG] Current DynamicItemSaveData entries: {len(src_containers)}')
+    if src_containers is None:
+        print('⚠️  [DEBUG] src_containers is None - creating empty list')
+        src_containers = []
+    print('🔍 [DEBUG] Step 3: Building registry of existing dynamic containers...')
+    existing_dynamic_guids = set()
+    existing_containers_by_id = {}
+    orphaned_containers = []
+    valid_containers = 0
+    empty_guid_containers = 0
+    invalid_containers = 0
+    for i, dc in enumerate(src_containers):
+        try:
+            if not isinstance(dc, dict):
+                print(f'      ❌ [DEBUG] Container {i + 1} is not a dict, skipping')
+                invalid_containers += 1
+                continue
+            raw_data = dc.get('RawData', {})
+            if not isinstance(raw_data, dict):
+                print(f'      ❌ [DEBUG] Container {i + 1} RawData is not a dict, skipping')
+                invalid_containers += 1
+                continue
+            raw_value = raw_data.get('value', {})
+            if not isinstance(raw_value, dict):
+                print(f'      ❌ [DEBUG] Container {i + 1} RawData.value is not a dict, skipping')
+                invalid_containers += 1
+                continue
+            id_data = raw_value.get('id', {})
+            if not isinstance(id_data, dict):
+                print(f'      ❌ [DEBUG] Container {i + 1} id is not a dict, skipping')
+                invalid_containers += 1
+                continue
+            lid = id_data.get('local_id_in_created_world', '')
+            if lid == b'\x00' * 16 or not lid or lid == '00000000-0000-0000-0000-000000000000':
+                print(f'      ⚠️  [DEBUG] Container {i + 1} has empty/invalid GUID, marking as orphaned')
+                orphaned_containers.append(dc)
+                empty_guid_containers += 1
+                continue
+            if str(lid) in all_dynamic_ids:
+                existing_dynamic_guids.add(str(lid))
+                existing_containers_by_id[str(lid)] = dc
+                valid_containers += 1
+                print(f'      ✅ [DEBUG] Container {i + 1} is referenced by containers, keeping: {lid}')
+            else:
+                orphaned_containers.append(dc)
+                report['orphaned_items'].append(str(lid))
+                print(f'      ⚠️  [DEBUG] Container {i + 1} is orphaned (not referenced by any container): {lid}')
+        except Exception as e:
+            print(f'      ❌ [DEBUG] Error processing dynamic container {i + 1}: {e}')
+            invalid_containers += 1
+            continue
+    print(f'📊 [DEBUG] Step 3 Complete:')
+    print(f'   [DEBUG] Valid containers: {valid_containers}')
+    print(f'   [DEBUG] Empty GUID containers: {empty_guid_containers}')
+    print(f'   [DEBUG] Invalid containers: {invalid_containers}')
+    print(f'   [DEBUG] Orphaned containers: {len(orphaned_containers)}')
+    print(f'   [DEBUG] Existing dynamic GUIDs: {len(existing_dynamic_guids)}')
+    report['total_orphaned'] = len(report['orphaned_items'])
+    print('🔍 [DEBUG] Step 4: Building complete registry of all dynamic items...')
+    missing_dynamic_ids = all_dynamic_ids - existing_dynamic_guids
+    print(f'   [DEBUG] Missing dynamic IDs that need to be added: {len(missing_dynamic_ids)}')
+    new_containers = []
+    for missing_id in missing_dynamic_ids:
+        try:
+            new_container = {'RawData': {'array_type': 'ByteProperty', 'id': None, 'value': {'type': 'unknown', 'id': {'created_world_id': '00000000-0000-0000-0000-000000000000', 'local_id_in_created_world': missing_id, 'static_id': '00000000-0000-0000-0000-000000000000', 'system_unique_id': '00000000-0000-0000-0000-000000000000'}, 'item': {'dynamic_id': {'created_world_id': '00000000-0000-0000-0000-000000000000', 'local_id_in_created_world': missing_id}}, 'container_id': '00000000-0000-0000-0000-000000000000', 'trailer': [0] * 20}, 'type': 'ArrayProperty', 'custom_type': '.worldSaveData.DynamicItemSaveData.DynamicItemSaveData.RawData'}, 'CustomVersionData': {'array_type': 'ByteProperty', 'id': None, 'value': {'values': [2, 0, 0, 0, 126, 180, 234, 18, 154, 27, 90, 255, 113, 170, 113, 188, 223, 51, 214, 14, 1, 0, 0, 0, 56, 11, 0, 222, 73, 73, 215, 206, 151, 223, 45, 153, 192, 193, 195, 105, 1, 0, 0, 0]}, 'type': 'ArrayProperty'}}
+            new_containers.append(new_container)
+            report['missing_items'].append(missing_id)
+            print(f'      ✅ [DEBUG] Created new dynamic container for missing ID: {missing_id}')
+        except Exception as e:
+            print(f'      ❌ [DEBUG] Error creating dynamic container for {missing_id}: {e}')
+            continue
+    print(f'📊 [DEBUG] Step 4 Complete:')
+    print(f'   [DEBUG] New containers created: {len(new_containers)}')
+    report['total_missing'] = len(report['missing_items'])
+    print('🔍 [DEBUG] Step 5: Updating DynamicItemSaveData with complete registry...')
+    final_containers = list(existing_containers_by_id.values()) + new_containers
+    print(f'   [DEBUG] Final container count: {len(final_containers)}')
+    print(f'   [DEBUG] Removed orphaned containers: {len(orphaned_containers)}')
+    print(f'   [DEBUG] Added new containers: {len(new_containers)}')
+    wsd['DynamicItemSaveData']['value']['values'] = final_containers
+    print(f'💾 [DEBUG] Successfully updated DynamicItemSaveData')
+    print('🔍 [DEBUG] Step 6: Verifying the update...')
+    updated_containers = wsd.get('DynamicItemSaveData', {}).get('value', {}).get('values', [])
+    updated_dynamic_guids = set()
+    for container in updated_containers:
+        try:
+            raw_data = container.get('RawData', {})
+            raw_value = raw_data.get('value', {})
+            id_data = raw_value.get('id', {})
+            lid = id_data.get('local_id_in_created_world', '')
+            if lid and lid != '00000000-0000-0000-0000-000000000000':
+                updated_dynamic_guids.add(str(lid))
+        except:
+            continue
+    print(f'   [DEBUG] Updated DynamicItemSaveData entries: {len(updated_containers)}')
+    print(f'   [DEBUG] Updated dynamic GUIDs: {len(updated_dynamic_guids)}')
+    print(f'   [DEBUG] All container dynamic IDs: {len(all_dynamic_ids)}')
+    report['total_items_in_registry'] = len(updated_dynamic_guids)
+    missing_after_update = all_dynamic_ids - updated_dynamic_guids
+    if missing_after_update:
+        print(f'   ⚠️  [DEBUG] WARNING: {len(missing_after_update)} dynamic IDs still missing after update!')
+        for missing in missing_after_update:
+            print(f'      [DEBUG] Missing: {missing}')
+        report['success'] = False
+    else:
+        print(f'   ✅ [DEBUG] SUCCESS: All dynamic IDs are now properly registered!')
+        report['success'] = True
+    print(f'\n✅ [DEBUG] gather_update_dynamic_containers_with_reporting completed successfully!')
+    print(f'📊 [DEBUG] Final Summary:')
+    print(f'   [DEBUG] Total dynamic items in containers: {len(all_dynamic_ids)}')
+    print(f'   [DEBUG] Dynamic containers in registry: {len(updated_containers)}')
+    print(f'   [DEBUG] Dynamic GUIDs in registry: {len(updated_dynamic_guids)}')
+    print(f'   [DEBUG] Orphaned containers removed: {len(orphaned_containers)}')
+    print(f'   [DEBUG] New containers added: {len(new_containers)}')
+    return report
