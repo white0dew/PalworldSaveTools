@@ -24,6 +24,7 @@ try:
         sanitize_filename,
     )
     from palworld_aio.data_manager import delete_base_camp
+    from palworld_aio.dialogs import GameDaysInputDialog
 except ImportError:
     from . import constants
     from .utils import (
@@ -39,8 +40,12 @@ except ImportError:
         sanitize_filename,
     )
     from .data_manager import delete_base_camp
+<<<<<<< Updated upstream
 
 
+=======
+    from .dialogs import GameDaysInputDialog
+>>>>>>> Stashed changes
 def build_player_levels():
     if not constants.loaded_level_json:
         return
@@ -2895,3 +2900,39 @@ def fix_illegal_pals_in_save(parent=None):
         traceback.print_exc()
         return 0
     return total_fixed
+<<<<<<< Updated upstream
+=======
+def gather_update_dynamic_containers_with_reporting(parent=None):
+    try:
+        from palworld_aio.data_manager import gather_update_dynamic_containers_with_reporting
+        result = gather_update_dynamic_containers_with_reporting()
+        if result:
+            print('Dynamic containers updated successfully')
+            print(f"Missing items: {result.get('missing_items', [])}")
+            print(f"Orphaned items: {result.get('orphaned_items', [])}")
+            print(f"Total missing items: {result.get('total_missing', 0)}")
+            print(f"Total orphaned items: {result.get('total_orphaned', 0)}")
+        else:
+            print('Failed to update dynamic containers')
+    except Exception as e:
+        print(f'Error gathering dynamic containers: {e}')
+def edit_game_days(parent=None):
+    if not constants.loaded_level_json:
+        return None
+    try:
+        wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
+    except KeyError:
+        return None
+    try:
+        gtsd = wsd['GameTimeSaveData']['value']
+        current_ticks = gtsd['GameDateTimeTicks']['value']
+        current_days = int(current_ticks / 864000000000)
+        new_days = GameDaysInputDialog.get_days(t('gamedays.title') if t else 'Edit Game Days', f"{(t('gamedays.current', days=current_days) if t else f'Current game days: {current_days}')}\n{(t('gamedays.prompt') if t else 'Enter new game days:')}", parent, current_days)
+        if new_days is None:
+            return None
+        new_ticks = new_days * 864000000000
+        gtsd['GameDateTimeTicks']['value'] = int(new_ticks)
+        return {'old': current_days, 'new': new_days}
+    except Exception as e:
+        return None
+>>>>>>> Stashed changes

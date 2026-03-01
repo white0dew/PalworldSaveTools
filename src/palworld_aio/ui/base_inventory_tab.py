@@ -1,0 +1,851 @@
+import os
+import sys
+import json
+import time
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QTreeWidget, QTreeWidgetItem, QSplitter, QFrame, QScrollArea, QGridLayout, QGroupBox, QMenu, QHeaderView, QMessageBox, QFileDialog, QInputDialog, QDialog, QCheckBox, QSpinBox, QDoubleSpinBox, QSizePolicy, QAbstractItemView, QSpacerItem, QTabWidget, QTabBar, QStyleOptionTab, QStyle, QApplication, QStyledItemDelegate, QListWidget, QListWidgetItem
+from PySide6.QtCore import Qt, Signal, QTimer, QPropertyAnimation, QEasingCurve, QSize, QPoint, QRect, QEvent, QMargins
+from PySide6.QtGui import QPixmap, QIcon, QFont, QAction, QCursor, QPainter, QColor, QBrush, QPen, QLinearGradient, QPalette, QMouseEvent, QWheelEvent, QResizeEvent, QPaintEvent, QContextMenuEvent, QDragEnterEvent, QDragMoveEvent, QDropEvent, QDrag
+from PySide6.QtCore import QMimeData
+resources_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'resources')
+if resources_path not in sys.path:
+    sys.path.insert(0, resources_path)
+try:
+    from i18n import t
+except ImportError:
+    t = None
+try:
+    from palworld_aio import constants
+    from palworld_aio.base_inventory_manager import BaseInventoryManager, get_container_image_path
+    from palworld_aio.widgets import StatsPanel
+    from palworld_aio.ui.inventory_tab import InventoryGridWidget, ItemPickerDialog
+    from palworld_aio.ui.styled_combo import StyledCombo
+    from palworld_aio.utils import format_duration_short
+    from i18n import t
+except ImportError:
+    from .. import constants
+    from ..base_inventory_manager import BaseInventoryManager, get_container_image_path
+    from ..widgets import StatsPanel
+    from ..ui.inventory_tab import InventoryGridWidget, ItemPickerDialog
+    from ..ui.styled_combo import StyledCombo
+    from ..utils import format_duration_short
+    from i18n import t
+class ContainerListWidget(QTreeWidget):
+    container_selected = Signal(str)
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setHeaderHidden(True)
+        self.setIndentation(0)
+        self.setAlternatingRowColors(True)
+        self.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.setDragEnabled(False)
+        self.setAcceptDrops(False)
+        self.setDropIndicatorShown(False)
+        self.setSortingEnabled(False)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
+        self.itemSelectionChanged.connect(self._on_selection_changed)
+        self.is_dark = True
+    def set_theme(self, is_dark):
+        self.is_dark = is_dark
+        self._update_styles()
+    def _update_styles(self):
+        if self.is_dark:
+            self.setStyleSheet('\n                QTreeWidget {\n                    background-color: rgba(20, 25, 35, 0.8);\n                    border: 1px solid rgba(255, 255, 255, 0.1);\n                    border-radius: 6px;\n                    color: #e0e0e0;\n                }\n                QTreeWidget::item {\n                    padding: 8px;\n                    margin: 2px 0;\n                    border-radius: 4px;\n                    background-color: rgba(30, 35, 45, 0.8);\n                }\n                QTreeWidget::item:selected {\n                    background-color: rgba(74, 144, 226, 0.3);\n                    border: 1px solid rgba(74, 144, 226, 0.5);\n                }\n                QTreeWidget::item:hover {\n                    background-color: rgba(50, 55, 65, 0.8);\n                }\n                QTreeWidget::branch {\n                    background-color: transparent;\n                }\n            ')
+        else:
+            self.setStyleSheet('\n                QTreeWidget {\n                    background-color: rgba(255, 255, 255, 0.9);\n                    border: 1px solid rgba(0, 0, 0, 0.1);\n                    border-radius: 6px;\n                    color: #333333;\n                }\n                QTreeWidget::item {\n                    padding: 8px;\n                    margin: 2px 0;\n                    border-radius: 4px;\n                    background-color: rgba(240, 240, 240, 0.8);\n                }\n                QTreeWidget::item:selected {\n                    background-color: rgba(74, 144, 226, 0.2);\n                    border: 1px solid rgba(74, 144, 226, 0.3);\n                }\n                QTreeWidget::item:hover {\n                    background-color: rgba(220, 220, 220, 0.8);\n                }\n                QTreeWidget::branch {\n                    background-color: transparent;\n                }\n            ')
+    def clear(self):
+        super().clear()
+        self.setHeaderHidden(True)
+    def add_container(self, container_info):
+        item = QTreeWidgetItem()
+        item.setText(0, '')
+        item.setData(0, Qt.UserRole, container_info['id'])
+        item.setSizeHint(0, QSize(300, 80))
+        self.addTopLevelItem(item)
+        self.setItemWidget(item, 0, self._create_container_widget(container_info))
+    def _create_container_widget(self, container_info):
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+        image_label = QLabel()
+        image_label.setFixedSize(60, 60)
+        image_label.setAlignment(Qt.AlignCenter)
+        image_label.setStyleSheet(f"\n            QLabel {{\n                background-color: {('rgba(30, 35, 45, 0.8)' if self.is_dark else 'rgba(240, 240, 240, 0.8)')};\n                border: 1px solid {('rgba(255, 255, 255, 0.2)' if self.is_dark else 'rgba(0, 0, 0, 0.1)')};\n                border-radius: 4px;\n            }}\n        ")
+        image_path = get_container_image_path(container_info['type'])
+        if image_path and os.path.exists(image_path):
+            pixmap = QPixmap(image_path)
+            if not pixmap.isNull():
+                scaled = pixmap.scaled(50, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                image_label.setPixmap(scaled)
+            else:
+                image_label.setText('📦')
+        else:
+            image_label.setText('📦')
+        layout.addWidget(image_label)
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(2)
+        name_label = QLabel(container_info['name'])
+        name_label.setStyleSheet(f"\n            QLabel {{\n                font-weight: bold;\n                font-size: 12px;\n                color: {('#ffffff' if self.is_dark else '#000000')};\n            }}\n        ")
+        info_layout.addWidget(name_label)
+        details_layout = QHBoxLayout()
+        details_layout.setSpacing(10)
+        type_label = QLabel(t('base_inventory.type').format(type=container_info['type']) if t else f"Type: {container_info['type']}")
+        type_label.setStyleSheet(f"\n            QLabel {{\n                font-size: 11px;\n                color: {('#cccccc' if self.is_dark else '#666666')};\n            }}\n        ")
+        details_layout.addWidget(type_label)
+        slots_label = QLabel(t('base_inventory.slots_count').format(count=container_info['slot_count']) if t else f"Slots: {container_info['slot_count']}")
+        slots_label.setStyleSheet(f"\n            QLabel {{\n                font-size: 11px;\n                color: {('#cccccc' if self.is_dark else '#666666')};\n            }}\n        ")
+        details_layout.addWidget(slots_label)
+        info_layout.addLayout(details_layout)
+        location_label = QLabel(t('base_inventory.location').format(location=container_info['location']) if t else f"Location: {container_info['location']}")
+        location_label.setStyleSheet(f"\n            QLabel {{\n                font-size: 11px;\n                color: {('#999999' if self.is_dark else '#888888')};\n            }}\n        ")
+        info_layout.addWidget(location_label)
+        layout.addLayout(info_layout)
+        layout.addStretch()
+        return widget
+    def _on_selection_changed(self):
+        selected_items = self.selectedItems()
+        if selected_items:
+            container_id = selected_items[0].data(0, Qt.UserRole)
+            self.container_selected.emit(container_id)
+    def _show_context_menu(self, position):
+        item = self.itemAt(position)
+        if item:
+            container_id = item.data(0, Qt.UserRole)
+            menu = QMenu(self)
+            menu.addAction(t('base_inventory.view_details') if t else 'View Details', lambda: self._view_container_details(container_id))
+            menu.addAction(t('base_inventory.refresh') if t else 'Refresh', lambda: self._refresh_container(container_id))
+            menu.addAction(t('base_inventory.export_container') if t else 'Export Container', lambda: self._export_container(container_id))
+            menu.addAction(t('base_inventory.clear_container') if t else 'Clear Container', lambda: self._clear_container(container_id))
+            menu.exec(self.viewport().mapToGlobal(position))
+    def _view_container_details(self, container_id):
+        for i in range(self.topLevelItemCount()):
+            item = self.topLevelItem(i)
+            if item.data(0, Qt.UserRole) == container_id:
+                widget = self.itemWidget(item, 0)
+                if widget:
+                    container_info = None
+                    parent = self.parent()
+                    if hasattr(parent, 'manager'):
+                        container_info = next((c for c in parent.manager.containers if c['id'] == container_id), None)
+                    if container_info:
+                        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QDialogButtonBox
+                        dialog = QDialog(self)
+                        dialog.setWindowTitle(t('base_inventory.container_details') if t else 'Container Details')
+                        dialog.setModal(True)
+                        layout = QVBoxLayout(dialog)
+                        details_text = f"\n                        <h3>{container_info['name']}</h3>\n                        <p><b>Type:</b> {container_info['type']}</p>\n                        <p><b>Slots:</b> {container_info['slot_count']}</p>\n                        <p><b>Location:</b> {container_info['location']}</p>\n                        <p><b>Container ID:</b> {container_info['id']}</p>\n                        "
+                        label = QLabel(details_text)
+                        label.setTextFormat(Qt.RichText)
+                        layout.addWidget(label)
+                        buttons = QDialogButtonBox(QDialogButtonBox.Ok)
+                        buttons.accepted.connect(dialog.accept)
+                        layout.addWidget(buttons)
+                        dialog.exec()
+    def _refresh_container(self, container_id):
+        parent = self.parent()
+        if hasattr(parent, 'manager'):
+            parent.manager.refresh_container(container_id)
+            if hasattr(parent, '_load_containers_for_base'):
+                base_id = parent.base_combo.currentData()
+                if base_id:
+                    parent._load_containers_for_base(base_id)
+    def _export_container(self, container_id):
+        parent = self.parent()
+        if hasattr(parent, 'manager'):
+            container_data = parent.manager.export_container(container_id)
+            if container_data:
+                file_path, _ = QFileDialog.getSaveFileName(self, t('base_inventory.export_container') if t else 'Export Container', f'container_{container_id[:8]}.json', 'JSON Files (*.json)')
+                if file_path:
+                    try:
+                        with open(file_path, 'w', encoding='utf-8') as f:
+                            json.dump(container_data, f, indent=2, ensure_ascii=False)
+                        parent._show_info(t('base_inventory.export_success') if t else 'Container exported successfully')
+                    except Exception as e:
+                        parent._show_warning(f'Failed to export container: {str(e)}')
+    def _clear_container(self, container_id):
+        parent = self.parent()
+        if hasattr(parent, 'manager'):
+            reply = QMessageBox.question(self, t('base_inventory.clear_container') if t else 'Clear Container', t('base_inventory.clear_container_confirm') if t else 'Are you sure you want to clear all items from this container?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                if parent.manager.clear_container(container_id):
+                    parent._show_info(t('base_inventory.container_cleared') if t else 'Container cleared successfully')
+                    self._refresh_container(container_id)
+                else:
+                    parent._show_warning(t('base_inventory.failed_to_clear_container') if t else 'Failed to clear container')
+class ContainerInfoWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.container_info = None
+        self.is_dark = True
+        self._setup_ui()
+    def set_theme(self, is_dark):
+        self.is_dark = is_dark
+        self._update_styles()
+        self._update_content()
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+        header_layout = QHBoxLayout()
+        self.image_label = QLabel()
+        self.image_label.setFixedSize(80, 80)
+        self.image_label.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(self.image_label)
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(4)
+        self.name_label = QLabel('Container Name')
+        self.name_label.setStyleSheet('font-size: 14px; font-weight: bold;')
+        info_layout.addWidget(self.name_label)
+        self.type_label = QLabel(t('base_inventory.type').format(type='Unknown') if t else 'Type: Unknown')
+        self.type_label.setStyleSheet('font-size: 12px;')
+        info_layout.addWidget(self.type_label)
+        self.slots_label = QLabel(t('base_inventory.slots_count').format(count=0) if t else 'Slots: 0')
+        self.slots_label.setStyleSheet('font-size: 12px;')
+        info_layout.addWidget(self.slots_label)
+        self.location_label = QLabel(t('base_inventory.location').format(location='Unknown') if t else 'Location: Unknown')
+        self.location_label.setStyleSheet('font-size: 12px;')
+        info_layout.addWidget(self.location_label)
+        header_layout.addLayout(info_layout)
+        header_layout.addStretch()
+        layout.addLayout(header_layout)
+        stats_layout = QHBoxLayout()
+        stats_layout.setSpacing(10)
+        self.items_count_label = QLabel(t('base_inventory.items').format(count=0) if t else 'Items: 0')
+        self.items_count_label.setStyleSheet('font-size: 12px; font-weight: bold;')
+        stats_layout.addWidget(self.items_count_label)
+        self.empty_slots_label = QLabel(t('base_inventory.empty').format(count=0) if t else 'Empty: 0')
+        self.empty_slots_label.setStyleSheet('font-size: 12px; font-weight: bold;')
+        stats_layout.addWidget(self.empty_slots_label)
+        layout.addLayout(stats_layout)
+        self._update_styles()
+    def set_container_info(self, container_info):
+        self.container_info = container_info
+        self._update_content()
+    def _update_content(self):
+        if not self.container_info:
+            return
+        self.name_label.setText(self.container_info['name'])
+        self.type_label.setText(t('base_inventory.type').format(type=self.container_info['type']) if t else f"Type: {self.container_info['type']}")
+        self.slots_label.setText(t('base_inventory.slots_count').format(count=self.container_info['slot_count']) if t else f"Slots: {self.container_info['slot_count']}")
+        self.location_label.setText(t('base_inventory.location').format(location=self.container_info['location']) if t else f"Location: {self.container_info['location']}")
+        image_path = get_container_image_path(self.container_info['type'])
+        if image_path and os.path.exists(image_path):
+            pixmap = QPixmap(image_path)
+            if not pixmap.isNull():
+                scaled = pixmap.scaled(70, 70, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                self.image_label.setPixmap(scaled)
+            else:
+                self.image_label.setText('📦')
+        else:
+            self.image_label.setText('📦')
+    def _update_styles(self):
+        if self.is_dark:
+            self.setStyleSheet('\n                QWidget {\n                    background-color: rgba(20, 25, 35, 0.8);\n                    border: 1px solid rgba(255, 255, 255, 0.1);\n                    border-radius: 6px;\n                    color: #e0e0e0;\n                }\n                QLabel {\n                    color: #e0e0e0;\n                }\n                QLabel[bold="true"] {\n                    font-weight: bold;\n                }\n            ')
+        else:
+            self.setStyleSheet('\n                QWidget {\n                    background-color: rgba(255, 255, 255, 0.9);\n                    border: 1px solid rgba(0, 0, 0, 0.1);\n                    border-radius: 6px;\n                    color: #333333;\n                }\n                QLabel {\n                    color: #333333;\n                }\n                QLabel[bold="true"] {\n                    font-weight: bold;\n                }\n            ')
+class BaseInventoryTab(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.manager = BaseInventoryManager()
+        self.is_dark = True
+        self.selected_item_id = None
+        self.selected_item_name = None
+        self._setup_ui()
+        self._setup_connections()
+        self._update_theme()
+        self._auto_save_timer = QTimer(self)
+        self._auto_save_timer.setSingleShot(True)
+        self._auto_save_timer.setInterval(2000)
+        self._auto_save_timer.timeout.connect(self._auto_save_changes)
+    def set_theme(self, is_dark):
+        self.is_dark = is_dark
+        self._update_theme()
+        if hasattr(self, 'container_list'):
+            self.container_list.set_theme(is_dark)
+        if hasattr(self, 'container_info'):
+            self.container_info.set_theme(is_dark)
+        if hasattr(self, 'inventory_grid'):
+            self.inventory_grid.set_theme(is_dark)
+        if hasattr(self, 'guild_combo'):
+            self.guild_combo.set_theme(is_dark)
+        if hasattr(self, 'base_combo'):
+            self.base_combo.set_theme(is_dark)
+    def refresh_labels(self):
+        if hasattr(self, 'guild_label'):
+            self.guild_label.setText(t('base_inventory.select_guild') if t else 'Select Guild:')
+        if hasattr(self, 'base_label'):
+            self.base_label.setText(t('base_inventory.select_base') if t else 'Select Base:')
+        if hasattr(self, 'container_label'):
+            self.container_label.setText(t('base_inventory.select_container') if t else 'Containers:')
+        if hasattr(self, 'item_label'):
+            self.item_label.setText(t('base_inventory.select_item') if t else 'Select Item:')
+        if hasattr(self, 'item_button'):
+            if self.selected_item_id and self.selected_item_name:
+                self.item_button.setText(self.selected_item_name)
+            else:
+                self.item_button.setText(t('base_inventory.all_items') if t else 'All Items')
+        if hasattr(self, 'clear_item_button'):
+            self.clear_item_button.setToolTip(t('base_inventory.clear_item') if t else 'Clear Item Filter')
+        if hasattr(self, 'container_info'):
+            pass
+        if hasattr(self, 'inventory_grid'):
+            self.inventory_grid.refresh_labels()
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(15)
+        guild_layout = QVBoxLayout()
+        guild_layout.setSpacing(2)
+        self.guild_label = QLabel(t('base_inventory.select_guild') if t else 'Select Guild:')
+        self.guild_label.setStyleSheet('font-weight: bold; font-size: 12px;')
+        self.guild_label.setFixedHeight(20)
+        guild_layout.addWidget(self.guild_label)
+        self.guild_combo = self._create_styled_combo()
+        self.guild_combo.currentIndexChanged.connect(self._on_guild_changed)
+        guild_layout.addWidget(self.guild_combo)
+        header_layout.addLayout(guild_layout)
+        base_layout = QVBoxLayout()
+        base_layout.setSpacing(2)
+        self.base_label = QLabel(t('base_inventory.select_base') if t else 'Select Base:')
+        self.base_label.setStyleSheet('font-weight: bold; font-size: 12px;')
+        self.base_label.setFixedHeight(20)
+        base_layout.addWidget(self.base_label)
+        self.base_combo = self._create_styled_combo()
+        self.base_combo.currentIndexChanged.connect(self._on_base_changed)
+        base_layout.addWidget(self.base_combo)
+        header_layout.addLayout(base_layout)
+        item_layout = QVBoxLayout()
+        item_layout.setSpacing(2)
+        self.item_label = QLabel(t('base_inventory.select_item') if t else 'Select Item:')
+        self.item_label.setStyleSheet('font-weight: bold; font-size: 12px;')
+        self.item_label.setFixedHeight(20)
+        item_layout.addWidget(self.item_label)
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(5)
+        self.item_button = QPushButton(t('base_inventory.all_items') if t else 'All Items')
+        self.item_button.setMinimumWidth(160)
+        self.item_button.setMaximumHeight(24)
+        self.item_button.clicked.connect(self._show_item_picker)
+        button_layout.addWidget(self.item_button)
+        self.clear_item_button = QPushButton('×')
+        self.clear_item_button.setFixedWidth(24)
+        self.clear_item_button.setFixedHeight(24)
+        self.clear_item_button.setToolTip(t('base_inventory.clear_item') if t else 'Clear Item Filter')
+        self.clear_item_button.clicked.connect(self._clear_item_filter)
+        button_layout.addWidget(self.clear_item_button)
+        item_layout.addLayout(button_layout)
+        header_layout.addLayout(item_layout)
+        header_layout.addStretch()
+        layout.addLayout(header_layout)
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter.setChildrenCollapsible(False)
+        left_panel = QWidget()
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(5)
+        self.container_label = QLabel(t('base_inventory.select_container') if t else 'Containers:')
+        self.container_label.setStyleSheet('font-weight: bold; font-size: 12px;')
+        left_layout.addWidget(self.container_label)
+        self.container_list = ContainerListWidget()
+        self.container_list.container_selected.connect(self._on_container_selected)
+        left_layout.addWidget(self.container_list)
+        self.container_info = ContainerInfoWidget()
+        left_layout.addWidget(self.container_info)
+        self.splitter.addWidget(left_panel)
+        right_panel = QWidget()
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(5)
+        self.inventory_grid = InventoryGridWidget()
+        right_layout.addWidget(self.inventory_grid)
+        self.splitter.addWidget(right_panel)
+        layout.addWidget(self.splitter)
+        self.splitter.setSizes([300, 700])
+    def _create_styled_combo(self):
+        combo = StyledCombo()
+        combo.setMinimumWidth(180)
+        combo.setMaxVisibleItems(12)
+        return combo
+    def _setup_connections(self):
+        self.inventory_grid.item_context_menu.connect(self._show_item_context_menu)
+        self.inventory_grid.empty_slot_context_menu.connect(self._show_empty_slot_context_menu)
+        self.inventory_grid.item_added.connect(self._trigger_auto_save)
+        self.inventory_grid.item_removed.connect(self._trigger_auto_save)
+        self.inventory_grid.item_count_changed.connect(self._trigger_auto_save)
+    def _update_theme(self):
+        if self.is_dark:
+            self.setStyleSheet('\n                QWidget {\n                    background-color: rgba(15, 20, 30, 0.9);\n                    color: #e0e0e0;\n                }\n                QLabel {\n                    color: #e0e0e0;\n                }\n                QComboBox {\n                    background-color: rgba(30, 35, 45, 0.8);\n                    border: 1px solid rgba(255, 255, 255, 0.2);\n                    border-radius: 4px;\n                    padding: 4px 8px;\n                    color: #e0e0e0;\n                }\n                QComboBox::drop-down {\n                    border-left: 1px solid rgba(255, 255, 255, 0.2);\n                }\n                QPushButton {\n                    background-color: rgba(74, 144, 226, 0.8);\n                    border: 1px solid rgba(74, 144, 226, 1.0);\n                    border-radius: 4px;\n                    padding: 6px 12px;\n                    color: white;\n                    font-weight: bold;\n                }\n                QPushButton:hover {\n                    background-color: rgba(74, 144, 226, 1.0);\n                }\n                QPushButton:pressed {\n                    background-color: rgba(50, 120, 200, 1.0);\n                }\n                QSplitter::handle {\n                    background-color: rgba(255, 255, 255, 0.1);\n                }\n                QSplitter::handle:hover {\n                    background-color: rgba(255, 255, 255, 0.2);\n                }\n            ')
+        else:
+            self.setStyleSheet('\n                QWidget {\n                    background-color: rgba(255, 255, 255, 0.9);\n                    color: #333333;\n                }\n                QLabel {\n                    color: #333333;\n                }\n                QComboBox {\n                    background-color: rgba(240, 240, 240, 0.8);\n                    border: 1px solid rgba(0, 0, 0, 0.1);\n                    border-radius: 4px;\n                    padding: 4px 8px;\n                    color: #333333;\n                }\n                QComboBox::drop-down {\n                    border-left: 1px solid rgba(0, 0, 0, 0.1);\n                }\n                QPushButton {\n                    background-color: rgba(74, 144, 226, 0.8);\n                    border: 1px solid rgba(74, 144, 226, 1.0);\n                    border-radius: 4px;\n                    padding: 6px 12px;\n                    color: white;\n                    font-weight: bold;\n                }\n                QPushButton:hover {\n                    background-color: rgba(74, 144, 226, 1.0);\n                }\n                QPushButton:pressed {\n                    background-color: rgba(50, 120, 200, 1.0);\n                }\n                QSplitter::handle {\n                    background-color: rgba(0, 0, 0, 0.1);\n                }\n                QSplitter::handle:hover {\n                    background-color: rgba(0, 0, 0, 0.2);\n                }\n            ')
+    def refresh(self):
+        self._load_guilds()
+        self._load_items()
+        self._update_theme()
+        self.refresh_labels()
+        if hasattr(self.parent, 'parent') and hasattr(self.parent.parent, 'results_widget'):
+            pass
+    def _load_guilds(self):
+        self.guild_combo.clear()
+        guilds = self.manager.load_guilds()
+        if not guilds:
+            self.guild_combo.addItem(t('base_inventory.no_save_loaded') if t else 'No save file loaded', None)
+            self.guild_combo.setEnabled(False)
+            self.base_combo.clear()
+            self.base_combo.addItem(t('base_inventory.load_save_first') if t else 'Load a save file first', None)
+            self.base_combo.setEnabled(False)
+            self.container_list.clear()
+            self.container_info.set_container_info(None)
+            self.inventory_grid.clear()
+            return
+        guilds_with_bases = []
+        for guild in guilds:
+            bases = self.manager.load_bases_for_guild(guild['id'])
+            if bases:
+                guilds_with_bases.append(guild)
+        if not guilds_with_bases:
+            self.guild_combo.addItem(t('base_inventory.no_guilds_with_bases') if t else 'No guilds with bases found', None)
+            self.guild_combo.setEnabled(False)
+            self.base_combo.clear()
+            self.base_combo.addItem(t('base_inventory.no_bases_available') if t else 'No bases available', None)
+            self.base_combo.setEnabled(False)
+            self.container_list.clear()
+            self.container_info.set_container_info(None)
+            self.inventory_grid.clear()
+            return
+        self.guild_combo.setEnabled(True)
+        for guild in guilds_with_bases:
+            self.guild_combo.addItem(f"{guild['name']} (Level {guild['level']})", guild['id'])
+        if guilds_with_bases:
+            self._on_guild_changed(0)
+    def _on_guild_changed(self, index):
+        if index >= 0:
+            guild_id = self.guild_combo.itemData(index)
+            if guild_id is None:
+                return
+            if hasattr(self, '_item_locations') and self._item_locations and (guild_id in self._item_locations):
+                self._load_bases_for_guild_filtered(guild_id)
+            else:
+                self._load_bases_for_guild(guild_id)
+        else:
+            self.base_combo.clear()
+            self.container_list.clear()
+            self.container_info.set_container_info(None)
+            self.inventory_grid.clear()
+    def _load_bases_for_guild(self, guild_id):
+        self.base_combo.clear()
+        bases = self.manager.load_bases_for_guild(guild_id)
+        if not bases:
+            self.base_combo.addItem(t('base_inventory.no_bases_found') if t else 'No bases found for this guild', None)
+            self.base_combo.setEnabled(False)
+            self.container_list.clear()
+            self.container_info.set_container_info(None)
+            self.inventory_grid.clear()
+            return
+        self.base_combo.setEnabled(True)
+        max_display_bases = 20
+        display_bases = bases[:max_display_bases]
+        for base in display_bases:
+            self.base_combo.addItem(f"{base['guild_name']} - Base {base['id'][:8]}", base['id'])
+        if len(bases) > max_display_bases:
+            remaining_count = len(bases) - max_display_bases
+            self.base_combo.addItem(f'... and {remaining_count} more bases', None)
+            self.base_combo.setItemEnabled(self.base_combo.count() - 1, False)
+        if display_bases:
+            self._on_base_changed(0)
+    def _load_bases_for_guild_filtered(self, guild_id):
+        self.base_combo.clear()
+        if hasattr(self, '_item_locations') and guild_id in self._item_locations:
+            filtered_bases = self._item_locations[guild_id]
+            if filtered_bases:
+                self.base_combo.setEnabled(True)
+                all_bases = self.manager.load_bases_for_guild(guild_id)
+                for base in all_bases:
+                    if base['id'] in filtered_bases:
+                        self.base_combo.addItem(f"{base['guild_name']} - Base {base['id'][:8]}", base['id'])
+                if self.base_combo.count() > 0:
+                    self._on_base_changed(0)
+            else:
+                self.base_combo.addItem(t('base_inventory.no_bases_with_item') if t else 'No bases found with this item', None)
+                self.base_combo.setEnabled(False)
+                self.container_list.clear()
+                self.container_info.set_container_info(None)
+                self.inventory_grid.clear()
+        else:
+            self._load_bases_for_guild(guild_id)
+    def _on_base_changed(self, index):
+        if index >= 0:
+            base_id = self.base_combo.itemData(index)
+            if hasattr(self, '_item_locations') and self._item_locations and (self.guild_combo.currentData() in self._item_locations) and (base_id in self._item_locations[self.guild_combo.currentData()]):
+                self._load_containers_for_base_filtered(base_id)
+            else:
+                self._load_containers_for_base(base_id)
+        else:
+            self.container_list.clear()
+            self.container_info.set_container_info(None)
+            self.inventory_grid.clear()
+    def _load_containers_for_base(self, base_id):
+        self.container_list.clear()
+        containers = self.manager.load_containers_for_base(base_id)
+        for container in containers:
+            self.container_list.add_container(container)
+        if containers:
+            if self.container_list.topLevelItemCount() > 0:
+                self.container_list.setCurrentItem(self.container_list.topLevelItem(0))
+        else:
+            self.container_info.set_container_info(None)
+            self.inventory_grid.clear()
+    def _load_containers_for_base_filtered(self, base_id):
+        self.container_list.clear()
+        guild_id = self.guild_combo.currentData()
+        if hasattr(self, '_item_locations') and self._item_locations and (guild_id in self._item_locations):
+            guild_data = self._item_locations[guild_id]
+            if isinstance(guild_data, dict):
+                if base_id in guild_data:
+                    filtered_containers = guild_data[base_id]
+                    if filtered_containers:
+                        all_containers = self.manager.load_containers_for_base(base_id)
+                        for container in all_containers:
+                            if container['id'] in filtered_containers:
+                                self.container_list.add_container(container)
+                        if self.container_list.topLevelItemCount() > 0:
+                            self.container_list.setCurrentItem(self.container_list.topLevelItem(0))
+                    else:
+                        self.container_info.set_container_info(None)
+                        self.inventory_grid.clear()
+                else:
+                    self.container_info.set_container_info(None)
+                    self.inventory_grid.clear()
+            else:
+                self._load_containers_for_base(base_id)
+        else:
+            self._load_containers_for_base(base_id)
+    def _on_container_selected(self, container_id):
+        container_info = next((c for c in self.manager.containers if c['id'] == container_id), None)
+        if container_info:
+            self.container_info.set_container_info(container_info)
+            inventory_container = self.manager.select_container(container_id)
+            if inventory_container:
+                items = inventory_container.get_items()
+                max_slots = container_info['slot_count']
+                self.inventory_grid.load_items(items, max_slots=max_slots)
+                self._update_container_stats()
+            else:
+                self.inventory_grid.clear()
+        else:
+            self.container_info.set_container_info(None)
+            self.inventory_grid.clear()
+    def _update_container_stats(self):
+        if self.manager.current_container and self.manager.inventory_container:
+            filled_slots = self.manager.get_items_count()
+            empty_slots = self.manager.get_empty_slots_count()
+            self.container_info.items_count_label.setText(t('base_inventory.items').format(count=filled_slots) if t else f'Items: {filled_slots}')
+            self.container_info.empty_slots_label.setText(t('base_inventory.empty').format(count=empty_slots) if t else f'Empty: {empty_slots}')
+    def _on_item_count_changed(self, slot_index, new_count):
+        self._update_container_stats()
+    def _add_item(self):
+        if not self.manager.inventory_container:
+            self._show_warning(t('base_inventory.select_container_first') if t else 'Please select a container first')
+            return
+        dialog = ItemPickerDialog(self)
+        dialog.item_selected.connect(lambda item_id, qty: self._do_add_item(item_id, qty))
+        dialog.exec()
+    def _do_add_item(self, item_id: str, count: int):
+        if item_id and count > 0:
+            empty_slot_index = self.manager.find_empty_slot()
+            if empty_slot_index == -1:
+                self._show_warning(t('base_inventory.container_full') if t else 'Container is full!')
+                return
+            if self.manager.add_item_to_slot(empty_slot_index, item_id, count):
+                self._refresh_container_ui()
+                self._update_container_stats()
+                self._trigger_auto_save()
+            else:
+                self._show_warning(t('base_inventory.failed_to_add_item') if t else 'Failed to add item')
+    def _remove_item(self):
+        if not self.manager.inventory_container:
+            self._show_warning(t('base_inventory.select_container_first') if t else 'Please select a container first')
+            return
+        self._show_info(t('base_inventory.use_context_menu') if t else 'Right-click on an item to remove it')
+    def _clear_container(self):
+        if not self.manager.inventory_container:
+            self._show_warning(t('base_inventory.select_container_first') if t else 'Please select a container first')
+            return
+        reply = QMessageBox.question(self, t('base_inventory.clear_container') if t else 'Clear Container', t('base_inventory.clear_container_confirm') if t else 'Are you sure you want to clear all items from this container?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            empty_slots = [{'RawData': {'value': {'item': {'static_id': '', 'dynamic_id': {'created_world_id': '00000000-0000-0000-0000-000000000000', 'local_id_in_created_world': '00000000-0000-0000-0000-000000000000'}}, 'count': 0}}} for _ in range(self.manager.current_container['slot_count'])]
+            if self.manager.update_container_contents(self.manager.current_container['id'], empty_slots):
+                inventory_container = self.manager.select_container(self.manager.current_container['id'])
+                if inventory_container:
+                    items = inventory_container.get_items()
+                    max_slots = inventory_container.get_max_slots()
+                    self.inventory_grid.load_items(items, max_slots=max_slots)
+                self._update_container_stats()
+                self._show_info(t('base_inventory.container_cleared') if t else 'Container cleared successfully')
+            else:
+                self._show_warning(t('base_inventory.failed_to_clear_container') if t else 'Failed to clear container')
+    def _save_changes(self):
+        if not self.manager.save_changes():
+            self._show_warning(t('base_inventory.save_failed') if t else 'Failed to save changes')
+            return
+        self._show_info(t('base_inventory.save_success') if t else 'Changes saved successfully')
+    def _refresh_container_ui(self):
+        if self.manager.current_container:
+            inventory_container = self.manager.select_container(self.manager.current_container['id'])
+            if inventory_container:
+                items = inventory_container.get_items()
+                max_slots = inventory_container.get_max_slots()
+                self.inventory_grid.load_items(items, max_slots=max_slots)
+                self._update_container_stats()
+    def _refresh_all(self):
+        current_guild_index = self.guild_combo.currentIndex()
+        current_base_index = self.base_combo.currentIndex()
+        self._load_guilds()
+        if current_guild_index >= 0:
+            self.guild_combo.setCurrentIndex(current_guild_index)
+        if current_base_index >= 0:
+            self.base_combo.setCurrentIndex(current_base_index)
+    def _filter_guilds_and_bases_by_item(self):
+        if not self.selected_item_id:
+            self._reset_filters()
+            return
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        start_time = time.time()
+        try:
+            item_locations = self.manager._get_cached_item_locations(self.selected_item_id)
+            if not item_locations:
+                all_guilds = self.manager.load_guilds()
+                if not all_guilds:
+                    return
+                item_locations = {}
+                total_guilds = len(all_guilds)
+                for i, guild in enumerate(all_guilds):
+                    guild_id = guild['id']
+                    bases = self.manager.load_bases_for_guild(guild_id)
+                    for base in bases:
+                        base_id = base['id']
+                        containers = self.manager.load_containers_for_base(base_id)
+                        containers_with_item = []
+                        for container in containers:
+                            container_id = container['id']
+                            inventory_container = self.manager.select_container(container_id)
+                            if inventory_container:
+                                items = inventory_container.get_items()
+                                for item in items:
+                                    if item.get('item_id') == self.selected_item_id:
+                                        containers_with_item.append(container_id)
+                                        break
+                        if containers_with_item:
+                            if guild_id not in item_locations:
+                                item_locations[guild_id] = {}
+                            item_locations[guild_id][base_id] = containers_with_item
+                    if total_guilds > 5:
+                        elapsed = time.time() - start_time
+                        if elapsed > 1.0:
+                            QApplication.processEvents()
+            self.guild_combo.clear()
+            if item_locations:
+                all_guilds = self.manager.load_guilds()
+                for guild in all_guilds:
+                    if guild['id'] in item_locations:
+                        self.guild_combo.addItem(f"{guild['name']} (Level {guild['level']})", guild['id'])
+                self._item_locations = item_locations
+                self._on_guild_changed(0)
+            else:
+                display_name = self.selected_item_name or self._get_item_name(self.selected_item_id)
+                message = t('base_inventory.no_guilds_with_item').format(item_name=display_name) if t else f'No guilds found with {display_name}'
+                self._show_info(message)
+                self._reset_filters()
+                self.selected_item_id = None
+                self.selected_item_name = None
+                self.item_button.setText(t('base_inventory.all_items') if t else 'All Items')
+                self.clear_item_button.setVisible(False)
+        finally:
+            QApplication.restoreOverrideCursor()
+            elapsed = time.time() - start_time
+            if elapsed > 0.5:
+                if hasattr(self.parent, 'status_bar'):
+                    self.parent.status_bar.showMessage(f'Item filter completed in {elapsed:.2f}s', 3000)
+    def _reset_filters(self):
+        self._item_locations = None
+        self._load_guilds()
+    def _load_items(self):
+        if self.selected_item_id and self.selected_item_name:
+            self.item_button.setText(self.selected_item_name)
+            self.clear_item_button.setVisible(True)
+        else:
+            self.item_button.setText(t('base_inventory.all_items') if t else 'All Items')
+            self.clear_item_button.setVisible(False)
+    def _get_all_items(self):
+        try:
+            from palworld_aio import constants
+            if hasattr(constants, 'item_data') and constants.item_data:
+                return {item_id: item_data.get('name', item_id) for item_id, item_data in constants.item_data.items()}
+        except:
+            pass
+        all_items = {}
+        all_guilds = self.manager.load_guilds()
+        if all_guilds:
+            for guild in all_guilds:
+                guild_id = guild['id']
+                bases = self.manager.load_bases_for_guild(guild_id)
+                for base in bases:
+                    base_id = base['id']
+                    containers = self.manager.load_containers_for_base(base_id)
+                    for container in containers:
+                        container_id = container['id']
+                        inventory_container = self.manager.select_container(container_id)
+                        if inventory_container:
+                            items = inventory_container.get_items()
+                            for item in items:
+                                item_id = item.get('item_id')
+                                if item_id and item_id != '':
+                                    item_name = item.get('item_name', item_id)
+                                    all_items[item_id] = item_name
+        return all_items
+    def _show_info(self, message):
+        QMessageBox.information(self, t('info.title') if t else 'Information', message)
+    def _show_warning(self, message):
+        QMessageBox.warning(self, t('warning.title') if t else 'Warning', message)
+    def _show_item_context_menu(self, slot_data, pos):
+        if not slot_data:
+            return
+        menu = QMenu(self)
+        menu.addAction(t('base_inventory.edit_quantity') if t else 'Edit Quantity', lambda: self._edit_item_quantity(slot_data))
+        menu.addAction(t('base_inventory.remove_item') if t else 'Remove Item', lambda: self._remove_item_from_slot(slot_data))
+        menu.addSeparator()
+        menu.addAction(t('base_inventory.clear_container') if t else 'Clear Container', self._clear_container)
+        menu.exec(pos)
+    def _show_empty_slot_context_menu(self, container_type, slot_index, pos):
+        menu = QMenu(self)
+        menu.addAction(t('base_inventory.add_item') if t else 'Add Item', lambda: self._add_item_to_slot(slot_index))
+        menu.addAction(t('base_inventory.clear_container') if t else 'Clear Container', self._clear_container)
+        menu.exec(pos)
+    def _edit_item_quantity(self, slot_data):
+        if not self.manager.inventory_container:
+            self._show_warning(t('base_inventory.select_container_first') if t else 'Please select a container first')
+            return
+        current_count = slot_data.get('stack_count', 0)
+        new_count, ok = QInputDialog.getInt(self, t('base_inventory.edit_quantity') if t else 'Edit Quantity', t('base_inventory.current_count') if t else f'Current count: {current_count}', current_count, 0, 9999, 1)
+        if ok:
+            slot_index = slot_data.get('slot_index', 0)
+            if self.manager.update_item_count(slot_index, new_count):
+                inventory_container = self.manager.select_container(self.manager.current_container['id'])
+                if inventory_container:
+                    items = inventory_container.get_items()
+                    max_slots = inventory_container.get_max_slots()
+                    self.inventory_grid.load_items(items, max_slots=max_slots)
+                self._update_container_stats()
+            else:
+                self._show_warning(t('base_inventory.failed_to_update_quantity') if t else 'Failed to update quantity')
+    def _remove_item_from_slot(self, slot_data):
+        if not self.manager.inventory_container:
+            self._show_warning(t('base_inventory.select_container_first') if t else 'Please select a container first')
+            return
+        slot_index = slot_data.get('slot_index', 0)
+        item_name = slot_data.get('item_name', 'Unknown')
+        if self.manager.remove_item(slot_index, 999999):
+            inventory_container = self.manager.select_container(self.manager.current_container['id'])
+            if inventory_container:
+                items = inventory_container.get_items()
+                max_slots = inventory_container.get_max_slots()
+                self.inventory_grid.load_items(items, max_slots=max_slots)
+            self._update_container_stats()
+        else:
+            self._show_warning(t('base_inventory.failed_to_remove_item') if t else 'Failed to remove item')
+    def _add_item_to_slot(self, slot_index):
+        if not self.manager.inventory_container:
+            self._show_warning(t('base_inventory.select_container_first') if t else 'Please select a container first')
+            return
+        dialog = ItemPickerDialog(self)
+        dialog.item_selected.connect(lambda item_id, qty: self._do_add_item_to_slot(slot_index, item_id, qty))
+        dialog.exec()
+    def _do_add_item_to_slot(self, slot_index: int, item_id: str, count: int):
+        if item_id and count > 0:
+            if self.manager.add_item_to_slot(slot_index, item_id, count):
+                inventory_container = self.manager.select_container(self.manager.current_container['id'])
+                if inventory_container:
+                    items = inventory_container.get_items()
+                    max_slots = inventory_container.get_max_slots()
+                    self.inventory_grid.load_items(items, max_slots=max_slots)
+                self._update_container_stats()
+                self._trigger_auto_save()
+            else:
+                self._show_warning(t('base_inventory.failed_to_add_item') if t else 'Failed to add item')
+    def _trigger_auto_save(self):
+        if self.manager.inventory_container:
+            self._auto_save_timer.start()
+    def _auto_save_changes(self):
+        if not self.manager.inventory_container:
+            return
+        try:
+            if self.manager.save_changes():
+                if hasattr(self.parent, 'status_bar'):
+                    self.parent.status_bar.showMessage(t('base_inventory.auto_save_success') if t else 'Auto-saved changes', 2000)
+            else:
+                self._show_warning(t('base_inventory.auto_save_failed') if t else 'Auto-save failed - changes not saved')
+        except Exception as e:
+            self._show_warning(f'Auto-save error: {str(e)}')
+    def _show_item_picker(self):
+        dialog = ItemPickerDialog(self)
+        dialog.item_selected.connect(self._on_item_selected_from_picker)
+        dialog.exec()
+    def _on_item_selected_from_picker(self, item_id: str, qty: int):
+        if item_id:
+            item_name = self._get_item_name(item_id)
+            if item_name:
+                self.selected_item_id = item_id
+                self.selected_item_name = item_name
+                self.item_button.setText(item_name)
+                self.clear_item_button.setVisible(True)
+                self._filter_guilds_and_bases_by_item()
+            else:
+                self._show_warning(t('base_inventory.item_not_found') if t else f'Could not find item name for ID: {item_id}')
+    def _get_item_name(self, item_id: str) -> str:
+        if not item_id:
+            return item_id
+        try:
+            from palworld_aio import constants
+            if hasattr(constants, 'item_data') and constants.item_data:
+                item_data = constants.item_data.get(item_id, {})
+                if item_data and item_data.get('name'):
+                    return item_data['name']
+        except:
+            pass
+        try:
+            all_guilds = self.manager.load_guilds()
+            if all_guilds:
+                for guild in all_guilds:
+                    guild_id = guild['id']
+                    bases = self.manager.load_bases_for_guild(guild_id)
+                    for base in bases:
+                        base_id = base['id']
+                        containers = self.manager.load_containers_for_base(base_id)
+                        for container in containers:
+                            container_id = container['id']
+                            inventory_container = self.manager.select_container(container_id)
+                            if inventory_container:
+                                items = inventory_container.get_items()
+                                for item in items:
+                                    if item.get('item_id') == item_id:
+                                        item_name = item.get('item_name')
+                                        if item_name and item_name != item_id:
+                                            return item_name
+        except:
+            pass
+        try:
+            all_items = self._get_all_items()
+            if item_id in all_items:
+                return all_items[item_id]
+        except:
+            pass
+        return item_id.replace('_', ' ').replace('EPalStaticItemId::', '').title()
+    def _clear_item_filter(self):
+        self.selected_item_id = None
+        self.selected_item_name = None
+        self.item_button.setText(t('base_inventory.all_items') if t else 'All Items')
+        self.clear_item_button.setVisible(False)
+        self._reset_filters()
