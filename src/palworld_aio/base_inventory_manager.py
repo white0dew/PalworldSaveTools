@@ -111,17 +111,15 @@ def get_guild_chest(guild_id):
 def get_container_slot_count(container_id):
     if not constants.loaded_level_json:
         return 0
-    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
-    item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
     container_id_str = str(container_id)
     container_id_low = container_id_str.replace('-', '').lower()
-    for cont in item_containers:
+    lookup = constants.get_container_lookup()
+    cont = lookup.get(container_id_low)
+    if cont:
         try:
-            cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
-            if cont_id == container_id_low:
-                return cont['value'].get('SlotNum', {}).get('value', 0)
+            return cont['value'].get('SlotNum', {}).get('value', 0)
         except:
-            continue
+            pass
     return 0
 def get_container_location(map_obj):
     try:
@@ -139,54 +137,50 @@ def get_container_location(map_obj):
 def get_container_contents(container_id):
     if not constants.loaded_level_json:
         return []
-    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
-    item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
     container_id_str = str(container_id)
     container_id_low = container_id_str.replace('-', '').lower()
-    for cont in item_containers:
+    lookup = constants.get_container_lookup()
+    cont = lookup.get(container_id_low)
+    if cont:
         try:
-            cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
-            if cont_id == container_id_low:
-                return cont['value'].get('Slots', {}).get('value', {}).get('values', [])
+            return cont['value'].get('Slots', {}).get('value', {}).get('values', [])
         except:
-            continue
+            pass
     return []
 def update_container_contents(container_id, items):
     if not constants.loaded_level_json:
         return False
-    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
-    item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
     container_id_str = str(container_id)
     container_id_low = container_id_str.replace('-', '').lower()
-    for cont in item_containers:
+    lookup = constants.get_container_lookup()
+    cont = lookup.get(container_id_low)
+    if cont:
         try:
-            cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
-            if cont_id == container_id_low:
-                cont['value']['Slots']['value']['values'] = items
-                item_ids = []
-                for item in items:
-                    item_id = None
-                    raw_data = item.get('RawData', {})
-                    if raw_data.get('type') == 'Array':
-                        values = raw_data.get('value', {}).get('values', {})
-                        item_info = values.get('item', {})
-                        item_id = item_info.get('static_id')
-                    elif raw_data.get('type') == 'ArrayProperty':
-                        item_info = raw_data.get('value', {}).get('item', {})
-                        item_id = item_info.get('static_id')
-                    elif 'item' in raw_data.get('value', {}):
-                        item_info = raw_data.get('value', {}).get('item', {})
-                        item_id = item_info.get('static_id')
-                    if item_id and item_id not in item_ids:
-                        item_ids.append(item_id)
-                if 'RawData' in cont['value']:
-                    raw_data = cont['value']['RawData'].get('value', {})
-                    if 'permission' not in raw_data:
-                        raw_data['permission'] = {'item_static_ids': [], 'type_a': [], 'type_b': []}
-                    raw_data['permission']['item_static_ids'] = item_ids
-                return True
+            cont['value']['Slots']['value']['values'] = items
+            item_ids = []
+            for item in items:
+                item_id = None
+                raw_data = item.get('RawData', {})
+                if raw_data.get('type') == 'Array':
+                    values = raw_data.get('value', {}).get('values', {})
+                    item_info = values.get('item', {})
+                    item_id = item_info.get('static_id')
+                elif raw_data.get('type') == 'ArrayProperty':
+                    item_info = raw_data.get('value', {}).get('item', {})
+                    item_id = item_info.get('static_id')
+                elif 'item' in raw_data.get('value', {}):
+                    item_info = raw_data.get('value', {}).get('item', {})
+                    item_id = item_info.get('static_id')
+                if item_id and item_id not in item_ids:
+                    item_ids.append(item_id)
+            if 'RawData' in cont['value']:
+                raw_data = cont['value']['RawData'].get('value', {})
+                if 'permission' not in raw_data:
+                    raw_data['permission'] = {'item_static_ids': [], 'type_a': [], 'type_b': []}
+                raw_data['permission']['item_static_ids'] = item_ids
+            return True
         except Exception as e:
-            continue
+            pass
     return False
 def get_container_image_path(container_type):
     base_path = constants.get_base_path()
@@ -200,7 +194,17 @@ def get_container_image_path(container_type):
                 return os.path.join(icons_path, filename)
     return icon_path if os.path.exists(icon_path) else None
 class BaseInventoryManager:
+    _instance = None
+    _lock = threading.Lock()
+    def __new__(cls):
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super(BaseInventoryManager, cls).__new__(cls)
+        return cls._instance
     def __init__(self):
+        if hasattr(self, '_initialized'):
+            return
         self.current_guild = None
         self.current_base = None
         self.current_container = None
@@ -212,6 +216,15 @@ class BaseInventoryManager:
         self._cache_valid = False
         self._cache_build_time = 0
         self._cache_lock = threading.Lock()
+        self._initialized = True
+    @classmethod
+    def get_instance(cls):
+        return cls._instance
+    @classmethod
+    def build_cache(cls):
+        instance = cls.get_instance()
+        if instance:
+            instance._build_item_location_cache()
     def _setup_auto_save(self):
         self._auto_save_timer = QTimer()
         self._auto_save_timer.setSingleShot(True)
@@ -243,19 +256,10 @@ class BaseInventoryManager:
     def select_container(self, container_id):
         self.current_container = next((c for c in self.containers if c['id'] == container_id), None)
         if self.current_container:
-            wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
-            item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
             container_id_str = str(container_id)
             container_id_low = container_id_str.replace('-', '').lower()
-            container_data = None
-            for cont in item_containers:
-                try:
-                    cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
-                    if cont_id == container_id_low:
-                        container_data = cont
-                        break
-                except:
-                    continue
+            lookup = constants.get_container_lookup()
+            container_data = lookup.get(container_id_low)
             if container_data:
                 max_slots = self.current_container['slot_count'] if self.current_container else None
                 self.inventory_container = InventoryContainer(container_id, container_data, max_slots=max_slots)
@@ -482,20 +486,18 @@ class BaseInventoryManager:
     def expand_container_capacity(self, container_id, new_slot_count):
         if not constants.loaded_level_json:
             return False
-        wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
-        item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
         container_id_str = str(container_id)
         container_id_low = container_id_str.replace('-', '').lower()
-        for cont in item_containers:
+        lookup = constants.get_container_lookup()
+        cont = lookup.get(container_id_low)
+        if cont:
             try:
-                cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
-                if cont_id == container_id_low:
-                    cont['value']['SlotNum']['value'] = new_slot_count
-                    if self.current_container and self.current_container['id'] == container_id:
-                        self.current_container['slot_count'] = new_slot_count
-                    return True
+                cont['value']['SlotNum']['value'] = new_slot_count
+                if self.current_container and self.current_container['id'] == container_id:
+                    self.current_container['slot_count'] = new_slot_count
+                return True
             except:
-                continue
+                pass
         return False
     def _generate_dynamic_item_uuids(self):
         return {'created_world_id': str(uuid.uuid4()), 'local_id_in_created_world': str(uuid.uuid4())}
@@ -515,17 +517,9 @@ class BaseInventoryManager:
             return False
         try:
             container_id = self.current_container['id']
-            wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
-            item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
-            container_data = None
-            for cont in item_containers:
-                try:
-                    cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
-                    if cont_id == str(container_id).replace('-', '').lower():
-                        container_data = cont
-                        break
-                except:
-                    continue
+            container_id_low = str(container_id).replace('-', '').lower()
+            lookup = constants.get_container_lookup()
+            container_data = lookup.get(container_id_low)
             if not container_data:
                 return False
             save_slot_count = container_data['value'].get('SlotNum', {}).get('value', 0)

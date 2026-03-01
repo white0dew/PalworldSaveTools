@@ -209,6 +209,12 @@ def delete_inactive_bases(days_threshold, parent=None):
         if gid in inactive_guild_ids:
             delete_base_camp(b, gid)
             removed += 1
+    if removed > 0:
+        constants.invalidate_container_lookup()
+        from palworld_aio.base_inventory_manager import BaseInventoryManager
+        manager = BaseInventoryManager.get_instance()
+        if manager:
+            manager.invalidate_cache()
     return removed
 def delete_duplicated_players(parent=None):
     if not constants.current_save_path or not constants.loaded_level_json:

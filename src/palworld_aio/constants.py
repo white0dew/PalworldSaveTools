@@ -53,6 +53,7 @@ backup_save_path = None
 srcGuildMapping = None
 player_levels = {}
 base_guild_lookup = {}
+container_lookup = {}
 files_to_delete = set()
 PLAYER_PAL_COUNTS = {}
 PLAYER_DETAILS_CACHE = {}
@@ -62,3 +63,22 @@ selected_source_player = None
 dps_executor = None
 dps_futures = []
 dps_tasks = []
+def get_container_lookup():
+    global container_lookup
+    if container_lookup and loaded_level_json:
+        return container_lookup
+    if not loaded_level_json:
+        return {}
+    container_lookup = {}
+    wsd = loaded_level_json['properties']['worldSaveData']['value']
+    item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
+    for cont in item_containers:
+        try:
+            cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
+            container_lookup[cont_id] = cont
+        except:
+            pass
+    return container_lookup
+def invalidate_container_lookup():
+    global container_lookup
+    container_lookup = {}

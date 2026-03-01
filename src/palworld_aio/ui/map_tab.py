@@ -1402,6 +1402,9 @@ class MapTab(QWidget):
                 base_entry = base_data['data']
                 guild_id = base_data['guild_id']
                 delete_base_camp(base_entry, guild_id)
+                constants.invalidate_container_lookup()
+                if self.parent_window and hasattr(self.parent_window, 'base_inventory_tab'):
+                    self.parent_window.base_inventory_tab.manager.invalidate_cache()
                 self.refresh()
                 if self.parent_window:
                     self.parent_window.refresh_all()
@@ -1539,6 +1542,9 @@ class MapTab(QWidget):
                 with open(file_path, 'r', encoding='utf-8') as f:
                     exported_data = json.load(f)
                 if import_base_json(constants.loaded_level_json, exported_data, guild_id):
+                    constants.invalidate_container_lookup()
+                    if self.parent_window and hasattr(self.parent_window, 'base_inventory_tab'):
+                        self.parent_window.base_inventory_tab.manager.invalidate_cache()
                     successful_imports += 1
                     try:
                         raw_t = exported_data['base_camp']['value']['RawData']['value']['transform']['translation']

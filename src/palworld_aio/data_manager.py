@@ -265,6 +265,11 @@ def delete_guild(guild_id):
                 delete_base_camp(b, guild_id, delete_workers=True)
         except:
             pass
+    constants.invalidate_container_lookup()
+    from palworld_aio.base_inventory_manager import BaseInventoryManager
+    manager = BaseInventoryManager.get_instance()
+    if manager:
+        manager.invalidate_cache()
     for ch in char_map[:]:
         try:
             raw = ch['value']['RawData']['value']
@@ -452,17 +457,15 @@ def get_guild_chest(guild_id):
 def get_container_slot_count(container_id):
     if not constants.loaded_level_json:
         return 0
-    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
-    item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
     container_id_str = str(container_id)
     container_id_low = container_id_str.replace('-', '').lower()
-    for cont in item_containers:
+    lookup = constants.get_container_lookup()
+    cont = lookup.get(container_id_low)
+    if cont:
         try:
-            cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
-            if cont_id == container_id_low:
-                return cont['value'].get('SlotNum', {}).get('value', 0)
+            return cont['value'].get('SlotNum', {}).get('value', 0)
         except:
-            continue
+            pass
     return 0
 def get_container_location(map_obj):
     try:
@@ -477,33 +480,29 @@ def get_container_location(map_obj):
 def get_container_contents(container_id):
     if not constants.loaded_level_json:
         return []
-    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
-    item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
     container_id_str = str(container_id)
     container_id_low = container_id_str.replace('-', '').lower()
-    for cont in item_containers:
+    lookup = constants.get_container_lookup()
+    cont = lookup.get(container_id_low)
+    if cont:
         try:
-            cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
-            if cont_id == container_id_low:
-                return cont['value'].get('Slots', {}).get('value', {}).get('values', [])
+            return cont['value'].get('Slots', {}).get('value', {}).get('values', [])
         except:
-            continue
+            pass
     return []
 def update_container_contents(container_id, items):
     if not constants.loaded_level_json:
         return False
-    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
-    item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
     container_id_str = str(container_id)
     container_id_low = container_id_str.replace('-', '').lower()
-    for cont in item_containers:
+    lookup = constants.get_container_lookup()
+    cont = lookup.get(container_id_low)
+    if cont:
         try:
-            cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
-            if cont_id == container_id_low:
-                cont['value']['Slots']['value']['values'] = items
-                return True
+            cont['value']['Slots']['value']['values'] = items
+            return True
         except:
-            continue
+            pass
     return False
 def gather_and_update_dynamic_containers():
     print('🔍 [DEBUG] gather_and_update_dynamic_containers() - Enhanced version called')

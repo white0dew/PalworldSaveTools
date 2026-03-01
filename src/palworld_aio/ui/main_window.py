@@ -1014,6 +1014,9 @@ class MainWindow(QMainWindow):
         def task():
             return delete_empty_guilds(self)
         def on_finished(removed):
+            if removed > 0:
+                constants.invalidate_container_lookup()
+                self.base_inventory_tab.manager.invalidate_cache()
             self.refresh_all()
             msg_box = self._create_message_box(QMessageBox.Information)
             msg_box.setWindowTitle(t('Done'))
@@ -1022,29 +1025,6 @@ class MainWindow(QMainWindow):
             msg_box.exec()
         run_with_loading(on_finished, task)
     def _delete_inactive_bases(self):
-        if not constants.loaded_level_json:
-            msg_box = self._create_message_box(QMessageBox.Warning)
-            msg_box.setWindowTitle(t('error.title') if t else 'Error')
-            msg_box.setText(t('error.no_save_loaded') if t else 'No save file loaded.')
-            msg_box.addButton(t('button.ok') if t else 'OK', QMessageBox.AcceptRole)
-            msg_box.exec()
-            return
-        days = DaysInputDialog.get_days(t('deletion.inactive_bases.title') if t else 'Delete Inactive Bases', t('deletion.inactive_bases.prompt') if t else 'Delete bases where ALL players inactive for how many days?', self)
-        if not days:
-            return
-        def task():
-            cnt = delete_inactive_bases(days, self)
-            self._delete_orphaned_bases()
-            return cnt
-        def on_finished(cnt):
-            self.refresh_all()
-            msg_box = self._create_message_box(QMessageBox.Information)
-            msg_box.setWindowTitle(t('Done') if t else 'Done')
-            msg_box.setText(t('bases.deleted_count', count=cnt) if t else f'Deleted {cnt} bases')
-            msg_box.addButton(t('button.ok') if t else 'OK', QMessageBox.AcceptRole)
-            msg_box.exec()
-        run_with_loading(on_finished, task)
-    def _delete_orphaned_bases(self):
         if not constants.loaded_level_json:
             return
         wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
@@ -1059,6 +1039,8 @@ class MainWindow(QMainWindow):
                 if delete_base_camp(b, gid):
                     cnt += 1
         if cnt > 0:
+            constants.invalidate_container_lookup()
+            self.base_inventory_tab.manager.invalidate_cache()
             self._show_info(t('Done'), t('orphaned_bases_deleted', count=cnt))
     def _delete_duplicate_players(self):
         if not constants.loaded_level_json:
@@ -1067,6 +1049,9 @@ class MainWindow(QMainWindow):
         def task():
             return delete_duplicated_players(self)
         def on_finished(removed):
+            if removed > 0:
+                constants.invalidate_container_lookup()
+                self.base_inventory_tab.manager.invalidate_cache()
             self.refresh_all()
             self._show_info(t('Done'), t('deletion.duplicates_removed', count=removed))
         run_with_loading(on_finished, task)
@@ -1253,6 +1238,8 @@ class MainWindow(QMainWindow):
             self._show_warning(t('Error'), t('guild.common.select_guild_first'))
             return
         if move_player_to_guild(player_data[4], guild_data[1]):
+            constants.invalidate_container_lookup()
+            self.base_inventory_tab.manager.invalidate_cache()
             self.refresh_all()
             self._show_info(t('Done'), t('guild.move.moved', player=player_data[0], guild=guild_data[0]))
         else:
@@ -1377,10 +1364,15 @@ class MainWindow(QMainWindow):
         from ..data_manager import delete_base_camp
         wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
         base_list = wsd.get('BaseCampSaveData', {}).get('value', [])
+        deleted = False
         for b in base_list:
             if str(b['key']).replace('-', '').lower() == bid.replace('-', '').lower():
                 delete_base_camp(b, gid)
+                deleted = True
                 break
+        if deleted:
+            constants.invalidate_container_lookup()
+            self.base_inventory_tab.manager.invalidate_cache()
         self.refresh_all()
         self._show_info(t('Done'), t('deletion.base_deleted'))
     def _rename_player(self, uid, old_name):
@@ -1427,6 +1419,9 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 failed_imports += 1
                 failed_files.append(os.path.basename(file_path) + f'(error: {str(e)})')
+        if successful_imports > 0:
+            constants.invalidate_container_lookup()
+            self.base_inventory_tab.manager.invalidate_cache()
         self.refresh_all()
         if successful_imports > 0:
             msg = f'Successfully imported {successful_imports} base(s).'

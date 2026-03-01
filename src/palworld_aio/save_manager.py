@@ -90,10 +90,13 @@ class SaveManager(QObject):
             t0 = time.perf_counter()
             constants.loaded_level_json = sav_to_gvas_wrapper(p)
             t1 = time.perf_counter()
+            constants.invalidate_container_lookup()
             from palworld_aio.dynamic_item_manager import get_dynamic_item_manager
             dynamic_manager = get_dynamic_item_manager()
             dynamic_manager.sync_with_save_data(constants.loaded_level_json)
             self._build_player_levels()
+            from palworld_aio.base_inventory_manager import BaseInventoryManager
+            BaseInventoryManager.build_cache()
             if not constants.loaded_level_json:
                 self.load_finished.emit(False)
                 return False
@@ -148,7 +151,10 @@ class SaveManager(QObject):
         t0 = time.perf_counter()
         constants.loaded_level_json = sav_to_gvas_wrapper(level_sav_path)
         t1 = time.perf_counter()
+        constants.invalidate_container_lookup()
         self._build_player_levels()
+        from palworld_aio.base_inventory_manager import BaseInventoryManager
+        BaseInventoryManager.build_cache()
         if not constants.loaded_level_json:
             raise Exception('Failed to parse Level.sav')
         data_source = constants.loaded_level_json['properties']['worldSaveData']['value']

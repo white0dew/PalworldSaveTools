@@ -75,17 +75,15 @@ def get_container_slot_count(container_id: str) -> int:
         from . import constants
     if not constants.loaded_level_json:
         return 0
-    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
-    item_containers = wsd.get('ItemContainerSaveData', {}).get('value', [])
     container_id_str = str(container_id)
     container_id_low = container_id_str.replace('-', '').lower()
-    for cont in item_containers:
+    lookup = constants.get_container_lookup()
+    cont = lookup.get(container_id_low)
+    if cont:
         try:
-            cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
-            if cont_id == container_id_low:
-                return cont['value'].get('SlotNum', {}).get('value', 0)
+            return cont['value'].get('SlotNum', {}).get('value', 0)
         except:
-            continue
+            pass
     return 0
 def get_container_location(map_obj) -> str:
     try:
