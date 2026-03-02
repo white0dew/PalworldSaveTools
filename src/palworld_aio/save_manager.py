@@ -121,7 +121,18 @@ class SaveManager(QObject):
                     for base_id_uuid in gdata['value']['RawData']['value'].get('base_ids', []):
                         constants.base_guild_lookup[str(base_id_uuid)] = {'GuildName': guild_name, 'GuildID': gid}
             log_folder = os.path.join(base_path, 'Logs', 'Scan Save Logger')
+            if os.path.exists(log_folder):
+                try:
+                    shutil.rmtree(log_folder)
+                except:
+                    pass
             os.makedirs(log_folder, exist_ok=True)
+            illegal_log_folder = os.path.join(base_path, 'Logs', 'Illegal Pal Logger')
+            if os.path.exists(illegal_log_folder):
+                try:
+                    shutil.rmtree(illegal_log_folder)
+                except:
+                    pass
             player_pals_count = {}
             illegal_pals_by_owner, owner_nicknames = self._count_pals_found(data_source, player_pals_count, log_folder, constants.current_save_path, guild_name_map)
             constants.PLAYER_PAL_COUNTS = player_pals_count
@@ -165,7 +176,18 @@ class SaveManager(QObject):
                 for base_id_uuid in gdata['value']['RawData']['value'].get('base_ids', []):
                     constants.base_guild_lookup[str(base_id_uuid)] = {'GuildName': guild_name, 'GuildID': gid}
         log_folder = os.path.join(base_path, 'Logs', 'Scan Save Logger')
+        if os.path.exists(log_folder):
+            try:
+                shutil.rmtree(log_folder)
+            except:
+                pass
         os.makedirs(log_folder, exist_ok=True)
+        illegal_log_folder = os.path.join(base_path, 'Logs', 'Illegal Pal Logger')
+        if os.path.exists(illegal_log_folder):
+            try:
+                shutil.rmtree(illegal_log_folder)
+            except:
+                pass
         player_pals_count = {}
         illegal_pals_by_owner, owner_nicknames = self._count_pals_found(data_source, player_pals_count, log_folder, constants.current_save_path, guild_name_map)
         constants.PLAYER_PAL_COUNTS = player_pals_count
@@ -228,8 +250,6 @@ class SaveManager(QObject):
             illegal_pals_by_owner = defaultdict(lambda: defaultdict(list))
         else:
             illegal_pals_by_owner = defaultdict(lambda: defaultdict(list), illegal_pals_by_owner)
-        invalid_objects = defaultdict(lambda: defaultdict(int))
-        self._setup_fresh_logs_folder(base_dir)
         def load_map(fname, key):
             try:
                 fp = os.path.join(base_dir, 'resources', 'game_data', fname)
@@ -306,8 +326,6 @@ class SaveManager(QObject):
             cid = raw.get('CharacterID', {}).get('value', '')
             if cid and cid.lower() not in NAMEMAP:
                 miss['Pals'].add(cid)
-                pal_name = cid
-                invalid_objects['Invalid Pals'][pal_name] += 1
             name = NAMEMAP.get(cid.lower(), cid)
             lvl = extract_value(raw, 'Level', 1)
             rk = extract_value(raw, 'Rank', 1)
@@ -317,24 +335,18 @@ class SaveManager(QObject):
             for s in p_list:
                 if s.lower() not in PASSMAP:
                     miss['Passives'].add(s)
-                    skill_name = s
-                    invalid_objects['Invalid Passives'][skill_name] += 1
             pskills = [PASSMAP.get(s.lower(), s) for s in p_list]
             e_list = raw.get('EquipWaza', {}).get('value', {}).get('values', [])
             for w in e_list:
                 w_short = w.split('::')[-1]
                 if w_short.lower() not in SKILLMAP:
                     miss['Skills'].add(w)
-                    skill_name = w
-                    invalid_objects['Invalid Active Skills'][skill_name] += 1
             active = [SKILLMAP.get(w.split('::')[-1].lower(), w.split('::')[-1]) for w in e_list]
             m_list = raw.get('MasteredWaza', {}).get('value', {}).get('values', [])
             for w in m_list:
                 w_short = w.split('::')[-1]
                 if w_short.lower() not in SKILLMAP:
                     miss['Skills'].add(w)
-                    skill_name = w
-                    invalid_objects['Invalid Learned Skills'][skill_name] += 1
             learned = [SKILLMAP.get(w.split('::')[-1].lower(), w.split('::')[-1]) for w in m_list]
             talent_hp = int(extract_value(raw, 'Talent_HP', 0))
             talent_shot = int(extract_value(raw, 'Talent_Shot', 0))
@@ -390,7 +402,6 @@ class SaveManager(QObject):
                 player_pals_count['worker_dropped'] = player_pals_count.get('worker_dropped', 0) + 1
             else:
                 player_pals_count[u_str] = player_pals_count.get(u_str, 0) + 1
-        self._write_invalid_objects_log(invalid_objects, log_folder)
         if any(miss.values()):
             with open(os.path.join(log_folder, 'missing_assets.log'), 'w', encoding='utf-8') as f:
                 for cat, items in miss.items():
@@ -439,191 +450,6 @@ class SaveManager(QObject):
                 h.close()
                 lg.removeHandler(h)
         return (dict(illegal_pals_by_owner), owner_nicknames)
-    def _write_invalid_objects_log(self, invalid_objects, log_folder):
-        base_path = constants.get_base_path()
-        invalid_log_dir = os.path.join(base_path, 'Logs', 'Invalid Objects Logger')
-        os.makedirs(invalid_log_dir, exist_ok=True)
-        log_file = os.path.join(invalid_log_dir, 'invalid_objects.log')
-        logger = logging.getLogger('InvalidObjectsLogger')
-        logger.handlers.clear()
-        logger.setLevel(logging.INFO)
-        logger.propagate = False
-        formatter = logging.Formatter('%(message)s')
-        fh = logging.FileHandler(log_file, encoding='utf-8')
-        fh.setFormatter(formatter)
-        logger.addHandler(fh)
-        logger.info('=' * 80)
-        logger.info('INVALID OBJECTS LOG')
-        logger.info('=' * 80)
-        logger.info('')
-        total_invalid = 0
-        for category, objects in invalid_objects.items():
-            if not objects:
-                continue
-            logger.info(f'{category}:')
-            logger.info('-' * 40)
-            category_total = 0
-            for obj_name, count in sorted(objects.items()):
-                logger.info(f'  {obj_name}: {count}')
-                category_total += count
-                total_invalid += count
-            logger.info(f'  Total {category}: {category_total}')
-            logger.info('')
-        logger.info('=' * 80)
-        logger.info(f'TOTAL INVALID OBJECTS: {total_invalid}')
-        logger.info('=' * 80)
-        for h in logger.handlers[:]:
-            h.flush()
-            h.close()
-            logger.removeHandler(h)
-    def _write_unreferenced_objects_log(self, data_source, base_path):
-        unreferenced_objects = defaultdict(lambda: defaultdict(int))
-        non_base_map_objects = defaultdict(lambda: defaultdict(int))
-        valid_player_uids = set()
-        valid_container_ids = set()
-        valid_base_camp_ids = set()
-        valid_guild_ids = set()
-        if constants.srcGuildMapping and constants.srcGuildMapping.GroupSaveDataMap:
-            for gid, gdata in constants.srcGuildMapping.GroupSaveDataMap.items():
-                if gdata['value']['GroupType']['value']['value'] == 'EPalGroupType::Guild':
-                    valid_guild_ids.add(str(gid))
-                    players = gdata['value']['RawData']['value'].get('players', [])
-                    for p in players:
-                        uid = p.get('player_uid')
-                        if uid:
-                            valid_player_uids.add(str(uid).replace('-', '').lower())
-        item_containers = data_source.get('ItemContainerSaveData', {}).get('value', [])
-        for cont in item_containers:
-            try:
-                cont_id = str(cont['key']['ID']['value']).replace('-', '').lower()
-                valid_container_ids.add(cont_id)
-            except:
-                pass
-        base_camps = data_source.get('BaseCampSaveData', {}).get('value', [])
-        for base in base_camps:
-            try:
-                base_id = str(base['key']).replace('-', '').lower()
-                valid_base_camp_ids.add(base_id)
-            except:
-                pass
-        char_map = data_source.get('CharacterSaveParameterMap', {}).get('value', [])
-        for item in char_map:
-            try:
-                raw = item['value']['RawData']['value']
-                sp = raw.get('object', {}).get('SaveParameter', {}).get('value', {})
-                owner_uid = sp.get('OwnerPlayerUId', {}).get('value')
-                if owner_uid:
-                    owner_uid_str = str(owner_uid).replace('-', '').lower()
-                    if owner_uid_str not in valid_player_uids and owner_uid_str != '00000000000000000000000000000000':
-                        unreferenced_objects['Unreferenced Player UIDs'][owner_uid_str] += 1
-                slot_id = sp.get('SlotId', {}).get('value', {}).get('ContainerId', {}).get('value', {}).get('ID', {}).get('value')
-                if slot_id:
-                    slot_id_str = str(slot_id).replace('-', '').lower()
-                    if slot_id_str not in valid_container_ids:
-                        unreferenced_objects['Unreferenced Container IDs'][slot_id_str] += 1
-                guild_id = raw.get('group_id')
-                if guild_id:
-                    guild_id_str = str(guild_id).replace('-', '').lower()
-                    if guild_id_str not in valid_guild_ids:
-                        unreferenced_objects['Unreferenced Guild IDs'][guild_id_str] += 1
-                base_camp_id = raw.get('base_camp_id_belong_to')
-                if base_camp_id:
-                    base_camp_id_str = str(base_camp_id).replace('-', '').lower()
-                    if base_camp_id_str not in valid_base_camp_ids:
-                        unreferenced_objects['Unreferenced Base Camp IDs'][base_camp_id_str] += 1
-            except Exception:
-                continue
-        map_objects = data_source.get('MapObjectSaveData', {}).get('value', {}).get('values', [])
-        for obj in map_objects:
-            try:
-                map_object_id = obj.get('MapObjectId', {}).get('value')
-                if map_object_id:
-                    if any((base_keyword in map_object_id.lower() for base_keyword in ['basecamp', 'base_camp', 'basecampcore', 'basecampcoremodel'])):
-                        continue
-                    base_dir = constants.get_base_path()
-                    valid_structures = set()
-                    try:
-                        import json
-                        fp = os.path.join(base_dir, 'resources', 'game_data', 'structuredata.json')
-                        with open(fp, 'r', encoding='utf-8') as f:
-                            js = json.load(f)
-                            for x in js.get('structures', []):
-                                asset = x.get('asset')
-                                if isinstance(asset, str):
-                                    valid_structures.add(asset.lower())
-                    except:
-                        pass
-                    if map_object_id.lower() not in valid_structures:
-                        non_base_map_objects['Non-Base Map Objects'][map_object_id] += 1
-            except Exception:
-                continue
-        unreferenced_log_dir = os.path.join(base_path, 'Logs', 'Unreferenced Objects Logger')
-        os.makedirs(unreferenced_log_dir, exist_ok=True)
-        log_file = os.path.join(unreferenced_log_dir, 'unreferenced_objects.log')
-        logger = logging.getLogger('UnreferencedObjectsLogger')
-        logger.handlers.clear()
-        logger.setLevel(logging.INFO)
-        logger.propagate = False
-        formatter = logging.Formatter('%(message)s')
-        fh = logging.FileHandler(log_file, encoding='utf-8')
-        fh.setFormatter(formatter)
-        logger.addHandler(fh)
-        logger.info('=' * 80)
-        logger.info('UNREFERENCED OBJECTS LOG')
-        logger.info('=' * 80)
-        logger.info('')
-        total_unreferenced = 0
-        for category, objects in unreferenced_objects.items():
-            if not objects:
-                continue
-            logger.info(f'{category}:')
-            logger.info('-' * 40)
-            category_total = 0
-            for obj_name, count in sorted(objects.items()):
-                logger.info(f'  {obj_name}: {count}')
-                category_total += count
-                total_unreferenced += count
-            logger.info(f'  Total {category}: {category_total}')
-            logger.info('')
-        logger.info('=' * 80)
-        logger.info(f'TOTAL UNREFERENCED OBJECTS: {total_unreferenced}')
-        logger.info('=' * 80)
-        logger.info('')
-        logger.info('=' * 80)
-        logger.info('NON-BASE MAP OBJECTS LOG')
-        logger.info('=' * 80)
-        logger.info('')
-        total_non_base = 0
-        for category, objects in non_base_map_objects.items():
-            if not objects:
-                continue
-            logger.info(f'{category}:')
-            logger.info('-' * 40)
-            category_total = 0
-            for obj_name, count in sorted(objects.items()):
-                logger.info(f'  {obj_name}: {count}')
-                category_total += count
-                total_non_base += count
-            logger.info(f'  Total {category}: {category_total}')
-            logger.info('')
-        logger.info('=' * 80)
-        logger.info(f'TOTAL NON-BASE MAP OBJECTS: {total_non_base}')
-        logger.info('=' * 80)
-        for h in logger.handlers[:]:
-            h.flush()
-            h.close()
-            logger.removeHandler(h)
-    def _setup_fresh_logs_folder(self, base_path):
-        logs_dir = os.path.join(base_path, 'Logs')
-        if os.path.exists(logs_dir):
-            try:
-                shutil.rmtree(logs_dir)
-            except:
-                pass
-        logger_dirs = ['Scan Save Logger', 'Illegal Pal Logger/Guilds', 'Illegal Pal Logger/Players', 'Invalid Objects Logger', 'Unreferenced Objects Logger']
-        for logger_dir in logger_dirs:
-            full_path = os.path.join(logs_dir, logger_dir)
-            os.makedirs(full_path, exist_ok=True)
     def _process_scan_log(self, data_source, playerdir, log_folder, guild_name_map, base_path, illegal_pals_by_owner=None, owner_nicknames=None):
         def count_owned_pals(level_json):
             owned_count = {}
@@ -964,7 +790,6 @@ class SaveManager(QObject):
                             h.close()
                             logger.removeHandler(h)
         print(f'Created illegal pal logs in: {illegal_log_dir}')
-        self._write_unreferenced_objects_log(data_source, base_path)
         self._create_player_summary_json(data_source, log_folder, guild_name_map)
     def _top_process_player(self, p, playerdir, log_folder):
         uid = p.get('player_uid')
