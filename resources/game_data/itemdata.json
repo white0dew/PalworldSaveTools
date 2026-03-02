@@ -316,8 +316,33 @@
             "icon": "/icons/items/T_itemicon_Weapon_Spear_ForestBoss.webp"
         },
         {
+            "name": "Lily's Spear +4",
+            "asset": "Spear_ForestBoss_5",
+            "icon": "/icons/items/T_itemicon_Weapon_Spear_ForestBoss.webp"
+        },
+        {
             "name": "Sword",
             "asset": "Sword",
+            "icon": "/icons/items/T_itemicon_Weapon_Sword.webp"
+        },
+        {
+            "name": "Sword +1",
+            "asset": "Sword_2",
+            "icon": "/icons/items/T_itemicon_Weapon_Sword.webp"
+        },
+        {
+            "name": "Sword +2",
+            "asset": "Sword_3",
+            "icon": "/icons/items/T_itemicon_Weapon_Sword.webp"
+        },
+        {
+            "name": "Sword +3",
+            "asset": "Sword_4",
+            "icon": "/icons/items/T_itemicon_Weapon_Sword.webp"
+        },
+        {
+            "name": "Sword +4",
+            "asset": "Sword_5",
             "icon": "/icons/items/T_itemicon_Weapon_Sword.webp"
         },
         {
@@ -326,8 +351,48 @@
             "icon": "/icons/items/T_itemicon_Weapon_Katana.webp"
         },
         {
+            "name": "Katana +1",
+            "asset": "Katana_2",
+            "icon": "/icons/items/T_itemicon_Weapon_Katana.webp"
+        },
+        {
+            "name": "Katana +2",
+            "asset": "Katana_3",
+            "icon": "/icons/items/T_itemicon_Weapon_Katana.webp"
+        },
+        {
+            "name": "Katana +3",
+            "asset": "Katana_4",
+            "icon": "/icons/items/T_itemicon_Weapon_Katana.webp"
+        },
+        {
+            "name": "Katana +4",
+            "asset": "Katana_5",
+            "icon": "/icons/items/T_itemicon_Weapon_Katana.webp"
+        },
+        {
             "name": "Beam Sword",
             "asset": "BeamSword",
+            "icon": "/icons/items/T_itemicon_Weapon_BeamSword.webp"
+        },
+        {
+            "name": "Beam Sword +1",
+            "asset": "BeamSword_2",
+            "icon": "/icons/items/T_itemicon_Weapon_BeamSword.webp"
+        },
+        {
+            "name": "Beam Sword +2",
+            "asset": "BeamSword_3",
+            "icon": "/icons/items/T_itemicon_Weapon_BeamSword.webp"
+        },
+        {
+            "name": "Beam Sword +3",
+            "asset": "BeamSword_4",
+            "icon": "/icons/items/T_itemicon_Weapon_BeamSword.webp"
+        },
+        {
+            "name": "Beam Sword +4",
+            "asset": "BeamSword_5",
             "icon": "/icons/items/T_itemicon_Weapon_BeamSword.webp"
         },
         {
@@ -661,7 +726,7 @@
             "icon": "/icons/items/T_itemicon_Weapon_GrapplingGun.webp"
         },
         {
-            "name": "Ballistic Shield",
+            "name": "Unknown Item (HandgunShield)",
             "asset": "HandgunShield",
             "icon": "/icons/items/T_itemicon_Weapon_HandGun_Default.webp"
         },
@@ -5701,6 +5766,71 @@
             "icon": "/info/T_icon_unknown.png"
         },
         {
+            "name": "Lily's Spear Schematic 4",
+            "asset": "Blueprint_Spear_ForestBoss_5",
+            "icon": "/icons/items/T_itemicon_Material_Blueprint.webp"
+        },
+        {
+            "name": "Sword Schematic 1",
+            "asset": "Blueprint_Sword_2",
+            "icon": "/icons/items/T_itemicon_Material_Blueprint.webp"
+        },
+        {
+            "name": "Sword Schematic 2",
+            "asset": "Blueprint_Sword_3",
+            "icon": "/icons/items/T_itemicon_Material_Blueprint.webp"
+        },
+        {
+            "name": "Sword Schematic 3",
+            "asset": "Blueprint_Sword_4",
+            "icon": "/icons/items/T_itemicon_Material_Blueprint.webp"
+        },
+        {
+            "name": "Sword Schematic 4",
+            "asset": "Blueprint_Sword_5",
+            "icon": "/icons/items/T_itemicon_Material_Blueprint.webp"
+        },
+        {
+            "name": "Katana Schematic 1",
+            "asset": "Blueprint_Katana_2",
+            "icon": "/icons/items/T_itemicon_Material_Blueprint.webp"
+        },
+        {
+            "name": "Katana Schematic 2",
+            "asset": "Blueprint_Katana_3",
+            "icon": "/icons/items/T_itemicon_Material_Blueprint.webp"
+        },
+        {
+            "name": "Katana Schematic 3",
+            "asset": "Blueprint_Katana_4",
+            "icon": "/icons/items/T_itemicon_Material_Blueprint.webp"
+        },
+        {
+            "name": "Katana Schematic 4",
+            "asset": "Blueprint_Katana_5",
+            "icon": "/icons/items/T_itemicon_Material_Blueprint.webp"
+        },
+        {
+            "name": "Beam Sword Schematic 1",
+            "asset": "Blueprint_BeamSword_2",
+            "icon": "/icons/items/T_itemicon_Material_Blueprint.webp"
+        },
+        {
+            "name": "Beam Sword Schematic 2",
+            "asset": "Blueprint_BeamSword_3",
+            "icon": "/icons/items/T_itemicon_Material_Blueprint.webp"
+        },
+        {
+            "name": "Beam Sword Schematic 3",
+            "asset": "Blueprint_BeamSword_4",
+            "icon": "/icons/items/T_itemicon_Material_Blueprint.webp"
+        },
+        {
+            "name": "Beam Sword Schematic 4",
+            "asset": "Blueprint_BeamSword_5",
+            "icon": "/icons/items/T_itemicon_Material_Blueprint.webp"
+        },
+        {
             "name": "Old Bow Schematic 1",
             "asset": "Blueprint_WeakerBow_2",
             "icon": "/icons/items/T_itemicon_Material_Blueprint.webp"
@@ -8711,7 +8841,7 @@
             "icon": "/icons/items/T_itemicon_Essential_SkillUnlock_Gloves.webp"
         },
         {
-            "name": "Foxparks's Harness",
+            "name": "Foxparks' Harness",
             "asset": "SkillUnlock_Kitsunebi",
             "icon": "/icons/items/T_itemicon_Essential_SkillUnlock_Harness.webp"
         },
@@ -9211,7 +9341,7 @@
             "icon": "/icons/items/T_itemicon_Essential_SkillUnlock_Saddle.webp"
         },
         {
-            "name": "Relaxaurus's Missile Launcher",
+            "name": "Relaxaurus' Missile Launcher",
             "asset": "SkillUnlock_LazyDragon",
             "icon": "/icons/items/T_itemicon_Essential_SkillUnlock_MultiMissile.webp"
         },

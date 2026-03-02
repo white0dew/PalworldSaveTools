@@ -54,26 +54,15 @@ def get_base_containers(base_id):
                 break
         if not container_id:
             continue
-        container_type = 'Unknown'
-        container_name = 'Unknown Container'
-        if 'ItemChest' in map_object_id:
-            container_type = 'ItemChest'
-            container_name = t('base_inventory.chest') if t else 'Chest'
-        elif 'StorageBox' in map_object_id:
-            container_type = 'StorageBox'
-            container_name = t('base_inventory.storage_box') if t else 'Storage Box'
-        elif 'ItemBox' in map_object_id:
-            container_type = 'ItemBox'
-            container_name = t('base_inventory.item_box') if t else 'Item Box'
-        elif 'ItemContainer' in map_object_id:
-            container_type = 'ItemContainer'
-            container_name = t('base_inventory.container') if t else 'Container'
+        container_type = map_object_id
+        container_name = map_object_id
         slot_count = get_container_slot_count(str(container_id))
-        location = get_container_location(obj)
-        containers.append({'id': str(container_id), 'name': container_name, 'type': container_type, 'slot_count': slot_count, 'location': location, 'map_object_id': map_object_id, 'is_guild_chest': False})
+        base_name = get_base_name(base_id)
+        location = get_container_location(obj, base_name)
+        containers.append({'id': str(container_id), 'name': container_name, 'type': container_type, 'slot_count': slot_count, 'location': location, 'map_object_id': map_object_id, 'is_guild_chest': False, 'base_id': base_id})
     guild_id = get_base_guild_id(base_id)
     if guild_id:
-        guild_chest = get_guild_chest(guild_id)
+        guild_chest = get_guild_chest(guild_id, base_id)
         if guild_chest:
             containers.append(guild_chest)
     return containers
@@ -88,7 +77,20 @@ def get_base_guild_id(base_id):
         if str(base['key']).replace('-', '').lower() == base_id_low:
             return base['value']['RawData']['value'].get('group_id_belong_to')
     return None
-def get_guild_chest(guild_id):
+def get_base_name(base_id):
+    if not constants.loaded_level_json:
+        return None
+    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
+    base_list = wsd.get('BaseCampSaveData', {}).get('value', [])
+    base_id_str = str(base_id)
+    base_id_low = base_id_str.replace('-', '').lower()
+    for base in base_list:
+        if str(base['key']).replace('-', '').lower() == base_id_low:
+            bid = str(base['key'])
+            lookup = constants.base_guild_lookup.get(bid.lower(), {})
+            return lookup.get('GuildName', 'Unknown')
+    return None
+def get_guild_chest(guild_id, base_id=None):
     if not constants.loaded_level_json:
         return None
     wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
@@ -104,7 +106,7 @@ def get_guild_chest(guild_id):
                 container_id = raw_data.get('container_id')
                 if container_id:
                     slot_count = get_container_slot_count(str(container_id))
-                    return {'id': str(container_id), 'name': t('base_inventory.guild_chest') if t else 'Guild Chest', 'type': 'GuildChest', 'slot_count': slot_count, 'location': t('base_inventory.guild_storage') if t else 'Guild Storage', 'map_object_id': 'GuildChest', 'is_guild_chest': True}
+                    return {'id': str(container_id), 'name': t('base_inventory.guild_chest') if t else 'Guild Chest', 'type': 'GuildChest', 'slot_count': slot_count, 'location': t('base_inventory.guild_storage') if t else 'Guild Storage', 'map_object_id': 'GuildChest', 'is_guild_chest': True, 'base_id': base_id}
         except:
             continue
     return None
@@ -121,7 +123,7 @@ def get_container_slot_count(container_id):
         except:
             pass
     return 0
-def get_container_location(map_obj):
+def get_container_location(map_obj, base_name=None):
     try:
         transform = map_obj.get('Model', {}).get('value', {}).get('RawData', {}).get('value', {}).get('transform', {})
         if transform and 'translation' in transform:
@@ -133,6 +135,8 @@ def get_container_location(map_obj):
                 return f"X: {trans['x']:.1f}, Y: {trans['y']:.1f}"
     except:
         pass
+    if base_name:
+        return t('base_inventory.location_unknown').format(location=base_name) if t else f'Location: {base_name}'
     return t('base_inventory.unknown_location') if t else 'Unknown Location'
 def get_container_contents(container_id):
     if not constants.loaded_level_json:
@@ -182,10 +186,43 @@ def update_container_contents(container_id, items):
         except Exception as e:
             pass
     return False
+_structure_data_cache = None
+def load_structure_data():
+    global _structure_data_cache
+    if _structure_data_cache is not None:
+        return _structure_data_cache
+    try:
+        base_path = constants.get_base_path()
+        structure_data_path = os.path.join(base_path, 'resources', 'game_data', 'structuredata.json')
+        if os.path.exists(structure_data_path):
+            with open(structure_data_path, 'r', encoding='utf-8') as f:
+                _structure_data_cache = json.load(f)
+            return _structure_data_cache
+    except Exception as e:
+        pass
+    _structure_data_cache = {}
+    return _structure_data_cache
+def get_container_icon_path_from_structure(container_type):
+    structure_data = load_structure_data()
+    structures = structure_data.get('structures', [])
+    for structure in structures:
+        if structure.get('asset') == container_type:
+            icon_path = structure.get('icon')
+            if icon_path:
+                base_path = constants.get_base_path()
+                if icon_path.startswith('/'):
+                    icon_path = icon_path[1:]
+                absolute_path = os.path.join(base_path, 'resources', 'game_data', icon_path)
+                if os.path.exists(absolute_path):
+                    return absolute_path
+    return None
 def get_container_image_path(container_type):
+    structure_icon_path = get_container_icon_path_from_structure(container_type)
+    if structure_icon_path:
+        return structure_icon_path
     base_path = constants.get_base_path()
     icons_path = os.path.join(base_path, 'resources', 'game_data', 'icons')
-    icon_mapping = {'ItemChest': 'chest.png', 'StorageBox': 'storage_box.png', 'ItemBox': 'item_box.png', 'ItemContainer': 'container.png', 'GuildChest': 'guild_chest.png'}
+    icon_mapping = {'ItemChest': 'chest.png', 'GuildChest': 'guild_chest.png'}
     icon_file = icon_mapping.get(container_type, 'unknown.png')
     icon_path = os.path.join(icons_path, icon_file)
     if not os.path.exists(icon_path):
@@ -252,6 +289,9 @@ class BaseInventoryManager:
         return [b for b in bases if str(b['guild_id']) == str(guild_id)]
     def load_containers_for_base(self, base_id):
         self.containers = get_base_containers(base_id)
+        for container in self.containers:
+            if not container.get('is_guild_chest', False):
+                container['name'] = self._translate_container_name(container['map_object_id'])
         return self.containers
     def select_container(self, container_id):
         self.current_container = next((c for c in self.containers if c['id'] == container_id), None)
@@ -298,6 +338,7 @@ class BaseInventoryManager:
             result = self._update_container_contents_from_inventory()
             if not result:
                 return False
+            self.invalidate_cache()
             self.mark_dirty()
             return True
         except Exception as e:
@@ -359,8 +400,6 @@ class BaseInventoryManager:
         export_data = {'container_info': container_info, 'items': inventory_container.get_items(), 'exported_at': self._get_current_timestamp()}
         return export_data
     def clear_container(self, container_id):
-        if not self.current_base:
-            return False
         inventory_container = self.select_container(container_id)
         if not inventory_container:
             return False
@@ -371,8 +410,47 @@ class BaseInventoryManager:
         success = update_container_contents(container_id, empty_slots)
         if success:
             self.select_container(container_id)
+            self.invalidate_cache()
             self.mark_dirty()
         return success
+    def delete_container(self, container_id):
+        if not constants.loaded_level_json:
+            return False
+        wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
+        container_info = next((c for c in self.containers if c['id'] == container_id), None)
+        if not container_info:
+            return False
+        container_id_low = str(container_id).replace('-', '').lower()
+        is_guild_chest = container_info.get('is_guild_chest', False)
+        map_objs = wsd.get('MapObjectSaveData', {}).get('value', {}).get('values', [])
+        containers_item = wsd.get('ItemContainerSaveData', {}).get('value', [])
+        if not is_guild_chest:
+            container_base_id = container_info.get('base_id', '')
+            for i, obj in enumerate(map_objs):
+                try:
+                    mr = obj.get('Model', {}).get('value', {}).get('RawData', {}).get('value', {})
+                    if container_base_id and str(mr.get('base_camp_id_belong_to', '')).replace('-', '').lower() != str(container_base_id).replace('-', '').lower():
+                        continue
+                    mm = obj.get('ConcreteModel', {}).get('value', {}).get('ModuleMap', {}).get('value', [])
+                    for module in mm:
+                        if module.get('key') != 'EPalMapObjectConcreteModelModuleType::ItemContainer':
+                            continue
+                        module_raw = module.get('value', {}).get('RawData', {}).get('value', {})
+                        cont_id = module_raw.get('target_container_id', '')
+                        if str(cont_id).replace('-', '').lower() == container_id_low:
+                            map_objs.pop(i)
+                            break
+                    break
+                except:
+                    continue
+        containers_item[:] = [c for c in containers_item if str(c.get('key', {}).get('ID', {}).get('value', '')).replace('-', '').lower() != container_id_low]
+        from .utils import are_equal_uuids
+        dynamic_items = wsd.get('DynamicItemSaveData', {}).get('value', {}).get('values', [])
+        dynamic_items[:] = [d for d in dynamic_items if str(d.get('RawData', {}).get('value', {}).get('container_id', '').replace('-', '').lower()) != container_id_low]
+        constants.invalidate_container_lookup()
+        self.invalidate_cache()
+        self.containers = [c for c in self.containers if c['id'] != container_id]
+        return True
     def update_container_contents(self, container_id, items):
         return update_container_contents(container_id, items)
     def update_item_count(self, slot_index, count):
@@ -391,6 +469,7 @@ class BaseInventoryManager:
             result = self._update_container_contents_from_inventory()
             if not result:
                 return False
+            self.invalidate_cache()
             self.mark_dirty()
             return True
         except Exception as e:
@@ -713,3 +792,17 @@ class BaseInventoryManager:
             self._container_cache = {}
     def is_cache_valid(self):
         return self._cache_valid and bool(self._item_location_cache)
+    def _translate_container_name(self, map_object_id):
+        try:
+            base_path = constants.get_base_path()
+            structure_data_path = os.path.join(base_path, 'resources', 'game_data', 'structuredata.json')
+            if os.path.exists(structure_data_path):
+                with open(structure_data_path, 'r', encoding='utf-8') as f:
+                    structure_data = json.load(f)
+                structures = structure_data.get('structures', [])
+                for structure in structures:
+                    if structure.get('asset') == map_object_id:
+                        return structure.get('name', map_object_id)
+            return map_object_id
+        except Exception as e:
+            return map_object_id

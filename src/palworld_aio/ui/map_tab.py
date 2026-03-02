@@ -2,7 +2,7 @@ import os
 import json
 import math
 import random
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsEllipseItem, QMenu, QLineEdit, QTreeWidget, QTreeWidgetItem, QSplitter, QLabel, QFileDialog, QGraphicsItem, QGraphicsObject, QCheckBox, QPushButton, QTabWidget
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsEllipseItem, QMenu, QLineEdit, QTreeWidget, QTreeWidgetItem, QSplitter, QLabel, QFileDialog, QGraphicsItem, QGraphicsObject, QCheckBox, QPushButton, QTabWidget, QDialog
 from PySide6.QtCore import Qt, QRectF, QPointF, QPoint, Signal, QTimer, QPropertyAnimation, QEasingCurve, Property, QParallelAnimationGroup
 from PySide6.QtGui import QPixmap, QPen, QBrush, QColor, QPainter, QTransform, QRadialGradient, QFont, QCursor
 from i18n import t
@@ -305,17 +305,27 @@ class ExportEffect(EffectItem):
             painter.setBrush(QColor(150, 220, 255, particle_alpha))
             painter.drawEllipse(QPointF(random.randint(-15, 15), particle_y), 4, 4)
 class BaseRadiusRing(QGraphicsEllipseItem):
-    def __init__(self, x, y, save_radius):
+    def __init__(self, x, y, save_radius, is_preview=False):
         super().__init__()
         self.save_radius = save_radius
+        self.is_preview = is_preview
         self.setPos(x, y)
         self._update_radius()
         self.setZValue(5)
         self.setFlag(QGraphicsItem.ItemIgnoresTransformations, False)
         self.setAcceptedMouseButtons(Qt.NoButton)
-        pen = QPen(QColor(0, 255, 200, 220), 2)
-        self.setPen(pen)
-        self.setBrush(QColor(0, 255, 200, 40))
+        self._setup_appearance()
+    def _setup_appearance(self):
+        if self.is_preview:
+            pen = QPen(QColor(255, 215, 0, 200), 3)
+            pen.setStyle(Qt.DashLine)
+            pen.setDashPattern([10, 5])
+            self.setPen(pen)
+            self.setBrush(QColor(255, 215, 0, 30))
+        else:
+            pen = QPen(QColor(0, 255, 200, 220), 2)
+            self.setPen(pen)
+            self.setBrush(QColor(0, 255, 200, 40))
     def _update_radius(self):
         scene_radius = self._save_radius_to_scene_pixels(self.save_radius)
         diameter = scene_radius * 2
@@ -456,13 +466,13 @@ class MapGraphicsView(QGraphicsView):
         if isinstance(item, BaseMarker):
             if event.button() == Qt.LeftButton:
                 self.marker_double_clicked.emit(item.base_data, item)
-                current_zoom_pct = self.current_zoom * 100
-                if current_zoom_pct < 650:
-                    zoom_level = 6.5
-                elif current_zoom_pct <= 2599:
-                    zoom_level = 26.0
-                else:
-                    zoom_level = current_zoom_pct / 100
+                zoom_level = self.config['zoom']['double_click_target']
+                self.animate_to_marker(item, zoom_level=zoom_level, duration_ms=1500)
+                return
+        elif isinstance(item, PlayerMarker):
+            if event.button() == Qt.LeftButton:
+                self.marker_double_clicked.emit(item.player_data, item)
+                zoom_level = self.config['zoom']['double_click_target']
                 self.animate_to_marker(item, zoom_level=zoom_level, duration_ms=1500)
                 return
         super().mouseDoubleClickEvent(event)
@@ -508,7 +518,7 @@ class MapGraphicsView(QGraphicsView):
         view_center = self.mapToScene(self.viewport().rect().center())
         self.start_center = QPointF(view_center.x(), view_center.y())
         target_pos = QPointF(marker.center_x, marker.center_y)
-        self.target_center = self._clamp_center_to_bounds(target_pos)
+        self.target_center = target_pos
         self.target_zoom = zoom_level
         self.is_animating = True
         fps = self.config['zoom']['animation_fps']
@@ -640,29 +650,8 @@ class MapTab(QWidget):
             if hasattr(self.view, 'zoom_label'):
                 self.view.zoom_label.setText((t('zoom') if t else 'Zoom') + ': 100%')
     def _load_config(self):
-        src_dir = constants.get_src_path()
-        config_path = os.path.join(src_dir, 'data', 'configs', 'map_viewer.json')
-        default_config = {'marker': {'type': 'icon', 'dot': {'size': 24, 'color': [255, 0, 0], 'border_width': 3, 'border_color': [180, 0, 0], 'size_min': 24, 'size_max': 24, 'dynamic_sizing': False, 'dynamic_sizing_formula': 'sqrt'}, 'icon': {'path': 'resources/baseicon.png', 'size_min': 32, 'size_max': 64, 'base_size': 48, 'dynamic_sizing': True, 'dynamic_sizing_formula': 'sqrt'}}, 'glow': {'enabled': True, 'color': [59, 142, 208], 'selected_alpha_min': 80, 'selected_alpha_max': 180, 'animation_speed': 8, 'hover_alpha': 80, 'radius_multiplier': 1.5}, 'zoom': {'factor': 1.15, 'min': 1.0, 'max': 30.0, 'double_click_target': 6.5, 'animation_speed': 0.2, 'animation_fps': 60}, 'effects': {'delete': {'enabled': True, 'duration': 1000, 'max_radius': 150, 'colors': {'outer': [255, 80, 80], 'inner': [255, 150, 0], 'flash': [255, 200, 0]}}, 'import': {'enabled': True, 'duration': 1000, 'pulse_count': 3, 'color': [0, 255, 150], 'sparkle_color': [100, 255, 200]}, 'export': {'enabled': True, 'duration': 1000, 'color': [100, 200, 255]}}}
-        if os.path.exists(config_path):
-            try:
-                import json
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    user_config = json.load(f)
-                self.config = self._merge_config(default_config, user_config)
-            except Exception as e:
-                print(f'Error loading map_viewer.json: {e},using defaults')
-                self.config = default_config
-        else:
-            self.config = default_config
+        self.config = {'marker': {'type': 'icon', 'dot': {'size': 24, 'color': [255, 0, 0], 'border_width': 3, 'border_color': [180, 0, 0], 'size_min': 24, 'size_max': 24, 'dynamic_sizing': False, 'dynamic_sizing_formula': 'sqrt'}, 'icon': {'path': 'resources/baseicon.png', 'size_min': 32, 'size_max': 64, 'base_size': 48, 'dynamic_sizing': True, 'dynamic_sizing_formula': 'sqrt'}}, 'glow': {'enabled': True, 'color': [59, 142, 208], 'selected_alpha_min': 80, 'selected_alpha_max': 180, 'animation_speed': 8, 'hover_alpha': 80, 'radius_multiplier': 1.5}, 'zoom': {'factor': 1.15, 'min': 1.0, 'max': 30.0, 'double_click_target': 26.0, 'animation_speed': 0.2, 'animation_fps': 60}, 'effects': {'delete': {'enabled': True, 'duration': 1000, 'max_radius': 150, 'colors': {'outer': [255, 80, 80], 'inner': [255, 150, 0], 'flash': [255, 200, 0]}}, 'import': {'enabled': True, 'duration': 1000, 'pulse_count': 3, 'color': [0, 255, 150], 'sparkle_color': [100, 255, 200]}, 'export': {'enabled': True, 'duration': 1000, 'color': [100, 200, 255]}}}
         return self.config
-    def _merge_config(self, default, user):
-        result = default.copy()
-        for key, value in user.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                result[key] = self._merge_config(result[key], value)
-            else:
-                result[key] = value
-        return result
     def _create_dot_pixmap(self, size):
         from PySide6.QtGui import QPainter, QPen, QBrush
         from PySide6.QtCore import QRectF
@@ -741,7 +730,7 @@ class MapTab(QWidget):
         self.toggle_map_players.setStyleSheet('\n            QCheckBox {\n                color: white;\n                background: rgba(0, 0, 0, 150);\n                padding: 4px 8px;\n                border-radius: 4px;\n            }\n        ')
         overlay_layout.addWidget(self.toggle_map_players)
         self.toggle_base_radius_rings = QCheckBox(t('map.toggle.base_radius_rings') if t else 'Base Radius Rings')
-        self.toggle_base_radius_rings.setChecked(False)
+        self.toggle_base_radius_rings.setChecked(True)
         self.toggle_base_radius_rings.stateChanged.connect(self._on_radius_rings_toggle)
         self.toggle_base_radius_rings.setStyleSheet('\n            QCheckBox {\n                color: white;\n                background: rgba(0, 0, 0, 150);\n                padding: 4px 8px;\n                border-radius: 4px;\n            }\n        ')
         overlay_layout.addWidget(self.toggle_base_radius_rings)
@@ -1120,10 +1109,10 @@ class MapTab(QWidget):
         item_type, item_data = data
         if item_type == 'base':
             self._update_info(item_data)
-            self._zoom_to_base(item_data, zoom_level=self.config['zoom']['double_click_target'])
+            self._zoom_to_base(item_data, zoom_level=26.0)
         elif item_type == 'player':
             self._update_player_info(item_data)
-            self._zoom_to_player(item_data, zoom_level=self.config['zoom']['double_click_target'])
+            self._zoom_to_player(item_data, zoom_level=26.0)
     def _highlight_base(self, base_data):
         for marker in self.base_markers:
             if marker.base_data == base_data:
@@ -1408,6 +1397,9 @@ class MapTab(QWidget):
                 self.refresh()
                 if self.parent_window:
                     self.parent_window.refresh_all()
+                self._hide_all_radius_rings()
+                if hasattr(self, 'toggle_base_radius_rings') and self.toggle_base_radius_rings.isChecked():
+                    self._show_all_radius_rings()
                 show_information(self, t('success.title') if t else 'Success', t('base.delete.success') if t else 'Base deleted successfully')
             except Exception as e:
                 show_critical(self, t('error.title') if t else 'Error', f'Failed to delete base: {str(e)}')
@@ -1444,17 +1436,22 @@ class MapTab(QWidget):
                 return
             current_radius = src_base_entry['value']['RawData']['value'].get('area_range', 3500.0)
             current_percent = int(round(current_radius / 35.0))
-            new_radius = RadiusInputDialog.get_radius(t('base.radius.title') if t else 'Adjust Base Radius', t('base.radius.prompt') if t else f'Current radius: {current_percent}% ({int(current_radius)})\nEnter new radius percentage:', current_radius, self)
-            if new_radius is not None and new_radius != current_radius:
+            self._navigate_to_base(base_data)
+            from ..dialogs import RadiusPreviewDialog
+            dialog = RadiusPreviewDialog(t('base.radius.title') if t else 'Adjust Base Radius', t('base.radius.prompt') if t else f'Current radius: {current_percent}% ({int(current_radius)})\nEnter new radius percentage:', current_radius, self)
+            self._cleanup_preview_ring()
+            self._setup_preview_ring(base_data)
+            dialog.valueChanged.connect(self._on_preview_radius_changed)
+            result = dialog.exec()
+            new_radius = dialog.result_value
+            self._cleanup_preview_ring()
+            if result == QDialog.Accepted and new_radius is not None and (new_radius != current_radius):
                 if update_base_area_range(constants.loaded_level_json, bid, new_radius):
-                    self.refresh()
-                    if self.parent_window:
-                        self.parent_window.refresh_all()
-                    new_percent = int(round(new_radius / 35.0))
-                    show_information(self, t('success.title') if t else 'Success', t('base.radius.updated', radius=f'{new_percent}% ({int(new_radius)})') if t else f'Base radius updated to {new_percent}% ({int(new_radius)})\n\n⚠ Load this save in-game for structures to be reassigned.')
                     selected_base_id = None
                     if self.selected_base_marker:
                         selected_base_id = self.selected_base_marker.base_data.get('base_id')
+                    if self.current_radius_ring:
+                        self.current_radius_ring.update_radius(new_radius)
                     self.refresh()
                     if self.parent_window:
                         self.parent_window.refresh_all()
@@ -1467,6 +1464,8 @@ class MapTab(QWidget):
                                 marker.setSelected(True)
                                 marker.start_glow()
                                 break
+                    new_percent = int(round(new_radius / 35.0))
+                    show_information(self, t('success.title') if t else 'Success', t('base.radius.updated', radius=f'{new_percent}% ({int(new_radius)})') if t else f'Base radius updated to {new_percent}% ({int(new_radius)})\n\n⚠ Load this save in-game for structures to be reassigned.')
                 else:
                     show_critical(self, t('error.title') if t else 'Error', t('base.radius.failed') if t else 'Failed to update base radius')
         except Exception as e:
@@ -1524,6 +1523,9 @@ class MapTab(QWidget):
                     self.refresh()
                     if self.parent_window:
                         self.parent_window.refresh_all()
+                    self._hide_all_radius_rings()
+                    if hasattr(self, 'toggle_base_radius_rings') and self.toggle_base_radius_rings.isChecked():
+                        self._show_all_radius_rings()
                     show_information(self, t('success.title') if t else 'Success', t('guild.delete.success') if t else 'Guild and all bases deleted successfully')
                 else:
                     show_warning(self, t('error.title') if t else 'Error', 'Failed to delete guild - guild not found or not a guild type')
@@ -1634,6 +1636,9 @@ class MapTab(QWidget):
         self.refresh()
         if self.parent_window:
             self.parent_window.refresh_all()
+        self._hide_all_radius_rings()
+        if hasattr(self, 'toggle_base_radius_rings') and self.toggle_base_radius_rings.isChecked():
+            self._show_all_radius_rings()
         show_information(self, t('Done') if t else 'Done', t('deletion.player_deleted') if t else 'Player deleted')
     def _rename_player(self, player_data):
         player_uid = player_data.get('player_uid', '')
@@ -1673,3 +1678,39 @@ class MapTab(QWidget):
                 show_warning(self, t('error.title') if t else 'Error', t('player.unlock_technologies.failed') if t else 'Unlock All Technologies failed')
         except Exception as e:
             show_critical(self, t('error.title') if t else 'Error', f'Failed to unlock technologies: {str(e)}')
+    def _setup_preview_ring(self, base_data):
+        if not isinstance(self.selected_base_marker, BaseMarker):
+            return
+        base_id = base_data.get('base_id')
+        if not base_id:
+            return
+        save_radius = self._get_base_radius(base_data)
+        if save_radius is None:
+            return
+        x, y = (self.selected_base_marker.center_x, self.selected_base_marker.center_y)
+        self.current_radius_ring = BaseRadiusRing(x, y, save_radius, is_preview=True)
+        self.scene.addItem(self.current_radius_ring)
+    def _on_preview_radius_changed(self, percent, actual_radius):
+        if self.current_radius_ring:
+            self.current_radius_ring.update_radius(actual_radius)
+    def _cleanup_preview_ring(self):
+        if self.current_radius_ring:
+            self.scene.removeItem(self.current_radius_ring)
+            self.current_radius_ring = None
+    def _navigate_to_base(self, base_data):
+        try:
+            target_marker = None
+            for marker in self.base_markers:
+                if marker.base_data.get('base_id') == base_data.get('base_id'):
+                    target_marker = marker
+                    break
+            if target_marker:
+                self.scene.clearSelection()
+                target_marker.setSelected(True)
+                target_marker.start_glow()
+                zoom_level = self.config['zoom']['max']
+                self.view.animate_to_marker(target_marker, zoom_level=zoom_level)
+                self._update_info(base_data)
+                self.selected_base_marker = target_marker
+        except Exception as e:
+            pass

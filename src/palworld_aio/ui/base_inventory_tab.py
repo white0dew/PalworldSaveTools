@@ -41,8 +41,6 @@ class ContainerListWidget(QTreeWidget):
         self.setAcceptDrops(False)
         self.setDropIndicatorShown(False)
         self.setSortingEnabled(False)
-        self.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.customContextMenuRequested.connect(self._show_context_menu)
         self.itemSelectionChanged.connect(self._on_selection_changed)
         self.is_dark = True
     def set_theme(self, is_dark):
@@ -90,16 +88,13 @@ class ContainerListWidget(QTreeWidget):
         info_layout.addWidget(name_label)
         details_layout = QHBoxLayout()
         details_layout.setSpacing(10)
-        type_label = QLabel(t('base_inventory.type').format(type=container_info['type']) if t else f"Type: {container_info['type']}")
-        type_label.setStyleSheet(f"\n            QLabel {{\n                font-size: 11px;\n                color: {('#cccccc' if self.is_dark else '#666666')};\n            }}\n        ")
-        details_layout.addWidget(type_label)
         slots_label = QLabel(t('base_inventory.slots_count').format(count=container_info['slot_count']) if t else f"Slots: {container_info['slot_count']}")
         slots_label.setStyleSheet(f"\n            QLabel {{\n                font-size: 11px;\n                color: {('#cccccc' if self.is_dark else '#666666')};\n            }}\n        ")
         details_layout.addWidget(slots_label)
         info_layout.addLayout(details_layout)
-        location_label = QLabel(t('base_inventory.location').format(location=container_info['location']) if t else f"Location: {container_info['location']}")
-        location_label.setStyleSheet(f"\n            QLabel {{\n                font-size: 11px;\n                color: {('#999999' if self.is_dark else '#888888')};\n            }}\n        ")
-        info_layout.addWidget(location_label)
+        id_label = QLabel(container_info['id'])
+        id_label.setStyleSheet(f"\n            QLabel {{\n                font-size: 11px;\n                color: {('#999999' if self.is_dark else '#888888')};\n            }}\n        ")
+        info_layout.addWidget(id_label)
         layout.addLayout(info_layout)
         layout.addStretch()
         return widget
@@ -113,10 +108,9 @@ class ContainerListWidget(QTreeWidget):
         if item:
             container_id = item.data(0, Qt.UserRole)
             menu = QMenu(self)
-            menu.addAction(t('base_inventory.view_details') if t else 'View Details', lambda: self._view_container_details(container_id))
-            menu.addAction(t('base_inventory.refresh') if t else 'Refresh', lambda: self._refresh_container(container_id))
-            menu.addAction(t('base_inventory.export_container') if t else 'Export Container', lambda: self._export_container(container_id))
+            menu.addAction(t('base_inventory.add_item') if t else 'Add Item', lambda: self._add_item(container_id))
             menu.addAction(t('base_inventory.clear_container') if t else 'Clear Container', lambda: self._clear_container(container_id))
+            menu.addAction(t('base_inventory.delete_container') if t else 'Delete Container', lambda: self._delete_container(container_id))
             menu.exec(self.viewport().mapToGlobal(position))
     def _view_container_details(self, container_id):
         for i in range(self.topLevelItemCount()):
@@ -163,6 +157,22 @@ class ContainerListWidget(QTreeWidget):
                         parent._show_info(t('base_inventory.export_success') if t else 'Container exported successfully')
                     except Exception as e:
                         parent._show_warning(f'Failed to export container: {str(e)}')
+    def _add_item(self, container_id):
+        parent = self.parent()
+        if hasattr(parent, 'manager'):
+            parent.manager.select_container(container_id)
+            parent._add_item()
+            base_id = parent.base_combo.currentData()
+            if base_id:
+                parent._load_containers_for_base(base_id)
+    def _delete_container(self, container_id):
+        parent = self.parent()
+        if hasattr(parent, 'manager'):
+            parent.manager.select_container(container_id)
+            parent._delete_container(container_id)
+            base_id = parent.base_combo.currentData()
+            if base_id:
+                parent._load_containers_for_base(base_id)
     def _clear_container(self, container_id):
         parent = self.parent()
         if hasattr(parent, 'manager'):
@@ -197,15 +207,12 @@ class ContainerInfoWidget(QWidget):
         self.name_label = QLabel('Container Name')
         self.name_label.setStyleSheet('font-size: 14px; font-weight: bold;')
         info_layout.addWidget(self.name_label)
-        self.type_label = QLabel(t('base_inventory.type').format(type='Unknown') if t else 'Type: Unknown')
-        self.type_label.setStyleSheet('font-size: 12px;')
-        info_layout.addWidget(self.type_label)
         self.slots_label = QLabel(t('base_inventory.slots_count').format(count=0) if t else 'Slots: 0')
         self.slots_label.setStyleSheet('font-size: 12px;')
         info_layout.addWidget(self.slots_label)
-        self.location_label = QLabel(t('base_inventory.location').format(location='Unknown') if t else 'Location: Unknown')
-        self.location_label.setStyleSheet('font-size: 12px;')
-        info_layout.addWidget(self.location_label)
+        self.id_label = QLabel('Unknown')
+        self.id_label.setStyleSheet('font-size: 12px;')
+        info_layout.addWidget(self.id_label)
         header_layout.addLayout(info_layout)
         header_layout.addStretch()
         layout.addLayout(header_layout)
@@ -226,9 +233,8 @@ class ContainerInfoWidget(QWidget):
         if not self.container_info:
             return
         self.name_label.setText(self.container_info['name'])
-        self.type_label.setText(t('base_inventory.type').format(type=self.container_info['type']) if t else f"Type: {self.container_info['type']}")
         self.slots_label.setText(t('base_inventory.slots_count').format(count=self.container_info['slot_count']) if t else f"Slots: {self.container_info['slot_count']}")
-        self.location_label.setText(t('base_inventory.location').format(location=self.container_info['location']) if t else f"Location: {self.container_info['location']}")
+        self.id_label.setText(self.container_info['id'])
         image_path = get_container_image_path(self.container_info['type'])
         if image_path and os.path.exists(image_path):
             pixmap = QPixmap(image_path)
@@ -350,7 +356,7 @@ class BaseInventoryTab(QWidget):
         self.container_label = QLabel(t('base_inventory.select_container') if t else 'Containers:')
         self.container_label.setStyleSheet('font-weight: bold; font-size: 12px;')
         left_layout.addWidget(self.container_label)
-        self.container_list = ContainerListWidget()
+        self.container_list = ContainerListWidget(self)
         self.container_list.container_selected.connect(self._on_container_selected)
         left_layout.addWidget(self.container_list)
         self.container_info = ContainerInfoWidget()
@@ -489,6 +495,12 @@ class BaseInventoryTab(QWidget):
             self.inventory_grid.clear()
     def _load_containers_for_base(self, base_id):
         self.container_list.clear()
+        guild_id = self.guild_combo.currentData()
+        if guild_id:
+            bases = self.manager.load_bases_for_guild(guild_id)
+            base_info = next((b for b in bases if str(b['id']) == str(base_id)), None)
+            if base_info:
+                self.manager.current_base = base_info
         containers = self.manager.load_containers_for_base(base_id)
         for container in containers:
             self.container_list.add_container(container)
@@ -516,9 +528,6 @@ class BaseInventoryTab(QWidget):
                     else:
                         self.container_info.set_container_info(None)
                         self.inventory_grid.clear()
-                else:
-                    self.container_info.set_container_info(None)
-                    self.inventory_grid.clear()
             else:
                 self._load_containers_for_base(base_id)
         else:
@@ -587,6 +596,23 @@ class BaseInventoryTab(QWidget):
                 self._show_info(t('base_inventory.container_cleared') if t else 'Container cleared successfully')
             else:
                 self._show_warning(t('base_inventory.failed_to_clear_container') if t else 'Failed to clear container')
+    def _delete_container(self, container_id):
+        container_info = next((c for c in self.manager.containers if c['id'] == container_id), None)
+        if not container_info:
+            return
+        is_guild_chest = container_info.get('is_guild_chest', False)
+        if is_guild_chest:
+            self._show_warning('Cannot delete Guild Chest')
+            return
+        reply = QMessageBox.question(self, t('base_inventory.clear_container') if t else 'Delete Container', t('base_inventory.delete_container_confirm') if t else 'Are you sure you want to delete this container and its map object? This action cannot be undone.', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            if self.manager.delete_container(container_id):
+                self._show_info(t('base_inventory.container_cleared') if t else 'Container deleted successfully')
+                base_id = container_info.get('base_id')
+                if base_id:
+                    self._load_containers_for_base(base_id)
+            else:
+                self._show_warning(t('base_inventory.failed_to_clear_container') if t else 'Failed to delete container')
     def _save_changes(self):
         if not self.manager.save_changes():
             self._show_warning(t('base_inventory.save_failed') if t else 'Failed to save changes')

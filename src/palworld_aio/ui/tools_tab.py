@@ -50,10 +50,14 @@ def center_window(win):
     win.move(geo.topLeft())
 def center_on_parent(dialog):
     parent = dialog.parent()
-    size = dialog.sizeHint()
-    if not size.isValid():
-        dialog.adjustSize()
-        size = dialog.size()
+    dialog.adjustSize()
+    size = dialog.size()
+    if not size.isValid() or size.width() < 100 or size.height() < 50:
+        min_size = dialog.minimumSize()
+        if min_size.isValid() and min_size.width() > 0 and (min_size.height() > 0):
+            size = min_size
+        else:
+            size = QSize(400, 300)
     if parent and hasattr(parent, 'geometry'):
         parent_rect = parent.geometry()
         parent_center = parent_rect.center()
@@ -72,7 +76,9 @@ def center_on_parent(dialog):
         if screen is None:
             screen = QApplication.primaryScreen()
         screen_geometry = screen.availableGeometry()
-        dialog.move(screen_geometry.x() + (screen_geometry.width() - size.width()) // 2, screen_geometry.y() + (screen_geometry.height() - size.height()) // 2)
+        dialog_x = screen_geometry.x() + (screen_geometry.width() - size.width()) // 2
+        dialog_y = screen_geometry.y() + (screen_geometry.height() - size.height()) // 2
+        dialog.move(dialog_x, dialog_y)
 class ConversionOptionsDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)

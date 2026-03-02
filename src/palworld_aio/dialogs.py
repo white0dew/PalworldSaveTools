@@ -1,13 +1,13 @@
 import os
 import json
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QSpinBox, QComboBox, QTextEdit, QFileDialog, QGroupBox, QFormLayout, QCheckBox, QFrame, QTabWidget, QScrollArea, QWidget, QGridLayout
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon, QFont
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QSpinBox, QComboBox, QTextEdit, QFileDialog, QGroupBox, QFormLayout, QCheckBox, QFrame, QTabWidget, QScrollArea, QWidget, QGridLayout, QSlider, QProgressBar, QApplication
+from PySide6.QtCore import Qt, Signal, QTimer
+from PySide6.QtGui import QIcon, QFont, QColor, QPen, QBrush, QPainter, QLinearGradient
 from i18n import t
 from loading_manager import show_critical
 from palworld_aio import constants
 from palworld_aio.utils import sav_to_json, extract_value, get_pal_data, calculate_max_hp, calculate_attack, calculate_defense, format_character_key
-DARK_THEME_STYLESHEET = '\n    QDialog {\n        background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                    stop:0 #07080a, stop:0.5 #08101a, stop:1 #05060a);\n        color: #dfeefc;\n    }\n    QLabel {\n        color: #dfeefc;\n    }\n    QLineEdit {\n        background-color: rgba(255,255,255,0.1);\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.2);\n        border-radius: 4px;\n        padding: 6px;\n    }\n    QSpinBox {\n        background-color: rgba(255,255,255,0.1);\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.2);\n        border-radius: 4px;\n        padding: 4px;\n    }\n    QComboBox {\n        background-color: rgba(255,255,255,0.1);\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.2);\n        border-radius: 4px;\n        padding: 6px;\n    }\n    QComboBox QAbstractItemView {\n        background-color: #2a2a2a;\n        color: #dfeefc;\n        selection-background-color: #3a3a3a;\n    }\n    QCheckBox {\n        color: #dfeefc;\n    }\n    QRadioButton {\n        color: #dfeefc;\n    }\n    QGroupBox {\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.2);\n        border-radius: 6px;\n        margin-top: 10px;\n        padding-top: 10px;\n    }\n    QGroupBox::title {\n        subcontrol-origin: margin;\n        left: 10px;\n        padding: 0 5px;\n    }\n    QTextEdit {\n        background-color: rgba(255,255,255,0.05);\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.1);\n        border-radius: 4px;\n    }\n    QPushButton {\n        background-color: #3a3a3a;\n        color: #dfeefc;\n        border: 1px solid #555555;\n        border-radius: 4px;\n        padding: 6px 16px;\n        min-width: 70px;\n    }\n    QPushButton:hover {\n        background-color: #4a4a4a;\n    }\n    QFrame {\n        background-color: rgba(255,255,255,0.03);\n        border: 1px solid rgba(255,255,255,0.08);\n        border-radius: 6px;\n    }\n'
+DARK_THEME_STYLESHEET = '\n    QDialog {\n        background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                    stop:0 #07080a, stop:0.5 #08101a, stop:1 #05060a);\n        color: #dfeefc;\n    }\n    QLabel {\n        color: #dfeefc;\n    }\n    QLineEdit {\n        background-color: rgba(255,255,255,0.1);\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.2);\n        border-radius: 4px;\n        padding: 6px;\n    }\n    QSpinBox {\n        background-color: rgba(255,255,255,0.1);\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.2);\n        border-radius: 4px;\n        padding: 4px;\n    }\n    QComboBox {\n        background-color: rgba(255,255,255,0.1);\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.2);\n        border-radius: 4px;\n        padding: 6px;\n    }\n    QComboBox QAbstractItemView {\n        background-color: #2a2a2a;\n        color: #dfeefc;\n        selection-background-color: #3a3a3a;\n    }\n    QCheckBox {\n        color: #dfeefc;\n    }\n    QRadioButton {\n        color: #dfeefc;\n    }\n    QGroupBox {\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.2);\n        border-radius: 6px;\n        margin-top: 10px;\n        padding-top: 10px;\n    }\n    QGroupBox::title {\n        subcontrol-origin: margin;\n        left: 10px;\n        padding: 0 5px;\n    }\n    QTextEdit {\n        background-color: rgba(255,255,255,0.05);\n        color: #dfeefc;\n        border: 1px solid rgba(255,255,255,0.1);\n        border-radius: 4px;\n    }\n    QPushButton {\n        background-color: #3a3a3a;\n        color: #dfeefc;\n        border: 1px solid #555555;\n        border-radius: 4px;\n        padding: 6px 16px;\n        min-width: 70px;\n    }\n    QPushButton:hover {\n        background-color: #4a4a4a;\n    }\n    QFrame {\n        background-color: rgba(255,255,255,0.03);\n        border: 1px solid rgba(255,255,255,0.08);\n        border-radius: 6px;\n    }\n    QSlider::groove:horizontal {\n        height: 6px;\n        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3a3a3a, stop:1 #5a5a5a);\n        border-radius: 3px;\n    }\n    QSlider::handle:horizontal {\n        background: qradialgradient(cx:0.5, cy:0.5, radius: 0.5, fx:0.5, fy:0.5, stop:0 #ffffff, stop:1 #888888);\n        width: 16px;\n        margin: -5px 0;\n        border-radius: 8px;\n    }\n    QSlider::sub-page:horizontal {\n        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #007acc, stop:1 #00bfff);\n        border-radius: 3px;\n    }\n    QProgressBar {\n        border: 1px solid #555555;\n        border-radius: 4px;\n        text-align: center;\n        color: #dfeefc;\n        background-color: rgba(255,255,255,0.1);\n    }\n    QProgressBar::chunk {\n        background-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #007acc, stop:1 #00bfff);\n        width: 10px;\n    }\n'
 class ThemedDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -17,14 +17,55 @@ class ThemedDialog(QDialog):
     def showEvent(self, event):
         super().showEvent(event)
         if not event.spontaneous():
-            try:
-                from palworld_aio.ui.tools_tab import center_on_parent
-                center_on_parent(self)
-            except ImportError:
-                from ..ui.tools_tab import center_on_parent
-                center_on_parent(self)
+            effective_parent = self._get_effective_parent()
+            if effective_parent:
+                self._center_on_effective_parent(effective_parent)
+            else:
+                try:
+                    from .ui.tools_tab import center_on_parent
+                    center_on_parent(self)
+                except ImportError:
+                    try:
+                        from ..ui.tools_tab import center_on_parent
+                        center_on_parent(self)
+                    except ImportError:
+                        from PySide6.QtWidgets import QApplication
+                        from PySide6.QtCore import Qt
+                        screen = QApplication.primaryScreen().availableGeometry()
+                        dialog_rect = self.frameGeometry()
+                        dialog_rect.moveCenter(screen.center())
+                        self.move(dialog_rect.topLeft())
             self.activateWindow()
             self.raise_()
+    def _get_effective_parent(self):
+        current = self.parent()
+        while current is not None:
+            if hasattr(current, 'isWindow') and current.isWindow() and current.isVisible():
+                if hasattr(current, 'windowTitle') and current.windowTitle():
+                    return current
+            current = current.parent()
+        for widget in QApplication.topLevelWidgets():
+            if widget.isVisible() and widget.isWindow() and hasattr(widget, 'windowTitle') and widget.windowTitle() and (not isinstance(widget, QDialog)) and hasattr(widget, 'geometry'):
+                return widget
+        active = QApplication.activeWindow()
+        if active and hasattr(active, 'geometry') and active.isVisible():
+            return active
+        return None
+    def _center_on_effective_parent(self, parent):
+        parent_rect = parent.geometry()
+        size = self.sizeHint()
+        if not size.isValid():
+            self.adjustSize()
+            size = self.size()
+        dialog_x = parent_rect.x() + (parent_rect.width() - size.width()) // 2
+        dialog_y = parent_rect.y() + (parent_rect.height() - size.height()) // 2
+        screen = QApplication.screenAt(parent_rect.center())
+        if screen is None:
+            screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        dialog_x = max(screen_geometry.x(), min(dialog_x, screen_geometry.right() - size.width()))
+        dialog_y = max(screen_geometry.y(), min(dialog_y, screen_geometry.bottom() - size.height()))
+        self.move(dialog_x, dialog_y)
 class InputDialog(ThemedDialog):
     def __init__(self, title, prompt, parent=None, mode='text', initial_text=''):
         super().__init__(parent)
@@ -301,6 +342,126 @@ class RadiusInputDialog(ThemedDialog):
     @staticmethod
     def get_radius(title, prompt, current_radius, parent=None):
         dialog = RadiusInputDialog(title, prompt, current_radius, parent)
+        if dialog.exec() == QDialog.Accepted:
+            return dialog.result_value
+        return None
+class RadiusPreviewDialog(ThemedDialog):
+    valueChanged = Signal(float, float)
+    def __init__(self, title, prompt_text, current_radius, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setModal(True)
+        self.setMinimumWidth(500)
+        self.setMaximumWidth(600)
+        if os.path.exists(constants.ICON_PATH):
+            self.setWindowIcon(QIcon(constants.ICON_PATH))
+        self.current_actual_radius = current_radius
+        self.current_percent = int(round(current_radius / 35.0))
+        self.preview_active = False
+        self._setup_ui(prompt_text)
+        self._connect_signals()
+    def _setup_ui(self, prompt_text):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+        title_label = QLabel(t('base.radius.preview.title') if t else 'Adjust Base Radius')
+        title_label.setFont(QFont(constants.FONT_FAMILY, constants.FONT_SIZE + 2, QFont.Bold))
+        layout.addWidget(title_label)
+        current_frame = QFrame()
+        current_frame.setFrameShape(QFrame.StyledPanel)
+        current_layout = QHBoxLayout(current_frame)
+        current_label = QLabel(t('base.radius.current') if t else 'Current Radius:')
+        current_label.setFont(QFont(constants.FONT_FAMILY, constants.FONT_SIZE, QFont.Bold))
+        self.current_display = QLabel(f'{self.current_percent}% ({int(self.current_actual_radius)})')
+        self.current_display.setStyleSheet('color: #4ade80; font-weight: bold; font-size: 14px;')
+        current_layout.addWidget(current_label)
+        current_layout.addStretch()
+        current_layout.addWidget(self.current_display)
+        layout.addWidget(current_frame)
+        slider_group = QGroupBox(t('base.radius.adjust') if t else 'Adjust Radius')
+        slider_layout = QVBoxLayout(slider_group)
+        self.value_display = QLabel(f'{self.current_percent}%')
+        self.value_display.setAlignment(Qt.AlignCenter)
+        self.value_display.setFont(QFont(constants.FONT_FAMILY, constants.FONT_SIZE + 4, QFont.Bold))
+        self.value_display.setStyleSheet('color: #00bfff;')
+        slider_layout.addWidget(self.value_display)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(50, 1000)
+        self.progress_bar.setValue(self.current_percent)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setFixedHeight(8)
+        slider_layout.addWidget(self.progress_bar)
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setMinimum(50)
+        self.slider.setMaximum(1000)
+        self.slider.setValue(self.current_percent)
+        self.slider.setTickInterval(50)
+        self.slider.setTickPosition(QSlider.TicksBelow)
+        self.slider.setPageStep(10)
+        slider_layout.addWidget(self.slider)
+        range_label = QLabel(t('base.radius.range') if t else 'Range: 50% (1,750) to 1000% (35,000)')
+        range_label.setAlignment(Qt.AlignCenter)
+        range_label.setStyleSheet('color: #64748b; font-size: 11px;')
+        slider_layout.addWidget(range_label)
+        layout.addWidget(slider_group)
+        actual_frame = QFrame()
+        actual_frame.setFrameShape(QFrame.StyledPanel)
+        actual_layout = QHBoxLayout(actual_frame)
+        actual_label = QLabel(t('base.radius.actual') if t else 'Actual Value:')
+        actual_label.setFont(QFont(constants.FONT_FAMILY, constants.FONT_SIZE, QFont.Bold))
+        self.actual_display = QLabel(f'{int(self.current_actual_radius)}')
+        self.actual_display.setStyleSheet('color: #fbbf24; font-weight: bold; font-size: 14px;')
+        actual_layout.addWidget(actual_label)
+        actual_layout.addStretch()
+        actual_layout.addWidget(self.actual_display)
+        layout.addWidget(actual_frame)
+        warning_label = QLabel(t('base.radius.warning') if t else '⚠ Note: You must load this save in-game for the game to reassign structures within the new radius.')
+        warning_label.setWordWrap(True)
+        warning_label.setStyleSheet('color: #f59e0b; font-style: italic; padding: 8px; background-color: rgba(245, 158, 11, 0.1); border-radius: 4px;')
+        layout.addWidget(warning_label)
+        button_layout = QHBoxLayout()
+        reset_btn = QPushButton(t('base.radius.reset') if t else 'Reset to Default (100%)')
+        reset_btn.clicked.connect(self._reset_to_default)
+        button_layout.addWidget(reset_btn)
+        button_layout.addStretch()
+        cancel_btn = QPushButton(t('button.cancel') if t else 'Cancel')
+        cancel_btn.clicked.connect(self.reject)
+        ok_btn = QPushButton(t('base.radius.preview.ready') if t else 'Ready to Apply')
+        ok_btn.clicked.connect(self.accept)
+        ok_btn.setDefault(True)
+        button_layout.addWidget(cancel_btn)
+        button_layout.addWidget(ok_btn)
+        layout.addLayout(button_layout)
+        self.preview_status = QLabel(t('base.radius.preview.ready') if t else 'Preview ready - drag slider to see changes on map')
+        self.preview_status.setStyleSheet('color: #64748b; font-size: 11px; font-style: italic;')
+        layout.addWidget(self.preview_status)
+    def _connect_signals(self):
+        self.slider.valueChanged.connect(self._on_slider_changed)
+        self.valueChanged.connect(self._on_value_changed)
+    def _on_slider_changed(self, value):
+        actual = int(round(value * 35.0))
+        self.valueChanged.emit(value, actual)
+        self._update_displays(value, actual)
+    def _on_value_changed(self, percent, actual):
+        pass
+    def _update_displays(self, percent, actual):
+        self.value_display.setText(f'{percent}%')
+        self.actual_display.setText(f'{actual}')
+        self.progress_bar.setValue(percent)
+        self.preview_status.setText(f'Preview: {percent}% ({actual}) - Drag slider to adjust')
+    def _reset_to_default(self):
+        self.slider.setValue(100)
+        self._update_displays(100, 3500)
+    def accept(self):
+        percent = self.slider.value()
+        self.result_value = float(percent * 35.0)
+        super().accept()
+    def reject(self):
+        self.result_value = None
+        super().reject()
+    @staticmethod
+    def get_radius(title, prompt, current_radius, parent=None):
+        dialog = RadiusPreviewDialog(title, prompt, current_radius, parent)
         if dialog.exec() == QDialog.Accepted:
             return dialog.result_value
         return None

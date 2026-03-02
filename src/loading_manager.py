@@ -541,24 +541,46 @@ def show_error_screen(error_text):
     dialog.exec()
 def _center_message_box_on_parent(msg_box):
     parent = msg_box.parent()
-    if parent and hasattr(parent, 'geometry'):
-        parent_rect = parent.geometry()
+    effective_parent = _get_effective_parent(parent)
+    if effective_parent:
+        parent_rect = effective_parent.geometry()
         size = msg_box.sizeHint()
         if not size.isValid():
             msg_box.adjustSize()
             size = msg_box.size()
         dialog_x = parent_rect.x() + (parent_rect.width() - size.width()) // 2
         dialog_y = parent_rect.y() + (parent_rect.height() - size.height()) // 2
+        screen = QApplication.screenAt(parent_rect.center())
+        if screen is None:
+            screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        dialog_x = max(screen_geometry.x(), min(dialog_x, screen_geometry.right() - size.width()))
+        dialog_y = max(screen_geometry.y(), min(dialog_y, screen_geometry.bottom() - size.height()))
         msg_box.move(dialog_x, dialog_y)
+    else:
+        parent = msg_box.parent()
+        if parent and hasattr(parent, 'geometry'):
+            parent_rect = parent.geometry()
+            size = msg_box.sizeHint()
+            if not size.isValid():
+                msg_box.adjustSize()
+                size = msg_box.size()
+            dialog_x = parent_rect.x() + (parent_rect.width() - size.width()) // 2
+            dialog_y = parent_rect.y() + (parent_rect.height() - size.height()) // 2
+            msg_box.move(dialog_x, dialog_y)
 def _get_effective_parent(parent):
-    if parent and hasattr(parent, 'geometry') and parent.isVisible():
-        return parent
+    current = parent
+    while current is not None:
+        if hasattr(current, 'isWindow') and current.isWindow() and current.isVisible():
+            if hasattr(current, 'windowTitle') and current.windowTitle():
+                return current
+        current = current.parent()
+    for widget in QApplication.topLevelWidgets():
+        if widget.isVisible() and widget.isWindow() and hasattr(widget, 'windowTitle') and widget.windowTitle() and (not isinstance(widget, QDialog)) and hasattr(widget, 'geometry'):
+            return widget
     active = QApplication.activeWindow()
     if active and hasattr(active, 'geometry') and active.isVisible():
         return active
-    for widget in QApplication.topLevelWidgets():
-        if widget.isVisible() and widget.isWindow() and widget.windowTitle() and (not isinstance(widget, QDialog)):
-            return widget
     return None
 _MSG_BOX_DARK_STYLESHEET = '\n    QMessageBox {\n        background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                    stop:0 #07080a, stop:0.5 #08101a, stop:1 #05060a);\n        color: #dfeefc;\n    }\n    QMessageBox QLabel {\n        color: #dfeefc;\n    }\n    QPushButton {\n        background-color: #3a3a3a;\n        color: #dfeefc;\n        border: 1px solid #555555;\n        border-radius: 4px;\n        padding: 6px 16px;\n        min-width: 70px;\n    }\n    QPushButton:hover {\n        background-color: #4a4a4a;\n    }\n'
 _MSG_BOX_LIGHT_STYLESHEET = '\n    QMessageBox {\n        background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                    stop:0 #e6ecef, stop:0.5 #bdd5df, stop:1 #a7c9da);\n        color: #1a1a2e;\n    }\n    QMessageBox QLabel {\n        color: #1a1a2e;\n    }\n    QPushButton {\n        background-color: #e0e0e0;\n        color: #1a1a2e;\n        border: 1px solid #b0b0b0;\n        border-radius: 4px;\n        padding: 6px 16px;\n        min-width: 70px;\n    }\n    QPushButton:hover {\n        background-color: #d0d0d0;\n    }\n'

@@ -697,7 +697,7 @@ class PlayerInventoryTab(QWidget):
         acc_grid = QGridLayout()
         acc_grid.setSpacing(2)
         acc_grid.setContentsMargins(0, 0, 0, 0)
-        for i, (row, col) in enumerate([(0, 0), (0, 1), (1, 0), (1, 1)]):
+        for i, (row, col) in enumerate([(0, 0), (1, 0), (0, 1), (1, 1)]):
             slot = EquipmentSlotWidget(f'accessory{i + 1}', f'A{i + 1}')
             self.equip_slots[f'accessory{i + 1}'] = slot
             slot.context_menu_requested.connect(self._show_equip_context_menu)
