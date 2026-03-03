@@ -774,15 +774,11 @@ class BaseInventoryManager:
                 import traceback
                 traceback.print_exc()
     def _get_cached_item_locations(self, item_id):
-        if not self._cache_valid or not self._item_location_cache:
-            self._build_item_location_cache()
-        if self._cache_valid and item_id in self._item_location_cache:
+        if self._cache_valid and self._item_location_cache and (item_id in self._item_location_cache):
             return self._item_location_cache[item_id]
         return {}
     def _get_cached_containers_for_base(self, base_id):
-        if not self._cache_valid or not self._container_cache:
-            self._build_item_location_cache()
-        if self._cache_valid and base_id in self._container_cache:
+        if self._cache_valid and self._container_cache and (base_id in self._container_cache):
             return self._container_cache[base_id]
         return get_base_containers(base_id)
     def invalidate_cache(self):
@@ -806,3 +802,100 @@ class BaseInventoryManager:
             return map_object_id
         except Exception as e:
             return map_object_id
+def find_item_locations_efficient(item_id):
+    if not constants.loaded_level_json:
+        return {}
+    item_locations = {}
+    try:
+        wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
+        base_guild_lookup = constants.base_guild_lookup
+        container_lookup = constants.get_container_lookup()
+        container_to_base = {}
+        map_objs = wsd.get('MapObjectSaveData', {}).get('value', {}).get('values', [])
+        for obj in map_objs:
+            map_object_id = obj.get('MapObjectId', {}).get('value', '')
+            if not map_object_id:
+                continue
+            is_container = any((container_type in map_object_id for container_type in ['ItemChest', 'StorageBox', 'ItemBox', 'ItemContainer']))
+            if not is_container:
+                continue
+            bp = obj.get('Model', {}).get('value', {}).get('BuildProcess', {}).get('value', {}).get('RawData', {}).get('value', {})
+            if bp.get('state') != 1:
+                continue
+            raw_data = obj.get('Model', {}).get('value', {}).get('RawData', {}).get('value', {})
+            base_camp_id = raw_data.get('base_camp_id_belong_to')
+            if not base_camp_id:
+                continue
+            base_camp_id_str = str(base_camp_id).replace('-', '').lower()
+            module_map = obj.get('ConcreteModel', {}).get('value', {}).get('ModuleMap', {}).get('value', [])
+            for module in module_map:
+                if module.get('key') == 'EPalMapObjectConcreteModelModuleType::ItemContainer':
+                    module_raw = module.get('value', {}).get('RawData', {}).get('value', {})
+                    container_id = module_raw.get('target_container_id')
+                    if container_id:
+                        container_to_base[str(container_id).replace('-', '').lower()] = base_camp_id_str
+                    break
+        guild_extra_map = wsd.get('GuildExtraSaveDataMap', {}).get('value', [])
+        for guild_entry in guild_extra_map:
+            try:
+                guild_key = str(guild_entry.get('key', '')).replace('-', '').lower()
+                guild_storage = guild_entry.get('value', {}).get('GuildItemStorage', {})
+                raw_data = guild_storage.get('value', {}).get('RawData', {}).get('value', {})
+                container_id = raw_data.get('container_id')
+                if container_id:
+                    container_id_str = str(container_id).replace('-', '').lower()
+                    for base_id, guild_info in base_guild_lookup.items():
+                        if str(base_id).replace('-', '').lower() == guild_key:
+                            container_to_base[container_id_str] = str(base_id).replace('-', '').lower()
+                            break
+            except:
+                continue
+        for container_id_low, container_data in container_lookup.items():
+            try:
+                base_id = container_to_base.get(container_id_low)
+                if not base_id:
+                    continue
+                base_id_normalized = base_id.replace('-', '').lower()
+                guild_info = base_guild_lookup.get(base_id_normalized)
+                if not guild_info:
+                    for lookup_key, lookup_val in base_guild_lookup.items():
+                        if lookup_key.replace('-', '').lower() == base_id_normalized:
+                            guild_info = lookup_val
+                            break
+                guild_id = guild_info.get('GuildID', '') if guild_info else ''
+                guild_id_normalized = guild_id.replace('-', '').lower() if guild_id else ''
+                if not guild_id_normalized:
+                    continue
+                slots = container_data.get('value', {}).get('Slots', {}).get('value', {}).get('values', [])
+                if not slots:
+                    continue
+                found = False
+                for slot in slots:
+                    try:
+                        raw_data = slot.get('RawData', {})
+                        raw_value = raw_data.get('value', {}) if raw_data.get('type') in ('Array', 'ArrayProperty') else raw_data
+                        if not raw_value:
+                            continue
+                        item_data = raw_value.get('item', {})
+                        if not item_data:
+                            continue
+                        static_id = item_data.get('static_id', '')
+                        if static_id == item_id:
+                            found = True
+                            break
+                    except:
+                        continue
+                if found:
+                    base_id_normalized = base_id.replace('-', '').lower()
+                    if guild_id_normalized not in item_locations:
+                        item_locations[guild_id_normalized] = {}
+                    if base_id_normalized not in item_locations[guild_id_normalized]:
+                        item_locations[guild_id_normalized][base_id_normalized] = []
+                    if container_id_low not in item_locations[guild_id_normalized][base_id_normalized]:
+                        item_locations[guild_id_normalized][base_id_normalized].append(container_id_low)
+            except:
+                continue
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+    return item_locations

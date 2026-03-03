@@ -15,7 +15,7 @@ except ImportError:
     t = None
 try:
     from palworld_aio import constants
-    from palworld_aio.base_inventory_manager import BaseInventoryManager, get_container_image_path
+    from palworld_aio.base_inventory_manager import BaseInventoryManager, get_container_image_path, find_item_locations_efficient
     from palworld_aio.widgets import StatsPanel
     from palworld_aio.ui.inventory_tab import InventoryGridWidget, ItemPickerDialog
     from palworld_aio.ui.styled_combo import StyledCombo
@@ -23,7 +23,7 @@ try:
     from i18n import t
 except ImportError:
     from .. import constants
-    from ..base_inventory_manager import BaseInventoryManager, get_container_image_path
+    from ..base_inventory_manager import BaseInventoryManager, get_container_image_path, find_item_locations_efficient
     from ..widgets import StatsPanel
     from ..ui.inventory_tab import InventoryGridWidget, ItemPickerDialog
     from ..ui.styled_combo import StyledCombo
@@ -432,7 +432,8 @@ class BaseInventoryTab(QWidget):
             guild_id = self.guild_combo.itemData(index)
             if guild_id is None:
                 return
-            if hasattr(self, '_item_locations') and self._item_locations and (guild_id in self._item_locations):
+            guild_id_key = str(guild_id).replace('-', '').lower()
+            if hasattr(self, '_item_locations') and self._item_locations and guild_id_key and (guild_id_key in self._item_locations):
                 self._load_bases_for_guild_filtered(guild_id)
             else:
                 self._load_bases_for_guild(guild_id)
@@ -464,13 +465,15 @@ class BaseInventoryTab(QWidget):
             self._on_base_changed(0)
     def _load_bases_for_guild_filtered(self, guild_id):
         self.base_combo.clear()
-        if hasattr(self, '_item_locations') and guild_id in self._item_locations:
-            filtered_bases = self._item_locations[guild_id]
+        guild_id_key = str(guild_id).replace('-', '').lower() if guild_id else None
+        if hasattr(self, '_item_locations') and guild_id_key and (guild_id_key in self._item_locations):
+            filtered_bases = self._item_locations[guild_id_key]
             if filtered_bases:
                 self.base_combo.setEnabled(True)
                 all_bases = self.manager.load_bases_for_guild(guild_id)
                 for base in all_bases:
-                    if base['id'] in filtered_bases:
+                    base_id_key = str(base['id']).replace('-', '').lower()
+                    if base_id_key in filtered_bases:
                         self.base_combo.addItem(f"{base['guild_name']} - Base {base['id'][:8]}", base['id'])
                 if self.base_combo.count() > 0:
                     self._on_base_changed(0)
@@ -485,7 +488,10 @@ class BaseInventoryTab(QWidget):
     def _on_base_changed(self, index):
         if index >= 0:
             base_id = self.base_combo.itemData(index)
-            if hasattr(self, '_item_locations') and self._item_locations and (self.guild_combo.currentData() in self._item_locations) and (base_id in self._item_locations[self.guild_combo.currentData()]):
+            guild_id = self.guild_combo.currentData()
+            guild_id_key = str(guild_id).replace('-', '').lower() if guild_id else None
+            base_id_key = str(base_id).replace('-', '').lower() if base_id else None
+            if hasattr(self, '_item_locations') and self._item_locations and guild_id_key and (guild_id_key in self._item_locations) and base_id_key and (base_id_key in self._item_locations.get(guild_id_key, {})):
                 self._load_containers_for_base_filtered(base_id)
             else:
                 self._load_containers_for_base(base_id)
@@ -513,21 +519,26 @@ class BaseInventoryTab(QWidget):
     def _load_containers_for_base_filtered(self, base_id):
         self.container_list.clear()
         guild_id = self.guild_combo.currentData()
-        if hasattr(self, '_item_locations') and self._item_locations and (guild_id in self._item_locations):
-            guild_data = self._item_locations[guild_id]
+        guild_id_key = str(guild_id).replace('-', '').lower() if guild_id else None
+        base_id_key = str(base_id).replace('-', '').lower() if base_id else None
+        if hasattr(self, '_item_locations') and self._item_locations and guild_id_key and (guild_id_key in self._item_locations):
+            guild_data = self._item_locations[guild_id_key]
             if isinstance(guild_data, dict):
-                if base_id in guild_data:
-                    filtered_containers = guild_data[base_id]
+                if base_id_key and base_id_key in guild_data:
+                    filtered_containers = guild_data[base_id_key]
                     if filtered_containers:
                         all_containers = self.manager.load_containers_for_base(base_id)
                         for container in all_containers:
-                            if container['id'] in filtered_containers:
+                            container_id_key = str(container['id']).replace('-', '').lower()
+                            if container_id_key in filtered_containers:
                                 self.container_list.add_container(container)
                         if self.container_list.topLevelItemCount() > 0:
                             self.container_list.setCurrentItem(self.container_list.topLevelItem(0))
                     else:
                         self.container_info.set_container_info(None)
                         self.inventory_grid.clear()
+                else:
+                    self._load_containers_for_base(base_id)
             else:
                 self._load_containers_for_base(base_id)
         else:
@@ -641,42 +652,13 @@ class BaseInventoryTab(QWidget):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         start_time = time.time()
         try:
-            item_locations = self.manager._get_cached_item_locations(self.selected_item_id)
-            if not item_locations:
-                all_guilds = self.manager.load_guilds()
-                if not all_guilds:
-                    return
-                item_locations = {}
-                total_guilds = len(all_guilds)
-                for i, guild in enumerate(all_guilds):
-                    guild_id = guild['id']
-                    bases = self.manager.load_bases_for_guild(guild_id)
-                    for base in bases:
-                        base_id = base['id']
-                        containers = self.manager.load_containers_for_base(base_id)
-                        containers_with_item = []
-                        for container in containers:
-                            container_id = container['id']
-                            inventory_container = self.manager.select_container(container_id)
-                            if inventory_container:
-                                items = inventory_container.get_items()
-                                for item in items:
-                                    if item.get('item_id') == self.selected_item_id:
-                                        containers_with_item.append(container_id)
-                                        break
-                        if containers_with_item:
-                            if guild_id not in item_locations:
-                                item_locations[guild_id] = {}
-                            item_locations[guild_id][base_id] = containers_with_item
-                    if total_guilds > 5:
-                        elapsed = time.time() - start_time
-                        if elapsed > 1.0:
-                            QApplication.processEvents()
+            item_locations = find_item_locations_efficient(self.selected_item_id)
             self.guild_combo.clear()
             if item_locations:
                 all_guilds = self.manager.load_guilds()
                 for guild in all_guilds:
-                    if guild['id'] in item_locations:
+                    guild_id_key = str(guild['id']).replace('-', '').lower()
+                    if guild_id_key in item_locations:
                         self.guild_combo.addItem(f"{guild['name']} (Level {guild['level']})", guild['id'])
                 self._item_locations = item_locations
                 self._on_guild_changed(0)

@@ -95,8 +95,6 @@ class SaveManager(QObject):
             dynamic_manager = get_dynamic_item_manager()
             dynamic_manager.sync_with_save_data(constants.loaded_level_json)
             self._build_player_levels()
-            from palworld_aio.base_inventory_manager import BaseInventoryManager
-            BaseInventoryManager.build_cache()
             if not constants.loaded_level_json:
                 self.load_finished.emit(False)
                 return False
@@ -121,18 +119,7 @@ class SaveManager(QObject):
                     for base_id_uuid in gdata['value']['RawData']['value'].get('base_ids', []):
                         constants.base_guild_lookup[str(base_id_uuid)] = {'GuildName': guild_name, 'GuildID': gid}
             log_folder = os.path.join(base_path, 'Logs', 'Scan Save Logger')
-            if os.path.exists(log_folder):
-                try:
-                    shutil.rmtree(log_folder)
-                except:
-                    pass
             os.makedirs(log_folder, exist_ok=True)
-            illegal_log_folder = os.path.join(base_path, 'Logs', 'Illegal Pal Logger')
-            if os.path.exists(illegal_log_folder):
-                try:
-                    shutil.rmtree(illegal_log_folder)
-                except:
-                    pass
             player_pals_count = {}
             illegal_pals_by_owner, owner_nicknames = self._count_pals_found(data_source, player_pals_count, log_folder, constants.current_save_path, guild_name_map)
             constants.PLAYER_PAL_COUNTS = player_pals_count
@@ -153,8 +140,6 @@ class SaveManager(QObject):
         t1 = time.perf_counter()
         constants.invalidate_container_lookup()
         self._build_player_levels()
-        from palworld_aio.base_inventory_manager import BaseInventoryManager
-        BaseInventoryManager.build_cache()
         if not constants.loaded_level_json:
             raise Exception('Failed to parse Level.sav')
         data_source = constants.loaded_level_json['properties']['worldSaveData']['value']
@@ -176,18 +161,7 @@ class SaveManager(QObject):
                 for base_id_uuid in gdata['value']['RawData']['value'].get('base_ids', []):
                     constants.base_guild_lookup[str(base_id_uuid)] = {'GuildName': guild_name, 'GuildID': gid}
         log_folder = os.path.join(base_path, 'Logs', 'Scan Save Logger')
-        if os.path.exists(log_folder):
-            try:
-                shutil.rmtree(log_folder)
-            except:
-                pass
         os.makedirs(log_folder, exist_ok=True)
-        illegal_log_folder = os.path.join(base_path, 'Logs', 'Illegal Pal Logger')
-        if os.path.exists(illegal_log_folder):
-            try:
-                shutil.rmtree(illegal_log_folder)
-            except:
-                pass
         player_pals_count = {}
         illegal_pals_by_owner, owner_nicknames = self._count_pals_found(data_source, player_pals_count, log_folder, constants.current_save_path, guild_name_map)
         constants.PLAYER_PAL_COUNTS = player_pals_count
@@ -250,6 +224,8 @@ class SaveManager(QObject):
             illegal_pals_by_owner = defaultdict(lambda: defaultdict(list))
         else:
             illegal_pals_by_owner = defaultdict(lambda: defaultdict(list), illegal_pals_by_owner)
+        invalid_objects = defaultdict(lambda: defaultdict(int))
+        self._setup_fresh_logs_folder(base_dir)
         def load_map(fname, key):
             try:
                 fp = os.path.join(base_dir, 'resources', 'game_data', fname)
@@ -326,6 +302,8 @@ class SaveManager(QObject):
             cid = raw.get('CharacterID', {}).get('value', '')
             if cid and cid.lower() not in NAMEMAP:
                 miss['Pals'].add(cid)
+                pal_name = cid
+                invalid_objects['Invalid Pals'][pal_name] += 1
             name = NAMEMAP.get(cid.lower(), cid)
             lvl = extract_value(raw, 'Level', 1)
             rk = extract_value(raw, 'Rank', 1)
@@ -335,18 +313,24 @@ class SaveManager(QObject):
             for s in p_list:
                 if s.lower() not in PASSMAP:
                     miss['Passives'].add(s)
+                    skill_name = s
+                    invalid_objects['Invalid Passives'][skill_name] += 1
             pskills = [PASSMAP.get(s.lower(), s) for s in p_list]
             e_list = raw.get('EquipWaza', {}).get('value', {}).get('values', [])
             for w in e_list:
                 w_short = w.split('::')[-1]
                 if w_short.lower() not in SKILLMAP:
                     miss['Skills'].add(w)
+                    skill_name = w
+                    invalid_objects['Invalid Active Skills'][skill_name] += 1
             active = [SKILLMAP.get(w.split('::')[-1].lower(), w.split('::')[-1]) for w in e_list]
             m_list = raw.get('MasteredWaza', {}).get('value', {}).get('values', [])
             for w in m_list:
                 w_short = w.split('::')[-1]
                 if w_short.lower() not in SKILLMAP:
                     miss['Skills'].add(w)
+                    skill_name = w
+                    invalid_objects['Invalid Learned Skills'][skill_name] += 1
             learned = [SKILLMAP.get(w.split('::')[-1].lower(), w.split('::')[-1]) for w in m_list]
             talent_hp = int(extract_value(raw, 'Talent_HP', 0))
             talent_shot = int(extract_value(raw, 'Talent_Shot', 0))
@@ -450,6 +434,17 @@ class SaveManager(QObject):
                 h.close()
                 lg.removeHandler(h)
         return (dict(illegal_pals_by_owner), owner_nicknames)
+    def _setup_fresh_logs_folder(self, base_path):
+        logs_dir = os.path.join(base_path, 'Logs')
+        if os.path.exists(logs_dir):
+            try:
+                shutil.rmtree(logs_dir)
+            except:
+                pass
+        logger_dirs = ['Scan Save Logger', 'Illegal Pal Logger/Guilds', 'Illegal Pal Logger/Players']
+        for logger_dir in logger_dirs:
+            full_path = os.path.join(logs_dir, logger_dir)
+            os.makedirs(full_path, exist_ok=True)
     def _process_scan_log(self, data_source, playerdir, log_folder, guild_name_map, base_path, illegal_pals_by_owner=None, owner_nicknames=None):
         def count_owned_pals(level_json):
             owned_count = {}
@@ -789,7 +784,7 @@ class SaveManager(QObject):
                             h.flush()
                             h.close()
                             logger.removeHandler(h)
-        print(f'Created illegal pal logs in: {illegal_log_dir}')
+            print(f'Created illegal pal logs in: {illegal_log_dir}')
         self._create_player_summary_json(data_source, log_folder, guild_name_map)
     def _top_process_player(self, p, playerdir, log_folder):
         uid = p.get('player_uid')
