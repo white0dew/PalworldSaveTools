@@ -395,11 +395,13 @@ class BaseInventoryManager:
         inventory_container = self.select_container(container_id)
         if not inventory_container:
             return False
-        empty_slots = []
-        for i in range(self.current_container['slot_count']):
-            empty_slot = {'RawData': {'value': {'item': {'static_id': '', 'dynamic_id': {'created_world_id': '00000000-0000-0000-0000-000000000000', 'local_id_in_created_world': '00000000-0000-0000-0000-000000000000'}}, 'count': 0}}}
-            empty_slots.append(empty_slot)
-        success = update_container_contents(container_id, empty_slots)
+        items = self.inventory_container.get_items()
+        for item in items:
+            slot_index = item.get('slot_index')
+            if slot_index is not None:
+                self.inventory_container._standardized_container.remove_item(slot_index)
+        raw_slots = self.inventory_container._standardized_container.get_raw_slots()
+        success = update_container_contents(container_id, raw_slots)
         if success:
             self.select_container(container_id)
             self.invalidate_cache()

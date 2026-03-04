@@ -552,17 +552,20 @@ class BaseInventoryTab(QWidget):
             return
         reply = QMessageBox.question(self, t('base_inventory.clear_container') if t else 'Clear Container', t('base_inventory.clear_container_confirm') if t else 'Are you sure you want to clear all items from this container?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
-            empty_slots = [{'RawData': {'value': {'item': {'static_id': '', 'dynamic_id': {'created_world_id': '00000000-0000-0000-0000-000000000000', 'local_id_in_created_world': '00000000-0000-0000-0000-000000000000'}}, 'count': 0}}} for _ in range(self.manager.current_container['slot_count'])]
-            if self.manager.update_container_contents(self.manager.current_container['id'], empty_slots):
-                inventory_container = self.manager.select_container(self.manager.current_container['id'])
-                if inventory_container:
-                    items = inventory_container.get_items()
-                    max_slots = inventory_container.get_max_slots()
-                    self.inventory_grid.load_items(items, max_slots=max_slots)
-                self._update_container_stats()
-                self._show_info(t('base_inventory.container_cleared') if t else 'Container cleared successfully')
+            container_id = self.manager.current_container['id'] if self.manager.current_container else None
+            if container_id:
+                if self.manager.clear_container(container_id):
+                    inventory_container = self.manager.select_container(container_id)
+                    if inventory_container:
+                        items = inventory_container.get_items()
+                        max_slots = inventory_container.get_max_slots()
+                        self.inventory_grid.load_items(items, max_slots=max_slots)
+                    self._update_container_stats()
+                    self._show_info(t('base_inventory.container_cleared') if t else 'Container cleared successfully')
+                else:
+                    self._show_warning(t('base_inventory.failed_to_clear_container') if t else 'Failed to clear container')
             else:
-                self._show_warning(t('base_inventory.failed_to_clear_container') if t else 'Failed to clear container')
+                self._show_warning(t('base_inventory.select_container_first') if t else 'Please select a container first')
     def _delete_container(self, container_id):
         container_info = next((c for c in self.manager.containers if c['id'] == container_id), None)
         if not container_info:

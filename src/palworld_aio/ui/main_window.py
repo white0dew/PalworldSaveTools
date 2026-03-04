@@ -989,22 +989,19 @@ class MainWindow(QMainWindow):
         run_with_loading(on_finished, task)
     def _delete_inactive_bases(self):
         if not constants.loaded_level_json:
+            self._show_warning(t('Error'), t('error.no_save_loaded'))
             return
-        wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
-        valid_guild_ids = {as_uuid(g['key']) for g in wsd.get('GroupSaveDataMap', {}).get('value', []) if g['value']['GroupType']['value']['value'] == 'EPalGroupType::Guild'}
-        base_list = wsd.get('BaseCampSaveData', {}).get('value', [])[:]
-        cnt = 0
-        for b in base_list:
-            raw = b['value']['RawData']['value']
-            gid_raw = raw.get('group_id_belong_to')
-            gid = as_uuid(gid_raw) if gid_raw else None
-            if not gid or gid not in valid_guild_ids:
-                if delete_base_camp(b, gid):
-                    cnt += 1
-        if cnt > 0:
-            constants.invalidate_container_lookup()
-            self.base_inventory_tab.manager.invalidate_cache()
-            self._show_info(t('Done'), t('orphaned_bases_deleted', count=cnt))
+        days = DaysInputDialog.get_days(t('deletion.inactive_bases.title'), t('deletion.inactive_bases.prompt'), self)
+        if days:
+            def task():
+                return delete_inactive_bases(days, self)
+            def on_finished(removed):
+                if removed > 0:
+                    constants.invalidate_container_lookup()
+                    self.base_inventory_tab.manager.invalidate_cache()
+                self.refresh_all()
+                self._show_info(t('Done'), t('inactive_bases_deleted', count=removed))
+            run_with_loading(on_finished, task)
     def _delete_duplicate_players(self):
         if not constants.loaded_level_json:
             self._show_warning(t('Error'), t('error.no_save_loaded'))
