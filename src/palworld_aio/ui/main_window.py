@@ -27,7 +27,7 @@ from palworld_aio.base_manager import export_base_json, import_base_json, clone_
 from palworld_aio.player_manager import rename_player
 from palworld_aio.map_generator import generate_world_map
 from palworld_aio.dialogs import InputDialog, DaysInputDialog, LevelInputDialog, RadiusInputDialog, PalDefenderDialog, GameDaysInputDialog
-from palworld_aio.widgets import SearchPanel, StatsPanel
+from palworld_aio.widgets import SearchPanel, StatsPanel, ScrollableContextMenu
 class DetachedStatusWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__()
