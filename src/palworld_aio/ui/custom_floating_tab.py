@@ -7,9 +7,6 @@ class FloatingTabBar(QTabBar):
         self.setDrawBase(False)
         self.is_dark_mode = True
         self._hovered_tab = -1
-    def set_theme(self, is_dark):
-        self.is_dark_mode = is_dark
-        self.update()
     def tabSizeHint(self, index):
         size = super().tabSizeHint(index)
         return QSize(size.width() + 20, size.height() + 12)
@@ -48,7 +45,7 @@ class FloatingTabBar(QTabBar):
         path.closeSubpath()
         return path
     def _draw_shadow(self, painter, path):
-        shadow_color = QColor(125, 211, 252, 25) if self.is_dark_mode else QColor(37, 150, 190, 25)
+        shadow_color = QColor(125, 211, 252, 25)
         painter.setPen(Qt.NoPen)
         painter.setBrush(QBrush(shadow_color))
         painter.save()
@@ -56,31 +53,18 @@ class FloatingTabBar(QTabBar):
         painter.fillPath(path, shadow_color)
         painter.restore()
     def _get_colors(self, is_selected, is_hovered):
-        if self.is_dark_mode:
-            if is_selected:
-                bg = QColor(125, 211, 252, 31)
-                border = QColor(125, 211, 252, 76)
-                text = QColor('#7DD3FC')
-            elif is_hovered:
-                bg = QColor(125, 211, 252, 13)
-                border = QColor(125, 211, 252, 38)
-                text = QColor('#E6EEF6')
-            else:
-                bg = QColor(30, 33, 40, 178)
-                border = QColor(125, 211, 252, 26)
-                text = QColor('#A6B8C8')
-        elif is_selected:
-            bg = QColor(37, 150, 190, 38)
-            border = QColor(37, 150, 190, 102)
-            text = QColor('#1A365D')
+        if is_selected:
+            bg = QColor(125, 211, 252, 31)
+            border = QColor(125, 211, 252, 76)
+            text = QColor('#7DD3FC')
         elif is_hovered:
-            bg = QColor(37, 150, 190, 20)
-            border = QColor(37, 150, 190, 51)
-            text = QColor('#2C3E50')
+            bg = QColor(125, 211, 252, 13)
+            border = QColor(125, 211, 252, 38)
+            text = QColor('#E6EEF6')
         else:
-            bg = QColor(200, 215, 235, 128)
-            border = QColor(180, 200, 220, 76)
-            text = QColor('#2C3E50')
+            bg = QColor(30, 33, 40, 178)
+            border = QColor(125, 211, 252, 26)
+            text = QColor('#A6B8C8')
         return (bg, border, text)
     def mouseMoveEvent(self, event):
         old_hovered = self._hovered_tab

@@ -6,19 +6,7 @@ from multiprocessing import shared_memory
 from PySide6.QtWidgets import QApplication, QWidget, QMainWindow, QDialog, QMessageBox, QFileDialog, QInputDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QComboBox, QTextEdit, QTreeWidget, QTreeWidgetItem, QProgressBar, QCheckBox, QRadioButton, QGroupBox, QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView, QSplitter, QScrollArea, QFrame, QMenuBar, QMenu, QStatusBar, QSystemTrayIcon, QStyle, QCommonStyle
 from PySide6.QtGui import QPixmap, QIcon, QFont, QPainter, QPen, QBrush, QColor, QAction
 from PySide6.QtCore import Qt, QTimer, QThread, Signal, QObject, QEvent, QSize, QPoint, QRect
-try:
-    from i18n import init_language, t, set_language, get_language, load_resources
-except Exception:
-    def t(key, **fmt):
-        return key.format(**fmt) if fmt else key
-    def init_language(default_lang: str='zh_CN'):
-        pass
-    def set_language(lang: str):
-        pass
-    def get_language():
-        return 'zh_CN'
-    def load_resources(lang: str | None=None):
-        pass
+from i18n import init_language, t, set_language, get_language, load_resources
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'palworld_save_tools', 'commands')))
 from palworld_save_tools.archive import *
 from palworld_save_tools.palsav import *

@@ -254,7 +254,7 @@ class WorldOptionEditorDialog(QDialog):
     def _load_theme(self):
         is_dark = self.parent_window.is_dark_mode if self.parent_window and hasattr(self.parent_window, 'is_dark_mode') else True
         base_path = get_src_path()
-        theme_file = 'darkmode.qss' if is_dark else 'lightmode.qss'
+        theme_file = 'darkmode.qss'
         theme_path = os.path.join(base_path, 'data', 'gui', theme_file)
         if os.path.exists(theme_path):
             try:

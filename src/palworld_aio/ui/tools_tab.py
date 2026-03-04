@@ -7,10 +7,7 @@ from PySide6.QtCore import Qt, QSize, Signal, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QPixmap, QIcon, QFont, QCursor
 from i18n import t
 from loading_manager import show_critical
-try:
-    from palworld_aio import constants
-except ImportError:
-    from .. import constants
+from palworld_aio import constants
 def get_src_path():
     env = os.environ.get('src_PATH')
     if env:
@@ -130,9 +127,9 @@ class ConversionOptionsDialog(QDialog):
         else:
             super().keyPressEvent(event)
     def _load_theme(self):
-        is_dark = self.parent().parent_window.is_dark_mode if self.parent() and hasattr(self.parent(), 'parent_window') else True
+        is_dark = True
         base_path = constants.get_src_path() if hasattr(constants, 'get_src_path') else get_src_path()
-        theme_file = 'darkmode.qss' if is_dark else 'lightmode.qss'
+        theme_file = 'darkmode.qss'
         theme_path = os.path.join(base_path, 'data', 'gui', theme_file)
         if os.path.exists(theme_path):
             try:

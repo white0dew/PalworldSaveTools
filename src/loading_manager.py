@@ -16,9 +16,31 @@ def get_path(filename):
 def _spawn_process(args):
     try:
         exe = sys.executable
-        cmd = [exe] + args if getattr(sys, 'frozen', False) else [exe, os.path.abspath(__file__)] + args
-        return subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE, text=False)
-    except:
+        if getattr(sys, 'frozen', False):
+            cmd = [exe] + args
+        else:
+            script_path = os.path.abspath(__file__)
+            cmd = [exe, script_path] + args
+        env = os.environ.copy()
+        env['PYTHONUNBUFFERED'] = '1'
+        if 'VIRTUAL_ENV' in os.environ:
+            env['VIRTUAL_ENV'] = os.environ['VIRTUAL_ENV']
+            venv_scripts = os.path.join(os.environ['VIRTUAL_ENV'], 'Scripts')
+            if venv_scripts not in env['PATH']:
+                env['PATH'] = venv_scripts + os.pathsep + env['PATH']
+        resources_dir = os.path.join(os.getcwd(), 'resources')
+        if resources_dir not in env.get('PYTHONPATH', ''):
+            if 'PYTHONPATH' in env:
+                env['PYTHONPATH'] = resources_dir + os.pathsep + env['PYTHONPATH']
+            else:
+                env['PYTHONPATH'] = resources_dir
+        proc = subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE, text=False, env=env, cwd=os.path.dirname(os.path.abspath(__file__)))
+        return proc
+    except Exception as e:
+        print(f'Failed to spawn loader process: {e}')
+        print(f'Exception type: {type(e).__name__}')
+        import traceback
+        traceback.print_exc()
         return None
 if '--spawn-loader' in sys.argv:
     class STDINListener(QThread):
@@ -31,7 +53,7 @@ if '--spawn-loader' in sys.argv:
                 try:
                     data = json.loads(line)
                     self.message_received.emit(data)
-                except:
+                except Exception:
                     pass
     class OverlayController(QWidget):
         def __init__(self, start_time, phrases, parent_geom=None):
@@ -90,17 +112,10 @@ if '--spawn-loader' in sys.argv:
                 self.move(event.globalPosition().toPoint() - self._drag_pos)
                 event.accept()
         def _load_theme_pref(self):
-            try:
-                cfg = os.path.join(get_src_directory(), 'data', 'configs', 'user.cfg')
-                if os.path.exists(cfg):
-                    with open(cfg, 'r') as f:
-                        return json.load(f).get('theme') == 'dark'
-            except:
-                pass
             return True
         def _load_theme(self):
             base_path = get_src_directory()
-            theme_file = 'darkmode.qss' if self.is_dark else 'lightmode.qss'
+            theme_file = 'darkmode.qss'
             theme_path = os.path.join(base_path, 'data', 'gui', theme_file)
             if os.path.exists(theme_path):
                 try:
@@ -113,18 +128,11 @@ if '--spawn-loader' in sys.argv:
             else:
                 self._apply_fallback_styles()
         def _apply_fallback_styles(self):
-            if self.is_dark:
-                bg_gradient = 'qlineargradient(spread:pad,x1:0.0,y1:0.0,x2:1.0,y2:1.0,stop:0 #07080a,stop:0.5 #08101a,stop:1 #05060a)'
-                glass_bg = 'rgba(18,20,24,0.95)'
-                glass_border = 'rgba(255,255,255,0.08)'
-                txt_color = '#dfeefc'
-                accent_color = '#7DD3FC'
-            else:
-                bg_gradient = 'qlineargradient(spread:pad,x1:0.0,y1:0.0,x2:1.0,y2:1.0,stop:0 #e6ecef,stop:0.5 #bdd5df,stop:1 #a7c9da)'
-                glass_bg = 'rgba(240,245,255,1.0)'
-                glass_border = 'rgba(180,200,220,0.5)'
-                txt_color = '#000000'
-                accent_color = '#1e3a8a'
+            bg_gradient = 'qlineargradient(spread:pad,x1:0.0,y1:0.0,x2:1.0,y2:1.0,stop:0 #07080a,stop:0.5 #08101a,stop:1 #05060a)'
+            glass_bg = 'rgba(18,20,24,0.95)'
+            glass_border = 'rgba(255,255,255,0.08)'
+            txt_color = '#dfeefc'
+            accent_color = '#7DD3FC'
             self.setStyleSheet(f"QWidget {{ background: {bg_gradient}; color: {txt_color}; font-family: 'Segoe UI',Roboto,Arial; }}")
             self.container.setStyleSheet(f'#mainContainer {{ background: {glass_bg}; border-radius: 10px; border: 1px solid {glass_border}; }}')
         def clear_layout(self):
@@ -236,22 +244,13 @@ if '--spawn-loader' in sys.argv:
                 self.phrase_timer.stop()
             self.clear_layout()
             self.repaint()
-            if self.is_dark:
-                glass_bg = 'rgba(18,20,24,0.95)'
-                glass_border = 'rgba(255,59,48,0.3)'
-                txt_color = '#dfeefc'
-                accent_color = '#FF3B30'
-                btn_bg = 'rgba(125,211,252,0.08)'
-                btn_border = 'rgba(125,211,252,0.15)'
-                btn_hover_bg = 'rgba(125,211,252,0.15)'
-            else:
-                glass_bg = 'rgba(240,245,255,0.95)'
-                glass_border = 'rgba(255,59,48,0.5)'
-                txt_color = '#000000'
-                accent_color = '#DC2626'
-                btn_bg = 'rgba(37,150,190,0.1)'
-                btn_border = 'rgba(37,150,190,0.25)'
-                btn_hover_bg = 'rgba(37,150,190,0.2)'
+            glass_bg = 'rgba(18,20,24,0.95)'
+            glass_border = 'rgba(255,59,48,0.3)'
+            txt_color = '#dfeefc'
+            accent_color = '#FF3B30'
+            btn_bg = 'rgba(125,211,252,0.08)'
+            btn_border = 'rgba(125,211,252,0.15)'
+            btn_hover_bg = 'rgba(125,211,252,0.15)'
             self.container.setStyleSheet(f'#mainContainer {{ background: {glass_bg}; border-radius: 10px; border: 2px solid {glass_border}; }}')
             head = QHBoxLayout()
             img_p = get_path('lamball_error.webp')
@@ -325,6 +324,31 @@ def run_with_loading(callback, func, *args, parent=None, **kwargs):
         if geom.width() > 0 and geom.height() > 0:
             loader_args.extend(['--parent-geom', str(geom.x()), str(geom.y()), str(geom.width()), str(geom.height())])
     loader_proc = _spawn_process(loader_args)
+    if loader_proc is None:
+        def task():
+            try:
+                _result_data['data'] = func(*args, **kwargs)
+            except:
+                _result_data['data'] = traceback.format_exc()
+            _result_data['status'] = 'finished'
+        threading.Thread(target=task, daemon=True).start()
+        def monitor():
+            if _result_data['status'] != 'finished':
+                QTimer.singleShot(100, monitor)
+                return
+            res = _result_data['data']
+            _result_data['status'] = 'idle'
+            if isinstance(res, str) and 'Traceback' in res:
+                try:
+                    trans = {'title': t('error.overlay.title'), 'close': t('error.overlay.close'), 'copy': t('error.overlay.copy')}
+                except:
+                    trans = {'title': 'AN ERROR OCCURRED', 'close': 'CLOSE', 'copy': 'COPY'}
+                dialog = ErrorDialog(res, parent=parent)
+                dialog.exec()
+            elif callback:
+                callback(res)
+        QTimer.singleShot(100, monitor)
+        return
     def cleanup():
         if loader_proc and loader_proc.poll() is None:
             try:
@@ -409,17 +433,10 @@ class ErrorDialog(QDialog):
             self._target_pos = (center_x, center_y)
             self.setGeometry(center_x, center_y, win_width, win_height)
     def _load_theme_pref(self):
-        try:
-            cfg = os.path.join(get_src_directory(), 'data', 'configs', 'user.cfg')
-            if os.path.exists(cfg):
-                with open(cfg, 'r') as f:
-                    return json.load(f).get('theme') == 'dark'
-        except:
-            pass
         return True
     def _load_theme(self):
         base_path = get_src_directory()
-        theme_file = 'darkmode.qss' if self.is_dark else 'lightmode.qss'
+        theme_file = 'darkmode.qss'
         theme_path = os.path.join(base_path, 'data', 'gui', theme_file)
         if os.path.exists(theme_path):
             try:
@@ -432,44 +449,25 @@ class ErrorDialog(QDialog):
         else:
             self._apply_fallback_styles()
     def _apply_fallback_styles(self):
-        if self.is_dark:
-            bg_gradient = 'qlineargradient(spread:pad,x1:0.0,y1:0.0,x2:1.0,y2:1.0,stop:0 #07080a,stop:0.5 #08101a,stop:1 #05060a)'
-            glass_bg = 'rgba(18,20,24,0.95)'
-            glass_border = 'rgba(255,59,48,0.3)'
-            txt_color = '#dfeefc'
-            accent_color = '#FF3B30'
-            btn_bg = 'rgba(125,211,252,0.08)'
-            btn_border = 'rgba(125,211,252,0.15)'
-            btn_hover_bg = 'rgba(125,211,252,0.15)'
-        else:
-            bg_gradient = 'qlineargradient(spread:pad,x1:0.0,y1:0.0,x2:1.0,y2:1.0,stop:0 #e6ecef,stop:0.5 #bdd5df,stop:1 #a7c9da)'
-            glass_bg = 'rgba(240,245,255,0.95)'
-            glass_border = 'rgba(255,59,48,0.5)'
-            txt_color = '#000000'
-            accent_color = '#DC2626'
-            btn_bg = 'rgba(37,150,190,0.1)'
-            btn_border = 'rgba(37,150,190,0.25)'
-            btn_hover_bg = 'rgba(37,150,190,0.2)'
+        bg_gradient = 'qlineargradient(spread:pad,x1:0.0,y1:0.0,x2:1.0,y2:1.0,stop:0 #07080a,stop:0.5 #08101a,stop:1 #05060a)'
+        glass_bg = 'rgba(18,20,24,0.95)'
+        glass_border = 'rgba(255,59,48,0.3)'
+        txt_color = '#dfeefc'
+        accent_color = '#FF3B30'
+        btn_bg = 'rgba(125,211,252,0.08)'
+        btn_border = 'rgba(125,211,252,0.15)'
+        btn_hover_bg = 'rgba(125,211,252,0.15)'
         self.setStyleSheet(f"QWidget {{ background: {bg_gradient}; color: {txt_color}; font-family: 'Segoe UI',Roboto,Arial; }}")
     def setup_error_ui(self):
         self.container = QFrame()
         self.container.setObjectName('mainContainer')
-        if self.is_dark:
-            glass_bg = 'rgba(18,20,24,0.95)'
-            glass_border = 'rgba(255,59,48,0.3)'
-            txt_color = '#dfeefc'
-            accent_color = '#FF3B30'
-            btn_bg = 'rgba(125,211,252,0.08)'
-            btn_border = 'rgba(125,211,252,0.15)'
-            btn_hover_bg = 'rgba(125,211,252,0.15)'
-        else:
-            glass_bg = 'rgba(240,245,255,0.95)'
-            glass_border = 'rgba(255,59,48,0.5)'
-            txt_color = '#000000'
-            accent_color = '#DC2626'
-            btn_bg = 'rgba(37,150,190,0.1)'
-            btn_border = 'rgba(37,150,190,0.25)'
-            btn_hover_bg = 'rgba(37,150,190,0.2)'
+        glass_bg = 'rgba(18,20,24,0.95)'
+        glass_border = 'rgba(255,59,48,0.3)'
+        txt_color = '#dfeefc'
+        accent_color = '#FF3B30'
+        btn_bg = 'rgba(125,211,252,0.08)'
+        btn_border = 'rgba(125,211,252,0.15)'
+        btn_hover_bg = 'rgba(125,211,252,0.15)'
         self.container.setStyleSheet(f'#mainContainer {{ background: {glass_bg}; border-radius: 10px; border: 2px solid {glass_border}; }}')
         layout = QVBoxLayout(self)
         layout.addWidget(self.container)
@@ -583,23 +581,9 @@ def _get_effective_parent(parent):
         return active
     return None
 _MSG_BOX_DARK_STYLESHEET = '\n    QMessageBox {\n        background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                    stop:0 #07080a, stop:0.5 #08101a, stop:1 #05060a);\n        color: #dfeefc;\n    }\n    QMessageBox QLabel {\n        color: #dfeefc;\n    }\n    QPushButton {\n        background-color: #3a3a3a;\n        color: #dfeefc;\n        border: 1px solid #555555;\n        border-radius: 4px;\n        padding: 6px 16px;\n        min-width: 70px;\n    }\n    QPushButton:hover {\n        background-color: #4a4a4a;\n    }\n'
-_MSG_BOX_LIGHT_STYLESHEET = '\n    QMessageBox {\n        background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                    stop:0 #e6ecef, stop:0.5 #bdd5df, stop:1 #a7c9da);\n        color: #1a1a2e;\n    }\n    QMessageBox QLabel {\n        color: #1a1a2e;\n    }\n    QPushButton {\n        background-color: #e0e0e0;\n        color: #1a1a2e;\n        border: 1px solid #b0b0b0;\n        border-radius: 4px;\n        padding: 6px 16px;\n        min-width: 70px;\n    }\n    QPushButton:hover {\n        background-color: #d0d0d0;\n    }\n'
 def _load_theme_to_msg_box(msg_box):
     try:
-        import json
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        cfg_path = os.path.join(base_dir, 'src', 'data', 'configs', 'user.cfg')
-        is_dark = True
-        if os.path.exists(cfg_path):
-            try:
-                with open(cfg_path, 'r') as f:
-                    is_dark = json.load(f).get('theme') == 'dark'
-            except:
-                pass
-        if is_dark:
-            msg_box.setStyleSheet(_MSG_BOX_DARK_STYLESHEET)
-        else:
-            msg_box.setStyleSheet(_MSG_BOX_LIGHT_STYLESHEET)
+        msg_box.setStyleSheet(_MSG_BOX_DARK_STYLESHEET)
     except Exception as e:
         print(f'Failed to load theme for message box: {e}')
 def show_information(parent, title, text):

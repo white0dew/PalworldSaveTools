@@ -13,10 +13,7 @@ from palworld_save_tools.palsav import decompress_sav_to_gvas, compress_gvas_to_
 from palworld_save_tools.paltypes import PALWORLD_TYPE_HINTS
 from common import get_versions, get_base_directory
 from palobject import SKP_PALWORLD_CUSTOM_PROPERTIES
-try:
-    from palworld_aio import constants
-except ImportError:
-    from . import constants
+from palworld_aio import constants
 def check_for_update():
     try:
         context = ssl._create_unverified_context()

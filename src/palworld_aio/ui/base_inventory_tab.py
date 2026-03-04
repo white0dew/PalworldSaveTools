@@ -9,26 +9,14 @@ from PySide6.QtCore import QMimeData
 resources_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'resources')
 if resources_path not in sys.path:
     sys.path.insert(0, resources_path)
-try:
-    from i18n import t
-except ImportError:
-    t = None
-try:
-    from palworld_aio import constants
-    from palworld_aio.base_inventory_manager import BaseInventoryManager, get_container_image_path, find_item_locations_efficient
-    from palworld_aio.widgets import StatsPanel
-    from palworld_aio.ui.inventory_tab import InventoryGridWidget, ItemPickerDialog
-    from palworld_aio.ui.styled_combo import StyledCombo
-    from palworld_aio.utils import format_duration_short
-    from i18n import t
-except ImportError:
-    from .. import constants
-    from ..base_inventory_manager import BaseInventoryManager, get_container_image_path, find_item_locations_efficient
-    from ..widgets import StatsPanel
-    from ..ui.inventory_tab import InventoryGridWidget, ItemPickerDialog
-    from ..ui.styled_combo import StyledCombo
-    from ..utils import format_duration_short
-    from i18n import t
+from i18n import t
+from palworld_aio import constants
+from palworld_aio.base_inventory_manager import BaseInventoryManager, get_container_image_path, find_item_locations_efficient
+from palworld_aio.widgets import StatsPanel
+from palworld_aio.ui.inventory_tab import InventoryGridWidget, ItemPickerDialog
+from palworld_aio.ui.styled_combo import StyledCombo
+from palworld_aio.utils import format_duration_short
+from i18n import t
 class ContainerListWidget(QTreeWidget):
     container_selected = Signal(str)
     def __init__(self, parent=None):
@@ -42,15 +30,8 @@ class ContainerListWidget(QTreeWidget):
         self.setDropIndicatorShown(False)
         self.setSortingEnabled(False)
         self.itemSelectionChanged.connect(self._on_selection_changed)
-        self.is_dark = True
-    def set_theme(self, is_dark):
-        self.is_dark = is_dark
-        self._update_styles()
     def _update_styles(self):
-        if self.is_dark:
-            self.setStyleSheet('\n                QTreeWidget {\n                    background-color: rgba(20, 25, 35, 0.8);\n                    border: 1px solid rgba(255, 255, 255, 0.1);\n                    border-radius: 6px;\n                    color: #e0e0e0;\n                }\n                QTreeWidget::item {\n                    padding: 8px;\n                    margin: 2px 0;\n                    border-radius: 4px;\n                    background-color: rgba(30, 35, 45, 0.8);\n                }\n                QTreeWidget::item:selected {\n                    background-color: rgba(74, 144, 226, 0.3);\n                    border: 1px solid rgba(74, 144, 226, 0.5);\n                }\n                QTreeWidget::item:hover {\n                    background-color: rgba(50, 55, 65, 0.8);\n                }\n                QTreeWidget::branch {\n                    background-color: transparent;\n                }\n            ')
-        else:
-            self.setStyleSheet('\n                QTreeWidget {\n                    background-color: rgba(255, 255, 255, 0.9);\n                    border: 1px solid rgba(0, 0, 0, 0.1);\n                    border-radius: 6px;\n                    color: #333333;\n                }\n                QTreeWidget::item {\n                    padding: 8px;\n                    margin: 2px 0;\n                    border-radius: 4px;\n                    background-color: rgba(240, 240, 240, 0.8);\n                }\n                QTreeWidget::item:selected {\n                    background-color: rgba(74, 144, 226, 0.2);\n                    border: 1px solid rgba(74, 144, 226, 0.3);\n                }\n                QTreeWidget::item:hover {\n                    background-color: rgba(220, 220, 220, 0.8);\n                }\n                QTreeWidget::branch {\n                    background-color: transparent;\n                }\n            ')
+        self.setStyleSheet('\n                QTreeWidget {\n                    background-color: rgba(20, 25, 35, 0.8);\n                    border: 1px solid rgba(255, 255, 255, 0.1);\n                    border-radius: 6px;\n                    color: #e0e0e0;\n                }\n                QTreeWidget::item {\n                    padding: 8px;\n                    margin: 2px 0;\n                    border-radius: 4px;\n                    background-color: rgba(30, 35, 45, 0.8);\n                }\n                QTreeWidget::item:selected {\n                    background-color: rgba(74, 144, 226, 0.3);\n                    border: 1px solid rgba(74, 144, 226, 0.5);\n                }\n                QTreeWidget::item:hover {\n                    background-color: rgba(50, 55, 65, 0.8);\n                }\n                QTreeWidget::branch {\n                    background-color: transparent;\n                }\n            ')
     def clear(self):
         super().clear()
         self.setHeaderHidden(True)
@@ -69,7 +50,7 @@ class ContainerListWidget(QTreeWidget):
         image_label = QLabel()
         image_label.setFixedSize(60, 60)
         image_label.setAlignment(Qt.AlignCenter)
-        image_label.setStyleSheet(f"\n            QLabel {{\n                background-color: {('rgba(30, 35, 45, 0.8)' if self.is_dark else 'rgba(240, 240, 240, 0.8)')};\n                border: 1px solid {('rgba(255, 255, 255, 0.2)' if self.is_dark else 'rgba(0, 0, 0, 0.1)')};\n                border-radius: 4px;\n            }}\n        ")
+        image_label.setStyleSheet(f'\n            QLabel {{\n                background-color: rgba(30, 35, 45, 0.8);\n                border: 1px solid rgba(255, 255, 255, 0.2);\n                border-radius: 4px;\n            }}\n        ')
         image_path = get_container_image_path(container_info['type'])
         if image_path and os.path.exists(image_path):
             pixmap = QPixmap(image_path)
@@ -84,16 +65,16 @@ class ContainerListWidget(QTreeWidget):
         info_layout = QVBoxLayout()
         info_layout.setSpacing(2)
         name_label = QLabel(container_info['name'])
-        name_label.setStyleSheet(f"\n            QLabel {{\n                font-weight: bold;\n                font-size: 12px;\n                color: {('#ffffff' if self.is_dark else '#000000')};\n            }}\n        ")
+        name_label.setStyleSheet(f'\n            QLabel {{\n                font-weight: bold;\n                font-size: 12px;\n                color: #ffffff;\n            }}\n        ')
         info_layout.addWidget(name_label)
         details_layout = QHBoxLayout()
         details_layout.setSpacing(10)
         slots_label = QLabel(t('base_inventory.slots_count').format(count=container_info['slot_count']) if t else f"Slots: {container_info['slot_count']}")
-        slots_label.setStyleSheet(f"\n            QLabel {{\n                font-size: 11px;\n                color: {('#cccccc' if self.is_dark else '#666666')};\n            }}\n        ")
+        slots_label.setStyleSheet(f'\n            QLabel {{\n                font-size: 11px;\n                color: #cccccc;\n            }}\n        ')
         details_layout.addWidget(slots_label)
         info_layout.addLayout(details_layout)
         id_label = QLabel(container_info['id'])
-        id_label.setStyleSheet(f"\n            QLabel {{\n                font-size: 11px;\n                color: {('#999999' if self.is_dark else '#888888')};\n            }}\n        ")
+        id_label.setStyleSheet(f'\n            QLabel {{\n                font-size: 11px;\n                color: #999999;\n            }}\n        ')
         info_layout.addWidget(id_label)
         layout.addLayout(info_layout)
         layout.addStretch()
@@ -187,12 +168,7 @@ class ContainerInfoWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.container_info = None
-        self.is_dark = True
         self._setup_ui()
-    def set_theme(self, is_dark):
-        self.is_dark = is_dark
-        self._update_styles()
-        self._update_content()
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -246,16 +222,12 @@ class ContainerInfoWidget(QWidget):
         else:
             self.image_label.setText('📦')
     def _update_styles(self):
-        if self.is_dark:
-            self.setStyleSheet('\n                QWidget {\n                    background-color: rgba(20, 25, 35, 0.8);\n                    border: 1px solid rgba(255, 255, 255, 0.1);\n                    border-radius: 6px;\n                    color: #e0e0e0;\n                }\n                QLabel {\n                    color: #e0e0e0;\n                }\n                QLabel[bold="true"] {\n                    font-weight: bold;\n                }\n            ')
-        else:
-            self.setStyleSheet('\n                QWidget {\n                    background-color: rgba(255, 255, 255, 0.9);\n                    border: 1px solid rgba(0, 0, 0, 0.1);\n                    border-radius: 6px;\n                    color: #333333;\n                }\n                QLabel {\n                    color: #333333;\n                }\n                QLabel[bold="true"] {\n                    font-weight: bold;\n                }\n            ')
+        self.setStyleSheet('\n                QWidget {\n                    background-color: rgba(20, 25, 35, 0.8);\n                    border: 1px solid rgba(255, 255, 255, 0.1);\n                    border-radius: 6px;\n                    color: #e0e0e0;\n                }\n                QLabel {\n                    color: #e0e0e0;\n                }\n                QLabel[bold="true"] {\n                    font-weight: bold;\n                }\n            ')
 class BaseInventoryTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
         self.manager = BaseInventoryManager()
-        self.is_dark = True
         self.selected_item_id = None
         self.selected_item_name = None
         self._setup_ui()
@@ -265,19 +237,6 @@ class BaseInventoryTab(QWidget):
         self._auto_save_timer.setSingleShot(True)
         self._auto_save_timer.setInterval(2000)
         self._auto_save_timer.timeout.connect(self._auto_save_changes)
-    def set_theme(self, is_dark):
-        self.is_dark = is_dark
-        self._update_theme()
-        if hasattr(self, 'container_list'):
-            self.container_list.set_theme(is_dark)
-        if hasattr(self, 'container_info'):
-            self.container_info.set_theme(is_dark)
-        if hasattr(self, 'inventory_grid'):
-            self.inventory_grid.set_theme(is_dark)
-        if hasattr(self, 'guild_combo'):
-            self.guild_combo.set_theme(is_dark)
-        if hasattr(self, 'base_combo'):
-            self.base_combo.set_theme(is_dark)
     def refresh_labels(self):
         if hasattr(self, 'guild_label'):
             self.guild_label.setText(t('base_inventory.select_guild') if t else 'Select Guild:')
@@ -383,10 +342,7 @@ class BaseInventoryTab(QWidget):
         self.inventory_grid.item_removed.connect(self._trigger_auto_save)
         self.inventory_grid.item_count_changed.connect(self._trigger_auto_save)
     def _update_theme(self):
-        if self.is_dark:
-            self.setStyleSheet('\n                QWidget {\n                    background-color: rgba(15, 20, 30, 0.9);\n                    color: #e0e0e0;\n                }\n                QLabel {\n                    color: #e0e0e0;\n                }\n                QComboBox {\n                    background-color: rgba(30, 35, 45, 0.8);\n                    border: 1px solid rgba(255, 255, 255, 0.2);\n                    border-radius: 4px;\n                    padding: 4px 8px;\n                    color: #e0e0e0;\n                }\n                QComboBox::drop-down {\n                    border-left: 1px solid rgba(255, 255, 255, 0.2);\n                }\n                QPushButton {\n                    background-color: rgba(74, 144, 226, 0.8);\n                    border: 1px solid rgba(74, 144, 226, 1.0);\n                    border-radius: 4px;\n                    padding: 6px 12px;\n                    color: white;\n                    font-weight: bold;\n                }\n                QPushButton:hover {\n                    background-color: rgba(74, 144, 226, 1.0);\n                }\n                QPushButton:pressed {\n                    background-color: rgba(50, 120, 200, 1.0);\n                }\n                QSplitter::handle {\n                    background-color: rgba(255, 255, 255, 0.1);\n                }\n                QSplitter::handle:hover {\n                    background-color: rgba(255, 255, 255, 0.2);\n                }\n            ')
-        else:
-            self.setStyleSheet('\n                QWidget {\n                    background-color: rgba(255, 255, 255, 0.9);\n                    color: #333333;\n                }\n                QLabel {\n                    color: #333333;\n                }\n                QComboBox {\n                    background-color: rgba(240, 240, 240, 0.8);\n                    border: 1px solid rgba(0, 0, 0, 0.1);\n                    border-radius: 4px;\n                    padding: 4px 8px;\n                    color: #333333;\n                }\n                QComboBox::drop-down {\n                    border-left: 1px solid rgba(0, 0, 0, 0.1);\n                }\n                QPushButton {\n                    background-color: rgba(74, 144, 226, 0.8);\n                    border: 1px solid rgba(74, 144, 226, 1.0);\n                    border-radius: 4px;\n                    padding: 6px 12px;\n                    color: white;\n                    font-weight: bold;\n                }\n                QPushButton:hover {\n                    background-color: rgba(74, 144, 226, 1.0);\n                }\n                QPushButton:pressed {\n                    background-color: rgba(50, 120, 200, 1.0);\n                }\n                QSplitter::handle {\n                    background-color: rgba(0, 0, 0, 0.1);\n                }\n                QSplitter::handle:hover {\n                    background-color: rgba(0, 0, 0, 0.2);\n                }\n            ')
+        self.setStyleSheet('\n                QWidget {\n                    background-color: rgba(15, 20, 30, 0.9);\n                    color: #e0e0e0;\n                }\n                QLabel {\n                    color: #e0e0e0;\n                }\n                QComboBox {\n                    background-color: rgba(30, 35, 45, 0.8);\n                    border: 1px solid rgba(255, 255, 255, 0.2);\n                    border-radius: 4px;\n                    padding: 4px 8px;\n                    color: #e0e0e0;\n                }\n                QComboBox::drop-down {\n                    border-left: 1px solid rgba(255, 255, 255, 0.2);\n                }\n                QPushButton {\n                    background-color: rgba(74, 144, 226, 0.8);\n                    border: 1px solid rgba(74, 144, 226, 1.0);\n                    border-radius: 4px;\n                    padding: 6px 12px;\n                    color: white;\n                    font-weight: bold;\n                }\n                QPushButton:hover {\n                    background-color: rgba(74, 144, 226, 1.0);\n                }\n                QPushButton:pressed {\n                    background-color: rgba(50, 120, 200, 1.0);\n                }\n                QSplitter::handle {\n                    background-color: rgba(255, 255, 255, 0.1);\n                }\n                QSplitter::handle:hover {\n                    background-color: rgba(255, 255, 255, 0.2);\n                }\n            ')
     def refresh(self):
         self._load_guilds()
         self._load_items()

@@ -6,10 +6,7 @@ from PySide6.QtCore import Qt, QTimer, Signal, QPoint, QEvent, QSize
 from PySide6.QtGui import QIcon, QFont, QPixmap, QRegion, QCursor, QPainter, QPainterPath, QPen, QBrush, QFontMetrics, QPalette, QColor
 from i18n import t
 from loading_manager import show_information, show_warning, show_question
-try:
-    import nerdfont as nf
-except ImportError:
-    nf = None
+import nerdfont as nf
 from palworld_aio import constants
 from palworld_aio.utils import sav_to_json, sav_to_gvasfile, gvasfile_to_sav, extract_value, format_character_key, json_to_sav, calculate_max_hp, get_pal_data
 class FramelessDialog(QDialog):

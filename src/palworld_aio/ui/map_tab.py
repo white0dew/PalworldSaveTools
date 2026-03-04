@@ -8,24 +8,14 @@ from PySide6.QtGui import QPixmap, QPen, QBrush, QColor, QPainter, QTransform, Q
 from i18n import t
 from loading_manager import show_information, show_warning, show_critical, show_question
 import palworld_coord
-try:
-    from palworld_aio import constants
-    from palworld_aio.data_manager import delete_base_camp, get_tick
-    from palworld_aio.base_manager import export_base_json, import_base_json, update_base_area_range
-    from palworld_aio.guild_manager import rename_guild
-    from palworld_aio.widgets import BaseHoverOverlay, PlayerHoverOverlay
-    from palworld_aio.dialogs import RadiusInputDialog, InputDialog
-    from palworld_aio.utils import sav_to_gvasfile
-    from palworld_aio.save_manager import save_manager
-except ImportError:
-    from .. import constants
-    from ..data_manager import delete_base_camp, get_tick
-    from ..base_manager import export_base_json, import_base_json, update_base_area_range
-    from ..guild_manager import rename_guild
-    from ..widgets import BaseHoverOverlay, PlayerHoverOverlay
-    from ..dialogs import RadiusInputDialog, InputDialog
-    from ..utils import sav_to_gvasfile
-    from ..save_manager import save_manager
+from palworld_aio import constants
+from palworld_aio.data_manager import delete_base_camp, get_tick
+from palworld_aio.base_manager import export_base_json, import_base_json, update_base_area_range
+from palworld_aio.guild_manager import rename_guild
+from palworld_aio.widgets import BaseHoverOverlay, PlayerHoverOverlay
+from palworld_aio.dialogs import RadiusInputDialog, InputDialog
+from palworld_aio.utils import sav_to_gvasfile
+from palworld_aio.save_manager import save_manager
 class BaseMarker(QGraphicsPixmapItem):
     def __init__(self, base_data, x, y, base_icon_pixmap, config):
         super().__init__()
@@ -1089,6 +1079,7 @@ class MapTab(QWidget):
             self.filtered_players_data = self._filter_players(text)
         self._update_markers()
         self._update_tree()
+        self._update_radius_rings_for_filter()
     def _on_item_expanded(self, item):
         pass
     def _on_tree_item_clicked(self, item, column):
@@ -1217,6 +1208,24 @@ class MapTab(QWidget):
                 ring.setVisible(True)
             if self.current_radius_ring:
                 self.current_radius_ring.setVisible(True)
+    def _update_radius_rings_for_filter(self):
+        if not hasattr(self, 'toggle_base_radius_rings') or not self.toggle_base_radius_rings.isChecked():
+            return
+        self._hide_all_radius_rings()
+        if self.search_text:
+            for guild in self.filtered_guilds.values():
+                for base in guild['bases']:
+                    base_id = base.get('base_id')
+                    if base_id:
+                        save_radius = self._get_base_radius(base)
+                        if save_radius is not None:
+                            img_x, img_y = base['img_coords']
+                            ring = BaseRadiusRing(img_x, img_y, save_radius)
+                            ring.setVisible(True)
+                            self.scene.addItem(ring)
+                            self.all_radius_rings.append(ring)
+        else:
+            self._show_all_radius_rings()
     def _on_marker_right_clicked(self, data, global_pos):
         menu = QMenu(self)
         menu.setStyleSheet('\n            QMenu {\n                background-color: rgba(18,20,24,0.95);\n                border: 1px solid rgba(125,211,252,0.3);\n                border-radius: 4px;\n                color: #e2e8f0;\n                padding: 4px;\n            }\n            QMenu::item {\n                padding: 6px 12px;\n                border-radius: 3px;\n            }\n            QMenu::item:selected {\n                background-color: rgba(59,142,208,0.3);\n            }\n        ')
@@ -1247,7 +1256,7 @@ class MapTab(QWidget):
             elif action == radius_action:
                 self._adjust_base_radius(data)
     def _on_empty_space_right_clicked(self, global_pos):
-        from ..dialogs import GuildSelectionDialog
+        from ..dialogs import ScrollableGuildSelectionDialog
         menu = QMenu(self)
         menu.setStyleSheet('\n            QMenu {\n                background-color: rgba(18,20,24,0.95);\n                border: 1px solid rgba(125,211,252,0.3);\n                border-radius: 4px;\n                color: #e2e8f0;\n                padding: 4px;\n            }\n            QMenu::item {\n                padding: 6px 12px;\n                border-radius: 3px;\n            }\n            QMenu::item:selected {\n                background-color: rgba(59,142,208,0.3);\n            }\n        ')
         import_action = menu.addAction(t('base.import_multi') if t else 'Import Base')
@@ -1256,7 +1265,7 @@ class MapTab(QWidget):
             if not self.guilds_data:
                 show_warning(self, t('error.title') if t else 'Error', t('base.import.no_guilds') if t else 'No guilds available. Please create a guild first.')
                 return
-            guild_id = GuildSelectionDialog.get_guild(self.guilds_data, self)
+            guild_id = ScrollableGuildSelectionDialog.get_guild(self.guilds_data, self)
             if guild_id:
                 self._import_base_to_guild(guild_id)
     def _on_radius_rings_toggle(self, state):

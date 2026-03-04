@@ -4,14 +4,11 @@ from PySide6.QtGui import QFont, QColor, QCursor, QEnterEvent, QGuiApplication, 
 class nf:
     icons = {'nf-md-file': '📁', 'nf-md-function': '⚙️', 'nf-md-map': '🗺️', 'nf-md-playlist_remove': '🚫', 'nf-md-translate': '🌐', 'nf-md-chevron_right': '▶️', 'nf-md-update': '⬇️'}
 from i18n import t
-try:
-    from palworld_aio import constants
-except ImportError:
-    from .. import constants
+from palworld_aio import constants
 class ScrollableMenu(QWidget):
     def __init__(self, parent=None, is_dark=True):
         super().__init__(parent)
-        self.is_dark = is_dark
+        self.is_dark = True
         self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setMaximumHeight(600)
@@ -30,18 +27,11 @@ class ScrollableMenu(QWidget):
         layout.addWidget(self.scroll_area)
         self._update_theme()
     def _update_theme(self):
-        if self.is_dark:
-            bg = 'rgba(18,20,24,0.95)'
-            border = 'rgba(125,211,252,0.2)'
-            text_color = '#A6B8C8'
-            hover_bg = 'rgba(125,211,252,0.1)'
-            hover_color = '#7DD3FC'
-        else:
-            bg = 'rgba(240,245,255,1.0)'
-            border = 'rgba(180,200,220,0.5)'
-            text_color = '#000000'
-            hover_bg = 'rgba(180,200,220,0.2)'
-            hover_color = '#1e3a8a'
+        bg = 'rgba(18,20,24,0.95)'
+        border = 'rgba(125,211,252,0.2)'
+        text_color = '#A6B8C8'
+        hover_bg = 'rgba(125,211,252,0.1)'
+        hover_color = '#7DD3FC'
         self.setStyleSheet(f'QWidget {{ background: {bg}; border: 1px solid {border}; border-radius: 10px; }} QPushButton {{ background: transparent; border: none; padding: 8px 12px; text-align: left; color: {text_color}; }} QPushButton:hover {{ background: {hover_bg}; color: {hover_color}; }}')
     def add_item(self, item):
         if isinstance(item, str) and item == 'separator_after':
@@ -104,22 +94,13 @@ class HoverMenuButton(QWidget):
     def text(self):
         return self.text_label.text()
     def _update_theme(self):
-        if self.is_dark:
-            color = '#A6B8C8'
-            hover_bg = 'rgba(125,211,252,0.1)'
-            hover_color = '#7DD3FC'
-            active_bg = 'rgba(125,211,252,0.15)'
-            active_color = '#7DD3FC'
-            active_border = '#7DD3FC'
-            pressed_bg = 'rgba(125,211,252,0.2)'
-        else:
-            color = '#000000'
-            hover_bg = 'rgba(180,200,220,0.2)'
-            hover_color = '#1e3a8a'
-            active_bg = 'rgba(180,200,220,0.3)'
-            active_color = '#1e3a8a'
-            active_border = '#1e3a8a'
-            pressed_bg = 'rgba(180,200,220,0.4)'
+        color = '#A6B8C8'
+        hover_bg = 'rgba(125,211,252,0.1)'
+        hover_color = '#7DD3FC'
+        active_bg = 'rgba(125,211,252,0.15)'
+        active_color = '#7DD3FC'
+        active_border = '#7DD3FC'
+        pressed_bg = 'rgba(125,211,252,0.2)'
         self.setStyleSheet(f'\n            QWidget#menuPopupButton {{\n                background: transparent;\n                border: none;\n                border-radius: 6px;\n            }}\n            QWidget#menuPopupButton[hovered="true"] {{\n                background: {hover_bg};\n            }}\n            QWidget#menuPopupButton[active="true"] {{\n                background: {active_bg};\n                border-left: 3px solid {active_border};\n            }}\n            QLabel {{\n                color: {color};\n                background: transparent;\n                border: none;\n            }}\n            QWidget#menuPopupButton[hovered="true"] QLabel {{\n                color: {hover_color};\n            }}\n            QWidget#menuPopupButton[active="true"] QLabel {{\n                color: {active_color};\n            }}\n            ')
     def _show_submenu(self):
         parent_popup = self.parent()
@@ -281,12 +262,8 @@ class MenuPopup(QWidget):
             self._current_menu.is_dark = is_dark
             self._current_menu._update_theme()
     def _update_theme(self):
-        if self.is_dark:
-            bg = 'rgba(18,20,24,0.95)'
-            border = 'rgba(125,211,252,0.2)'
-        else:
-            bg = 'rgba(240,245,255,1.0)'
-            border = 'rgba(180,200,220,0.5)'
+        bg = 'rgba(18,20,24,0.95)'
+        border = 'rgba(125,211,252,0.2)'
         self.container.setStyleSheet(f'\n            QFrame#menuPopupContainer {{\n                background: {bg};\n                border: 1px solid {border};\n                border-radius: 10px;\n            }}\n        ')
     def show_at(self, global_pos):
         self.adjustSize()

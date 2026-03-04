@@ -11,10 +11,7 @@ import atexit
 import urllib.request
 from pathlib import Path
 from typing import Optional, Callable, Dict, Tuple
-try:
-    from palworld_aio import constants
-except ImportError:
-    from . import constants
+from palworld_aio import constants
 GIT_REPO_URL = 'https://github.com/deafdudecomputers/PalworldSaveTools.git'
 STABLE_BRANCH = 'main'
 BETA_BRANCH = 'beta'
@@ -23,13 +20,9 @@ RELEASE_DOWNLOAD_URL = 'https://github.com/deafdudecomputers/PalworldSaveTools/r
 RELEASES_PAGE_URL = 'https://github.com/deafdudecomputers/PalworldSaveTools/releases/latest'
 CHANGELOG_URL = 'https://raw.githubusercontent.com/deafdudecomputers/PalworldSaveTools/main/CHANGELOG.md'
 def get_update_settings() -> Dict:
-    try:
-        from common import get_src_directory, is_standalone
-        config_path = os.path.join(get_src_directory(), 'data', 'configs', 'config.json')
-        standalone = is_standalone()
-    except:
-        config_path = os.path.join(os.path.dirname(__file__), 'data', 'configs', 'config.json')
-        standalone = False
+    from common import get_src_directory, is_standalone
+    config_path = os.path.join(get_src_directory(), 'data', 'configs', 'config.json')
+    standalone = is_standalone()
     if standalone:
         defaults = {'auto_update': True, 'check_updates': True}
     else:
@@ -42,13 +35,9 @@ def get_update_settings() -> Dict:
         pass
     return defaults
 def save_update_settings(settings: Dict):
-    try:
-        from common import get_src_directory, is_standalone
-        config_path = os.path.join(get_src_directory(), 'data', 'configs', 'config.json')
-        standalone = is_standalone()
-    except:
-        config_path = os.path.join(os.path.dirname(__file__), 'data', 'configs', 'config.json')
-        standalone = False
+    from common import get_src_directory, is_standalone
+    config_path = os.path.join(get_src_directory(), 'data', 'configs', 'config.json')
+    standalone = is_standalone()
     config = {}
     try:
         with open(config_path, 'r', encoding='utf-8') as f:

@@ -664,6 +664,142 @@ class PalDefenderDialog(ThemedDialog):
             self._append_output(f'\nFilter: Max Level <= {max_level}')
         self._append_output(f'\nExcluded guilds: {len(excluded_guilds)}')
         self._append_output(f'Excluded bases: {len(excluded_bases)}')
+class ScrollableGuildSelectionDialog(ThemedDialog):
+    def __init__(self, guilds_data, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(t('base.import.select_guild') if t else 'Select Guild')
+        self.setModal(True)
+        self.setMinimumWidth(500)
+        self.setMaximumWidth(600)
+        if os.path.exists(constants.ICON_PATH):
+            self.setWindowIcon(QIcon(constants.ICON_PATH))
+        self.guilds_data = guilds_data
+        self.filtered_guilds = guilds_data
+        self.selected_guild_id = None
+        self.guild_buttons = []
+        self._setup_ui()
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(10)
+        label = QLabel(t('base.import.select_guild_prompt') if t else 'Select a guild to import the base(s) to:')
+        label.setWordWrap(True)
+        layout.addWidget(label)
+        search_frame = QFrame()
+        search_frame.setFrameShape(QFrame.StyledPanel)
+        search_frame.setStyleSheet(f'background-color: {constants.GLASS}; border: 1px solid {constants.BORDER}; border-radius: {constants.CORNER_RADIUS}px;')
+        search_layout = QVBoxLayout(search_frame)
+        search_layout.setContentsMargins(8, 8, 8, 8)
+        search_layout.setSpacing(6)
+        search_label = QLabel(t('base.import.search_label') if t else 'Search guilds, leaders, bases...')
+        search_label.setStyleSheet(f'color: {constants.MUTED}; font-size: 11px;')
+        search_layout.addWidget(search_label)
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText(t('base.import.search_placeholder') if t else 'Search guild name, leader, coordinates...')
+        self.search_input.setMinimumHeight(32)
+        self.search_input.textChanged.connect(self._on_search_changed)
+        self.search_input.setStyleSheet(f'\n            QLineEdit {{\n                background-color: rgba(255,255,255,0.05);\n                color: {constants.TEXT};\n                border: 1px solid {constants.BORDER};\n                border-radius: {constants.CORNER_RADIUS}px;\n                padding: 8px 12px;\n                font-size: {constants.FONT_SIZE}px;\n            }}\n            QLineEdit:focus {{\n                border-color: {constants.ACCENT};\n            }}\n        ')
+        search_layout.addWidget(self.search_input)
+        self.search_status = QLabel('')
+        self.search_status.setStyleSheet(f'color: {constants.MUTED}; font-size: 11px;')
+        search_layout.addWidget(self.search_status)
+        layout.addWidget(search_frame)
+        guild_frame = QFrame()
+        guild_frame.setFrameShape(QFrame.StyledPanel)
+        guild_frame.setStyleSheet(f'background-color: {constants.GLASS}; border: 1px solid {constants.BORDER}; border-radius: {constants.CORNER_RADIUS}px;')
+        guild_layout = QVBoxLayout(guild_frame)
+        guild_layout.setContentsMargins(5, 5, 5, 5)
+        guild_layout.setSpacing(2)
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet(f'border: none; background-color: transparent;')
+        self.guild_container = QWidget()
+        self.guild_container_layout = QVBoxLayout(self.guild_container)
+        self.guild_container_layout.setContentsMargins(0, 0, 0, 0)
+        self.guild_container_layout.setSpacing(2)
+        scroll_area.setWidget(self.guild_container)
+        guild_layout.addWidget(scroll_area)
+        layout.addWidget(guild_frame)
+        button_layout = QHBoxLayout()
+        ok_btn = QPushButton(t('button.ok') if t else 'OK')
+        ok_btn.clicked.connect(self.accept)
+        ok_btn.setMinimumHeight(32)
+        cancel_btn = QPushButton(t('button.cancel') if t else 'Cancel')
+        cancel_btn.clicked.connect(self.reject)
+        cancel_btn.setMinimumHeight(32)
+        button_layout.addWidget(ok_btn)
+        button_layout.addWidget(cancel_btn)
+        layout.addLayout(button_layout)
+        self._populate_guilds()
+        self.setMaximumHeight(600)
+    def _populate_guilds(self):
+        for button in self.guild_buttons:
+            self.guild_container_layout.removeWidget(button[1])
+            button[1].deleteLater()
+        self.guild_buttons.clear()
+        for guild_id, guild_info in self.filtered_guilds.items():
+            guild_name = guild_info.get('guild_name', 'Unknown')
+            leader_name = guild_info.get('leader_name', 'Unknown')
+            base_count = len(guild_info.get('bases', []))
+            last_seen = guild_info.get('last_seen', 'Unknown')
+            display_text = f'{guild_name} ({leader_name} - {base_count} bases) - {last_seen}'
+            button = QPushButton(display_text)
+            button.setCheckable(True)
+            button.setMinimumHeight(36)
+            button.setCursor(Qt.PointingHandCursor)
+            button.setStyleSheet(f'\n                QPushButton {{\n                    background-color: transparent;\n                    border: 1px solid {constants.BORDER};\n                    border-radius: {constants.CORNER_RADIUS}px;\n                    color: {constants.TEXT};\n                    padding: 8px 12px;\n                    text-align: left;\n                    font-size: {constants.FONT_SIZE}px;\n                    line-height: 1.2;\n                }}\n                QPushButton:hover {{\n                    background-color: {constants.BUTTON_HOVER};\n                    border-color: {constants.ACCENT};\n                }}\n                QPushButton:checked {{\n                    background-color: {constants.ACCENT};\n                    border-color: {constants.ACCENT};\n                    color: {constants.EMPHASIS};\n                    font-weight: bold;\n                }}\n            ')
+            button.clicked.connect(lambda checked, gid=guild_id: self._on_guild_selected(gid))
+            self.guild_container_layout.addWidget(button)
+            self.guild_buttons.append((guild_id, button))
+        total_count = len(self.guilds_data)
+        filtered_count = len(self.filtered_guilds)
+        if filtered_count == total_count:
+            self.search_status.setText(t('base.import.showing_all', count=total_count) if t else f'Showing all {total_count} guilds')
+        else:
+            self.search_status.setText(t('base.import.filtered_status', filtered=filtered_count, total=total_count) if t else f'Filtered: {filtered_count}/{total_count} guilds')
+    def _on_search_changed(self, text):
+        self._filter_guilds(text)
+        self._populate_guilds()
+    def _filter_guilds(self, search_text):
+        if not search_text:
+            self.filtered_guilds = self.guilds_data
+            return
+        terms = search_text.lower().split()
+        filtered = {}
+        for guild_id, guild_info in self.guilds_data.items():
+            guild_name = guild_info.get('guild_name', '').lower()
+            leader_name = guild_info.get('leader_name', '').lower()
+            last_seen = guild_info.get('last_seen', '').lower()
+            guild_matches = all((any((term in field for field in [guild_name, leader_name, last_seen])) for term in terms))
+            matching_bases = []
+            for base in guild_info.get('bases', []):
+                base_id = str(base.get('base_id', '')).lower()
+                coords = base.get('coords', (0, 0))
+                coords_str = f'x:{int(coords[0])},y:{int(coords[1])}'
+                base_matches = all((any((term in field for field in [base_id, coords_str, guild_name, leader_name, last_seen])) for term in terms))
+                if base_matches:
+                    matching_bases.append(base)
+            if guild_matches or matching_bases:
+                filtered[guild_id] = dict(guild_info)
+                if not guild_matches:
+                    filtered[guild_id]['bases'] = matching_bases
+        self.filtered_guilds = filtered
+    def _on_guild_selected(self, guild_id):
+        self.selected_guild_id = guild_id
+        for gid, button in self.guild_buttons:
+            button.setChecked(gid == guild_id)
+    def accept(self):
+        if self.selected_guild_id is None and self.guild_buttons:
+            self.selected_guild_id = self.guild_buttons[0][0]
+        super().accept()
+    @staticmethod
+    def get_guild(guilds_data, parent=None):
+        dialog = ScrollableGuildSelectionDialog(guilds_data, parent)
+        if dialog.exec() == QDialog.Accepted:
+            return dialog.selected_guild_id
+        return None
 class GuildSelectionDialog(ThemedDialog):
     def __init__(self, guilds_data, parent=None):
         super().__init__(parent)

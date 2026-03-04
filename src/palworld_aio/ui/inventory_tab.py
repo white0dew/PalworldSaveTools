@@ -5,14 +5,9 @@ from PySide6.QtGui import QPixmap, QIcon, QFont, QCursor
 from i18n import t
 DARK_THEME_STYLE = '\nQDialog {\n    background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                stop:0 rgba(12,14,18,0.98), stop:0.5 rgba(10,16,22,0.98), stop:1 rgba(8,12,18,0.98));\n    color: #e2e8f0;\n}\nQLabel {\n    color: #e2e8f0;\n}\nQLineEdit {\n    background: rgba(255,255,255,0.06);\n    color: #e2e8f0;\n    border: 1px solid rgba(125,211,252,0.2);\n    border-radius: 6px;\n    padding: 6px 10px;\n}\nQLineEdit:focus {\n    border-color: rgba(125,211,252,0.4);\n}\nQSpinBox {\n    background: rgba(255,255,255,0.06);\n    color: #e2e8f0;\n    border: 1px solid rgba(125,211,252,0.2);\n    border-radius: 6px;\n    padding: 4px 8px;\n}\nQSpinBox:focus {\n    border-color: rgba(125,211,252,0.4);\n}\nQComboBox {\n    background: rgba(255,255,255,0.06);\n    color: #e2e8f0;\n    border: 1px solid rgba(125,211,252,0.2);\n    border-radius: 6px;\n    padding: 6px 10px;\n}\nQComboBox:hover {\n    border-color: rgba(125,211,252,0.3);\n}\nQComboBox QAbstractItemView {\n    background-color: rgba(18,20,24,0.98);\n    color: #e2e8f0;\n    border: 1px solid rgba(125,211,252,0.2);\n    selection-background-color: rgba(59,142,208,0.3);\n    border-radius: 4px;\n}\nQPushButton {\n    background: rgba(125,211,252,0.12);\n    color: #7DD3FC;\n    border: 1px solid rgba(125,211,252,0.2);\n    border-radius: 6px;\n    padding: 8px 16px;\n    font-weight: 600;\n}\nQPushButton:hover {\n    background: rgba(125,211,252,0.2);\n    border-color: rgba(125,211,252,0.4);\n    color: #FFFFFF;\n}\nQListWidget {\n    background: rgba(255,255,255,0.03);\n    color: #e2e8f0;\n    border: 1px solid rgba(125,211,252,0.15);\n    border-radius: 6px;\n}\nQListWidget::item {\n    padding: 6px;\n    border-radius: 4px;\n}\nQListWidget::item:selected {\n    background: rgba(59,142,208,0.3);\n}\nQMenu {\n    background-color: rgba(18,20,24,0.95);\n    border: 1px solid rgba(125,211,252,0.3);\n    border-radius: 4px;\n    color: #e2e8f0;\n    padding: 4px;\n}\nQMenu::item {\n    padding: 6px 12px;\n    border-radius: 3px;\n}\nQMenu::item:selected {\n    background-color: rgba(59,142,208,0.3);\n}\nQMenu::separator {\n    height: 1px;\n    background: rgba(125,211,252,0.2);\n    margin: 4px 8px;\n}\nQMessageBox {\n    background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                stop:0 rgba(12,14,18,0.98), stop:0.5 rgba(10,16,22,0.98), stop:1 rgba(8,12,18,0.98));\n    color: #e2e8f0;\n}\nQMessageBox QLabel {\n    color: #e2e8f0;\n}\nQMessageBox QPushButton {\n    background: rgba(125,211,252,0.12);\n    color: #7DD3FC;\n    border: 1px solid rgba(125,211,252,0.2);\n    border-radius: 6px;\n    padding: 8px 16px;\n    min-width: 70px;\n    font-weight: 600;\n}\nQMessageBox QPushButton:hover {\n    background: rgba(125,211,252,0.2);\n    border-color: rgba(125,211,252,0.4);\n    color: #FFFFFF;\n}\n'
 STATS_PANEL_STYLE = '\nStatsPanelWidget {\n    background: rgba(18,20,24,0.95);\n    border: 1px solid rgba(125,211,252,0.2);\n    border-radius: 8px;\n}\nStatsPanelWidget QLabel {\n    color: #e2e8f0;\n}\nStatsPanelWidget QLineEdit {\n    background: rgba(255,255,255,0.06);\n    color: #e2e8f0;\n    border: 1px solid rgba(125,211,252,0.2);\n    border-radius: 4px;\n    padding: 2px 4px;\n}\nStatsPanelWidget QLineEdit:focus {\n    border-color: rgba(125,211,252,0.4);\n}\nStatsPanelWidget QPushButton {\n    background: rgba(125,211,252,0.1);\n    color: #7DD3FC;\n    border: 1px solid rgba(125,211,252,0.2);\n    border-radius: 3px;\n    font-weight: bold;\n}\nStatsPanelWidget QPushButton:hover {\n    background: rgba(125,211,252,0.2);\n}\nStatsPanelWidget QProgressBar {\n    background: rgba(255,255,255,0.05);\n    border: 1px solid rgba(125,211,252,0.15);\n    border-radius: 3px;\n}\nStatsPanelWidget QProgressBar::chunk {\n    background: rgba(34,197,94,0.6);\n    border-radius: 2px;\n}\n'
-try:
-    from palworld_aio.inventory_manager import PlayerInventory, ItemData, get_player_inventory, search_items, UI_SLOT_BINDINGS, FOOD_POUCH_ITEMS, ACCESSORY_UNLOCK_ITEMS
-    from palworld_aio import constants
-    from palworld_aio.ui.styled_combo import StyledCombo
-except ImportError:
-    from ..inventory_manager import PlayerInventory, ItemData, get_player_inventory, search_items, UI_SLOT_BINDINGS, FOOD_POUCH_ITEMS, ACCESSORY_UNLOCK_ITEMS
-    from .. import constants
-    from .styled_combo import StyledCombo
+from palworld_aio.inventory_manager import PlayerInventory, ItemData, get_player_inventory, search_items, UI_SLOT_BINDINGS, FOOD_POUCH_ITEMS, ACCESSORY_UNLOCK_ITEMS
+from palworld_aio import constants
+from palworld_aio.ui.styled_combo import StyledCombo
 GRID_COLS = 6
 GRID_ROWS = 9
 SLOT_SIZE = 56
@@ -487,8 +482,6 @@ class InventoryGridWidget(QWidget):
         self.sort_btn.setText(t('inventory.sort', default='Sort'))
     def clear(self):
         self.load_items([])
-    def set_theme(self, is_dark):
-        pass
     def get_selected_slot(self):
         return None
     def get_item_count(self, slot_index):
@@ -596,9 +589,6 @@ class PlayerInventoryTab(QWidget):
         self._context_container_type = 'main'
         self._context_slot_index = 0
         self._setup_ui()
-    def set_theme(self, is_dark):
-        if hasattr(self, 'player_combo'):
-            self.player_combo.set_theme(is_dark)
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(10, 10, 10, 10)

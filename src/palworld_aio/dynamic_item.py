@@ -1,10 +1,7 @@
 import uuid
 from typing import Any, Dict, Optional
 from palworld_save_tools.archive import UUID
-try:
-    from palworld_aio.dynamic_item_manager import as_uuid, are_equal_uuids
-except ImportError:
-    from .dynamic_item_manager import as_uuid, are_equal_uuids
+from palworld_aio.dynamic_item_manager import as_uuid, are_equal_uuids
 class DynamicItem:
     def __init__(self, local_id: UUID, dynamic_item_save_data: Dict[str, Any]=None):
         self.local_id = local_id

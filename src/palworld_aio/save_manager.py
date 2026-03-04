@@ -19,16 +19,10 @@ from palobject import MappingCacheObject, toUUID
 from import_libs import backup_whole_directory, run_with_loading
 import palworld_coord
 from i18n import t
-try:
-    from palworld_aio import constants
-    from palworld_aio.utils import sav_to_json, json_to_sav, sav_to_gvas_wrapper, wrapper_to_sav, sav_to_gvasfile, extract_value, sanitize_filename, format_duration_short
-    from palworld_aio.guild_manager import rebuild_all_guilds
-    from palworld_aio.func_manager import check_is_illegal_pal
-except ImportError:
-    from . import constants
-    from .utils import sav_to_json, json_to_sav, sav_to_gvas_wrapper, wrapper_to_sav, sav_to_gvasfile, extract_value, sanitize_filename, format_duration_short
-    from .guild_manager import rebuild_all_guilds
-    from .func_manager import check_is_illegal_pal
+from palworld_aio import constants
+from palworld_aio.utils import sav_to_json, json_to_sav, sav_to_gvas_wrapper, wrapper_to_sav, sav_to_gvasfile, extract_value, sanitize_filename, format_duration_short
+from palworld_aio.guild_manager import rebuild_all_guilds
+from palworld_aio.func_manager import check_is_illegal_pal
 class SaveManager(QObject):
     load_started = Signal()
     load_finished = Signal(bool)
@@ -72,17 +66,9 @@ class SaveManager(QObject):
             constants.dps_tasks = []
             constants.original_loaded_level_json = None
             self.dps_tasks.clear()
-        try:
-            from palobject import MappingCacheObject
-            if hasattr(MappingCacheObject, '_MappingCacheInstances'):
-                MappingCacheObject._MappingCacheInstances.clear()
-        except ImportError:
-            try:
-                from .palobject import MappingCacheObject
-                if hasattr(MappingCacheObject, '_MappingCacheInstances'):
-                    MappingCacheObject._MappingCacheInstances.clear()
-            except ImportError:
-                pass
+        from palobject import MappingCacheObject
+        if hasattr(MappingCacheObject, '_MappingCacheInstances'):
+            MappingCacheObject._MappingCacheInstances.clear()
         self.load_started.emit()
         constants.current_save_path = d
         constants.backup_save_path = constants.current_save_path

@@ -1,10 +1,7 @@
 from PySide6.QtWidgets import QMenu, QMenuBar
 from PySide6.QtGui import QAction
 from i18n import t
-try:
-    from palworld_aio import constants
-except ImportError:
-    from .. import constants
+from palworld_aio import constants
 class MenuFactory:
     @staticmethod
     def create_action(text, callback, parent=None):

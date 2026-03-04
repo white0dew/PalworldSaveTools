@@ -1,7 +1,7 @@
 import os, sys, subprocess, json, configparser
 APP_NAME = 'PalworldSaveTools'
-APP_VERSION = '1.1.74'
-APP_BETA_VERSION = '1.1.75'
+APP_VERSION = '1.1.75'
+APP_BETA_VERSION = '1.1.76'
 BETA_SUBVERSION = '1'
 GAME_VERSION = '0.7.2'
 BRANCH_VERSION = 'stable'

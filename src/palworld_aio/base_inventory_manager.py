@@ -6,20 +6,12 @@ from collections import defaultdict
 from palworld_save_tools.archive import UUID
 from i18n import t
 from typing import Optional, Dict, List, Any
-try:
-    from palworld_aio import constants
-    from palworld_aio.utils import are_equal_uuids, as_uuid, fast_deepcopy
-    from palworld_aio.inventory_manager import InventoryContainer
-    from palworld_aio.base_dto import get_base_containers_simple, ContainerDTO
-    from palworld_aio.dynamic_item_manager import get_dynamic_item_manager, generate_dynamic_item_uuid
-    from palworld_aio.standardized_container import StandardizedContainer
-except ImportError:
-    from . import constants
-    from .utils import are_equal_uuids, as_uuid, fast_deepcopy
-    from .inventory_manager import InventoryContainer
-    from .base_dto import get_base_containers_simple, ContainerDTO
-    from .dynamic_item_manager import get_dynamic_item_manager, generate_dynamic_item_uuid
-    from .standardized_container import StandardizedContainer
+from palworld_aio import constants
+from palworld_aio.utils import are_equal_uuids, as_uuid, fast_deepcopy
+from palworld_aio.inventory_manager import InventoryContainer
+from palworld_aio.base_dto import get_base_containers_simple, ContainerDTO
+from palworld_aio.dynamic_item_manager import get_dynamic_item_manager, generate_dynamic_item_uuid
+from palworld_aio.standardized_container import StandardizedContainer
 import threading
 import time
 from PySide6.QtCore import QTimer
@@ -206,7 +198,7 @@ def get_container_icon_path_from_structure(container_type):
     structure_data = load_structure_data()
     structures = structure_data.get('structures', [])
     for structure in structures:
-        if structure.get('asset') == container_type:
+        if structure.get('asset', '').lower() == container_type.lower():
             icon_path = structure.get('icon')
             if icon_path:
                 base_path = constants.get_base_path()

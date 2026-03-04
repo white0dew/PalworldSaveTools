@@ -2,10 +2,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QFrame, QGraphicsDro
 from PySide6.QtCore import Qt, QPoint, QTimer
 from PySide6.QtGui import QFont, QColor
 from i18n import t
-try:
-    from palworld_aio import constants
-except ImportError:
-    from .. import constants
+from palworld_aio import constants
 class PlayerHoverOverlay(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)

@@ -8,16 +8,10 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_compl
 from palworld_save_tools.archive import UUID
 from PySide6.QtWidgets import QMessageBox, QInputDialog
 from i18n import t
-try:
-    from palworld_aio import constants
-    from palworld_aio.utils import sav_to_json, json_to_sav, sav_to_gvasfile, gvasfile_to_sav, are_equal_uuids, as_uuid, is_valid_level, extract_value, format_duration, sanitize_filename
-    from palworld_aio.data_manager import delete_base_camp
-    from palworld_aio.dialogs import GameDaysInputDialog
-except ImportError:
-    from . import constants
-    from .utils import sav_to_json, json_to_sav, sav_to_gvasfile, gvasfile_to_sav, are_equal_uuids, as_uuid, is_valid_level, extract_value, format_duration, sanitize_filename
-    from .data_manager import delete_base_camp
-    from .dialogs import GameDaysInputDialog
+from palworld_aio import constants
+from palworld_aio.utils import sav_to_json, json_to_sav, sav_to_gvasfile, gvasfile_to_sav, are_equal_uuids, as_uuid, is_valid_level, extract_value, format_duration, sanitize_filename
+from palworld_aio.data_manager import delete_base_camp
+from palworld_aio.dialogs import GameDaysInputDialog
 def build_player_levels():
     if not constants.loaded_level_json:
         return

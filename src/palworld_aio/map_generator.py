@@ -3,10 +3,7 @@ import time
 import json
 import palworld_coord
 from i18n import t
-try:
-    from palworld_aio import constants
-except ImportError:
-    from . import constants
+from palworld_aio import constants
 from PySide6.QtGui import QFontDatabase, QFont, QPainter, QColor, QImage, QPen, QFontMetrics
 from PySide6.QtCore import Qt, QSize
 def extract_guild_bases_from_save():

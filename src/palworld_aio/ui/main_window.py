@@ -17,30 +17,17 @@ from loading_manager import show_question
 from .tools_tab import center_on_parent
 GITHUB_RAW_URL = 'https://raw.githubusercontent.com/deafdudecomputers/PalworldSaveTools/main/src/common.py'
 GITHUB_LATEST_ZIP = 'https://github.com/deafdudecomputers/PalworldSaveTools/releases/latest'
-try:
-    from palworld_aio import constants
-    from palworld_aio.utils import check_for_update, as_uuid
-    from palworld_aio.save_manager import save_manager
-    from palworld_aio.data_manager import get_guilds, get_guild_members, get_bases, delete_guild, delete_player, load_exclusions, save_exclusions, delete_base_camp
-    from palworld_aio.func_manager import delete_empty_guilds, delete_inactive_players, delete_inactive_bases, delete_duplicated_players, delete_unreferenced_data, delete_non_base_map_objects, delete_invalid_structure_map_objects, delete_all_skins, unlock_all_private_chests, remove_invalid_items_from_save, remove_invalid_pals_from_save, remove_invalid_passives_from_save, fix_missions, reset_anti_air_turrets, reset_dungeons, unlock_viewing_cage_for_player, fix_all_negative_timestamps, reset_selected_player_timestamp, detect_and_trim_overfilled_inventories, unlock_all_technologies_for_player, unlock_all_lab_research_for_guild, modify_container_slots, fix_illegal_pals_in_save, repair_structures, edit_game_days
-    from palworld_aio.guild_manager import move_player_to_guild, rebuild_all_guilds, make_member_leader, rename_guild, max_guild_level
-    from palworld_aio.base_manager import export_base_json, import_base_json, clone_base_complete, update_base_area_range
-    from palworld_aio.player_manager import rename_player
-    from palworld_aio.map_generator import generate_world_map
-    from palworld_aio.dialogs import InputDialog, DaysInputDialog, LevelInputDialog, RadiusInputDialog, PalDefenderDialog, GameDaysInputDialog
-    from palworld_aio.widgets import SearchPanel, StatsPanel
-except ImportError:
-    from .. import constants
-    from ..utils import check_for_update, as_uuid
-    from ..save_manager import save_manager
-    from ..data_manager import get_guilds, get_guild_members, get_bases, delete_guild, delete_player, load_exclusions, save_exclusions, delete_base_camp
-    from ..func_manager import delete_empty_guilds, delete_inactive_players, delete_inactive_bases, delete_duplicated_players, delete_unreferenced_data, delete_non_base_map_objects, delete_invalid_structure_map_objects, delete_all_skins, unlock_all_private_chests, remove_invalid_items_from_save, remove_invalid_pals_from_save, remove_invalid_passives_from_save, fix_missions, reset_anti_air_turrets, reset_dungeons, unlock_viewing_cage_for_player, fix_all_negative_timestamps, reset_selected_player_timestamp, detect_and_trim_overfilled_inventories, modify_container_slots, fix_illegal_pals_in_save, repair_structures, edit_game_days
-    from ..guild_manager import move_player_to_guild, rebuild_all_guilds, make_member_leader, rename_guild, max_guild_level
-    from ..base_manager import export_base_json, import_base_json, clone_base_complete, update_base_area_range
-    from ..player_manager import rename_player
-    from ..map_generator import generate_world_map
-    from ..dialogs import InputDialog, DaysInputDialog, LevelInputDialog, RadiusInputDialog, PalDefenderDialog, GameDaysInputDialog
-from ..widgets import SearchPanel, StatsPanel, ScrollableContextMenu
+from palworld_aio import constants
+from palworld_aio.utils import check_for_update, as_uuid
+from palworld_aio.save_manager import save_manager
+from palworld_aio.data_manager import get_guilds, get_guild_members, get_bases, delete_guild, delete_player, load_exclusions, save_exclusions, delete_base_camp
+from palworld_aio.func_manager import delete_empty_guilds, delete_inactive_players, delete_inactive_bases, delete_duplicated_players, delete_unreferenced_data, delete_non_base_map_objects, delete_invalid_structure_map_objects, delete_all_skins, unlock_all_private_chests, remove_invalid_items_from_save, remove_invalid_pals_from_save, remove_invalid_passives_from_save, fix_missions, reset_anti_air_turrets, reset_dungeons, unlock_viewing_cage_for_player, fix_all_negative_timestamps, reset_selected_player_timestamp, detect_and_trim_overfilled_inventories, unlock_all_technologies_for_player, unlock_all_lab_research_for_guild, modify_container_slots, fix_illegal_pals_in_save, repair_structures, edit_game_days
+from palworld_aio.guild_manager import move_player_to_guild, rebuild_all_guilds, make_member_leader, rename_guild, max_guild_level
+from palworld_aio.base_manager import export_base_json, import_base_json, clone_base_complete, update_base_area_range
+from palworld_aio.player_manager import rename_player
+from palworld_aio.map_generator import generate_world_map
+from palworld_aio.dialogs import InputDialog, DaysInputDialog, LevelInputDialog, RadiusInputDialog, PalDefenderDialog, GameDaysInputDialog
+from palworld_aio.widgets import SearchPanel, StatsPanel
 class DetachedStatusWindow(QWidget):
     def __init__(self, parent=None):
         super().__init__()
@@ -49,7 +36,7 @@ class DetachedStatusWindow(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setMinimumSize(600, 400)
         self._drag_pos = QPoint()
-        self.is_dark = parent.is_dark_mode if parent else True
+        self.is_dark = True
         self._load_theme()
         self.main_layout = QVBoxLayout(self)
         self.container = QFrame()
@@ -83,7 +70,7 @@ class DetachedStatusWindow(QWidget):
             self.restoreGeometry(geo)
     def _load_theme(self):
         base_path = constants.get_src_path()
-        theme_file = 'darkmode.qss' if self.is_dark else 'lightmode.qss'
+        theme_file = 'darkmode.qss'
         theme_path = os.path.join(base_path, 'data', 'gui', theme_file)
         if os.path.exists(theme_path):
             try:
@@ -292,11 +279,9 @@ class MainWindow(QMainWindow):
         main_layout.setSpacing(0)
         from .header_widget import HeaderWidget
         self.header_widget = HeaderWidget()
-        self.header_widget.set_theme(self.is_dark_mode)
         self.header_widget.minimize_clicked.connect(self.showMinimized)
         self.header_widget.maximize_clicked.connect(self._toggle_maximize)
         self.header_widget.close_clicked.connect(self.close)
-        self.header_widget.theme_toggle_clicked.connect(self._toggle_theme)
         self.header_widget.about_clicked.connect(self._show_about)
         self.header_widget.warn_btn.clicked.connect(self._show_warnings)
         self.header_widget.show_warning(True)
@@ -596,7 +581,7 @@ class MainWindow(QMainWindow):
     def _load_user_settings(self):
         base_path = constants.get_src_path()
         user_cfg_path = os.path.join(base_path, 'data', 'configs', 'user.cfg')
-        default_settings = {'theme': 'dark', 'language': 'en_US', 'show_icons': True, 'boot_preference': 'menu', 'console_detached': False, 'console_window_geometry': None}
+        default_settings = {'language': 'en_US', 'show_icons': True, 'boot_preference': 'menu', 'console_detached': False, 'console_window_geometry': None}
         if os.path.exists(user_cfg_path):
             try:
                 with open(user_cfg_path, 'r') as f:
@@ -604,14 +589,11 @@ class MainWindow(QMainWindow):
                     for key, value in default_settings.items():
                         if key not in self.user_settings:
                             self.user_settings[key] = value
-                    self.is_dark_mode = self.user_settings.get('theme', 'dark') == 'dark'
             except Exception as e:
                 print(f'Failed to load user settings: {e}')
                 self.user_settings = default_settings.copy()
-                self.is_dark_mode = True
         else:
             self.user_settings = default_settings.copy()
-            self.is_dark_mode = True
             os.makedirs(os.path.dirname(user_cfg_path), exist_ok=True)
             self._save_user_settings()
     def _save_user_settings(self):
@@ -625,7 +607,7 @@ class MainWindow(QMainWindow):
             print(f'Failed to save user settings: {e}')
     def _load_theme(self):
         base_path = constants.get_src_path()
-        theme_file = 'darkmode.qss' if self.is_dark_mode else 'lightmode.qss'
+        theme_file = 'darkmode.qss'
         theme_path = os.path.join(base_path, 'data', 'gui', theme_file)
         if os.path.exists(theme_path):
             try:
@@ -640,30 +622,11 @@ class MainWindow(QMainWindow):
             print(f'Theme file not found: {theme_path}')
             self._apply_fallback_styles()
         if hasattr(self, 'results_widget') and self.results_widget:
-            self.results_widget.set_theme(self.is_dark_mode)
+            pass
     def _apply_fallback_styles(self):
-        border_color = 'rgba(70,70,70,1.0)' if self.is_dark_mode else 'rgba(70,70,70,1.0)'
+        border_color = 'rgba(70,70,70,1.0)'
         from PySide6.QtWidgets import QApplication
         QApplication.instance().setStyleSheet(f'\n            QMainWindow {{\n                background-color: {constants.BG};\n            }}\n            QWidget {{\n                color: {constants.TEXT};\n            }}\n            QTabWidget::pane {{\n                background-color: {constants.GLASS};\n                border: 1px solid {border_color};\n                border-radius: 4px;\n            }}\n            QTabBar::tab {{\n                background-color: {constants.GLASS};\n                color: {constants.TEXT};\n                padding: 8px 16px;\n                border: 1px solid {border_color};\n                border-bottom: none;\n                border-top-left-radius: 4px;\n                border-top-right-radius: 4px;\n            }}\n            QTabBar::tab:selected {{\n                background-color: {constants.ACCENT};\n            }}\n            QTabBar::tab:hover {{\n                background-color: {constants.BUTTON_HOVER};\n            }}\n            QPushButton {{\n                background-color: {constants.GLASS};\n                color: {constants.TEXT};\n                border: 1px solid {border_color};\n                border-radius: 4px;\n                padding: 6px 12px;\n            }}\n            QPushButton:hover {{\n                background-color: {constants.BUTTON_HOVER};\n            }}\n            QMenuBar {{\n                background-color: {constants.GLASS};\n                color: {constants.TEXT};\n            }}\n            QMenuBar::item:selected {{\n                background-color: {constants.ACCENT};\n            }}\n            QMenu {{\n                background-color: {constants.GLASS};\n                color: {constants.TEXT};\n                border: 1px solid {border_color};\n            }}\n            QMenu::item:selected {{\n                background-color: {constants.ACCENT};\n            }}\n        ')
-    def _toggle_theme(self):
-        self.is_dark_mode = not self.is_dark_mode
-        self.user_settings['theme'] = 'dark' if self.is_dark_mode else 'light'
-        self._save_user_settings()
-        self._load_theme()
-        if hasattr(self, 'header_widget'):
-            self.header_widget.set_theme(self.is_dark_mode)
-        if hasattr(self, 'tab_bar_container'):
-            self.tab_bar_container.set_theme(self.is_dark_mode)
-        if hasattr(self, 'results_widget'):
-            self.results_widget.set_theme(self.is_dark_mode)
-        if hasattr(self, 'inventory_tab'):
-            self.inventory_tab.set_theme(self.is_dark_mode)
-        if hasattr(self, 'base_inventory_tab'):
-            self.base_inventory_tab.set_theme(self.is_dark_mode)
-        if hasattr(self.header_widget, '_menu_popup') and self.header_widget._menu_popup:
-            self.header_widget._menu_popup.update_theme(self.is_dark_mode)
-        if self.status_stream.detach_window:
-            self.status_stream.detach_window.update_theme(self.is_dark_mode)
     def _toggle_dashboard(self):
         if self._dashboard_collapsed:
             self.results_widget.show()
@@ -819,9 +782,9 @@ class MainWindow(QMainWindow):
         msg_box.exec()
     def _show_about(self):
         tools_version, game_version = get_versions()
-        h2_color = '#4a90e2' if self.is_dark_mode else '#1a5fb4'
-        text_color = '#e0e0e0' if self.is_dark_mode else '#333'
-        sub_color = '#888' if self.is_dark_mode else '#666'
+        h2_color = '#4a90e2'
+        text_color = '#e0e0e0'
+        sub_color = '#888'
         about_text = f'''<h2 style="color: {h2_color};">{(t('about.title') if t else 'Palworld Save Tools')} v{tools_version}</h2>\n    <p style="color: {text_color};">{(t('about.description') if t else 'A comprehensive toolkit for managing Palworld save files.')}</p>\n    <p style="color: {text_color};"><b>{(t('about.features.label') if t else 'Features')}:</b></p>\n    <ul>\n    <li style="color: {text_color};">{(t('about.features.1') if t else 'Transfer saves between servers and co-op worlds')}</li>\n    <li style="color: {text_color};">{(t('about.features.2') if t else 'Fix host saves and manage player/guild data')}</li>\n    <li style="color: {text_color};">{(t('about.features.3') if t else 'Edit bases and manage save files')}</li>\n    <li style="color: {text_color};">{(t('about.features.4') if t else 'Convert between Steam and GamePass formats')}</li>\n    <li style="color: {text_color};">{(t('about.features.5') if t else 'Visualize and manage world maps')}</li>\n    </ul>\n    <p style="color: {text_color};"><b>{(t('about.game_version') if t else 'Game Version')}:</b> {game_version}</p>\n    <p style="color: {text_color};"><b>{(t('about.developer') if t else 'Developer')}:</b> Palworld Save Tools Team</p>\n    <p style="color: {text_color};"><b>GitHub:</b> <a href="{GITHUB_LATEST_ZIP}" style="color: {h2_color};">{(t('about.github') if t else 'View on GitHub')}</a></p>\n    <p style="color: {sub_color};">© 2026 Palworld Save Tools</p>'''
         msg_box = self._create_message_box(QMessageBox.Information)
         msg_box.setWindowTitle(t('About PST') if t else 'About PST')
@@ -867,7 +830,7 @@ class MainWindow(QMainWindow):
         item = self.players_panel.tree.itemAt(pos)
         if not item:
             return
-        menu = ScrollableContextMenu(self, self.is_dark_mode)
+        menu = ScrollableContextMenu(self)
         menu.add_action(self._create_action(t('deletion.ctx.add_exclusion'), lambda: self._add_exclusion('players', item.text(4))))
         menu.add_action(self._create_action(t('deletion.ctx.remove_exclusion'), lambda: self._remove_exclusion('players', item.text(4))))
         menu.add_action(self._create_action(t('deletion.ctx.delete_player'), lambda: self._delete_player(item.text(4))))

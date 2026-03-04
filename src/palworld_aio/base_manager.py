@@ -6,14 +6,9 @@ import math
 import random
 from palworld_save_tools.archive import UUID as PalUUID
 from i18n import t
-try:
-    from palworld_aio import constants
-    from palworld_aio.utils import fast_deepcopy, are_equal_uuids, as_uuid
-    from palworld_aio.data_manager import delete_base_camp
-except ImportError:
-    from . import constants
-    from .utils import fast_deepcopy, are_equal_uuids, as_uuid
-    from .data_manager import delete_base_camp
+from palworld_aio import constants
+from palworld_aio.utils import fast_deepcopy, are_equal_uuids, as_uuid
+from palworld_aio.data_manager import delete_base_camp
 def _s(x):
     return str(x).lower()
 def _new_uuid():

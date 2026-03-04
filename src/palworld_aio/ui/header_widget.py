@@ -9,19 +9,14 @@ except:
         icons = {'nf-cod-github': '\ue708', 'nf-fa-save': '\uf0c7', 'nf-md-menu': '\U000f035c', 'nf-md-theme_light_dark': '\U000f0cde', 'nf-md-cog': '\U000f0493', 'nf-md-information': '\U000f02fd', 'nf-md-circle_medium': '\U000f09df', 'nf-fa-window_maximize': '\uf2d0', 'nf-fa-close': '\uf00d', 'nf-fa-discord': '\uf392', 'nf-cod-triangle_left': '\ueb9b', 'nf-cod-triangle_right': '\ueb9c'}
 from i18n import t
 from common import get_versions, get_display_version
-try:
-    from palworld_aio import constants
-except ImportError:
-    from .. import constants
+from palworld_aio import constants
 class HeaderWidget(QWidget):
     minimize_clicked = Signal()
     maximize_clicked = Signal()
     close_clicked = Signal()
-    theme_toggle_clicked = Signal()
     about_clicked = Signal()
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.is_dark_mode = True
         self._pulse_timer = None
         self._update_available = False
         self._latest_version = None
@@ -91,13 +86,6 @@ class HeaderWidget(QWidget):
         self.warn_btn.setVisible(False)
         layout.addWidget(self.warn_btn)
         layout.addItem(QSpacerItem(20, 10, QSizePolicy.Expanding, QSizePolicy.Minimum))
-        self.theme_btn = QPushButton(nf.icons['nf-md-theme_light_dark'])
-        self.theme_btn.setObjectName('themeChip')
-        self.theme_btn.setFlat(True)
-        self.theme_btn.setToolTip(t('toggle_theme') if t else 'Toggle Theme')
-        self.theme_btn.setFont(QFont('Hack Nerd Font', 14))
-        self.theme_btn.clicked.connect(self.theme_toggle_clicked.emit)
-        layout.addWidget(self.theme_btn)
         self.discord_btn = QPushButton(nf.icons['nf-fa-discord'])
         self.discord_btn.setObjectName('discordChip')
         self.discord_btn.setFlat(True)
@@ -142,10 +130,7 @@ class HeaderWidget(QWidget):
         stable_action.triggered.connect(self._open_stable)
         menu.exec(event.globalPosition().toPoint())
     def _get_menu_style(self):
-        if self.is_dark_mode:
-            return 'QMenu { background-color: #1a1a2e; color: #e0e0e0; border: 1px solid #333; } QMenu::item:selected { background-color: #4a90e2; }'
-        else:
-            return 'QMenu { background-color: #ffffff; color: #333333; border: 1px solid #ccc; } QMenu::item:selected { background-color: #4a90e2; color: white; }'
+        return 'QMenu { background-color: #1a1a2e; color: #e0e0e0; border: 1px solid #333; } QMenu::item:selected { background-color: #4a90e2; }'
     def _open_beta(self):
         import webbrowser
         webbrowser.open('https://github.com/deafdudecomputers/PalworldSaveTools/tree/beta')
@@ -159,8 +144,7 @@ class HeaderWidget(QWidget):
         webbrowser.open('https://discord.gg/sYcZwcT4cT')
     def update_logo(self):
         base_path = constants.get_base_path()
-        logo_name = 'PalworldSaveTools_Blue.png' if self.is_dark_mode else 'PalworldSaveTools_Black.png'
-        logo_path = os.path.join(base_path, 'resources', logo_name)
+        logo_path = os.path.join(base_path, 'resources', 'PalworldSaveTools_Blue.png')
         if os.path.exists(logo_path):
             pixmap = QPixmap(logo_path)
             if not pixmap.isNull():
@@ -170,9 +154,6 @@ class HeaderWidget(QWidget):
         else:
             self.logo_label.setText('PALWORLD SAVE TOOLS')
             self.logo_label.setFont(QFont('', 14, QFont.Bold))
-    def set_theme(self, is_dark):
-        self.is_dark_mode = is_dark
-        self.update_logo()
     def show_warning(self, show=True):
         self.warn_btn.setVisible(show)
     def start_pulse_animation(self, latest_version):
@@ -221,8 +202,6 @@ class HeaderWidget(QWidget):
             self.info_btn.setToolTip(t('about.title') if t else 'About PST')
         if hasattr(self, 'warn_btn'):
             self.warn_btn.setToolTip(t('warning.title', game_version=game_version) if t else f'Warnings(Palworld v{game_version})')
-        if hasattr(self, 'theme_btn'):
-            self.theme_btn.setToolTip(t('toggle_theme') if t else 'Toggle Theme')
         if hasattr(self, 'discord_btn'):
             self.discord_btn.setToolTip(t('button.discord') if t else 'Join Discord')
         if hasattr(self, 'minimize_btn'):

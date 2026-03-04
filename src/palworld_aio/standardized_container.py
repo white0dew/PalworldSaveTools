@@ -66,11 +66,25 @@ class StandardizedContainer:
         self.slots = []
         try:
             slots_data = self.container_data.get('value', {}).get('Slots', {}).get('value', {}).get('values', [])
-            for i, slot_data in enumerate(slots_data):
+            for slot_data in slots_data:
                 try:
-                    slot = ContainerSlot(slot_index=i)
+                    raw_slot_index = 0
+                    if slot_data.get('RawData'):
+                        raw_value = slot_data['RawData'].get('value', {})
+                        raw_slot_index = raw_value.get('slot_index', 0)
+                    slot = ContainerSlot(slot_index=raw_slot_index)
                     if slot_data.get('RawData'):
                         slot.update_from_raw_data(slot_data['RawData'])
+                    while len(self.slots) <= raw_slot_index:
+                        gap_index = len(self.slots)
+                        if gap_index != raw_slot_index:
+                            self.slots.append(ContainerSlot(slot_index=gap_index))
+                        else:
+                            break
+                    if raw_slot_index < len(self.slots):
+                        self.slots[raw_slot_index] = slot
+                    else:
+                        self.slots.append(slot)
                     if slot.dynamic_id and str(slot.dynamic_id) != '00000000-0000-0000-0000-000000000000':
                         dynamic_manager = get_dynamic_item_manager()
                         if not dynamic_manager.is_item_registered(slot.dynamic_id):
@@ -90,9 +104,9 @@ class StandardizedContainer:
                                         dynamic_manager.registry._container_items[cont_key].append(item_key)
                             except Exception as e:
                                 pass
-                    self.slots.append(slot)
                 except Exception as e:
-                    self.slots.append(ContainerSlot(slot_index=i))
+                    default_index = len(self.slots)
+                    self.slots.append(ContainerSlot(slot_index=default_index))
             while len(self.slots) < self.max_slots:
                 self.slots.append(ContainerSlot(slot_index=len(self.slots)))
         except Exception as e:

@@ -1,10 +1,7 @@
 from PySide6.QtWidgets import QTreeWidget, QTreeWidgetItem, QHeaderView, QMenu, QAbstractItemView
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction
-try:
-    from palworld_aio import constants
-except ImportError:
-    from .. import constants
+from palworld_aio import constants
 class SortableTreeWidget(QTreeWidget):
     context_menu_requested = Signal(object, object)
     def __init__(self, columns, column_widths=None, parent=None):

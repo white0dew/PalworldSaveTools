@@ -2,12 +2,8 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QFrame, QSizePolicy
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from i18n import t
-try:
-    from palworld_aio import constants
-    from palworld_aio.widgets import StatsPanel
-except ImportError:
-    from .. import constants
-    from ..widgets import StatsPanel
+from palworld_aio import constants
+from palworld_aio.widgets import StatsPanel
 class ResultsWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -114,30 +110,6 @@ class ResultsWidget(QWidget):
         self.player_value.setText('N/A')
         self.guild_value.setText('N/A')
         self.base_value.setText('N/A')
-    def set_theme(self, is_dark):
-        self.is_dark_mode = is_dark
-        if hasattr(self, 'stats_panel'):
-            self.stats_panel.set_theme(is_dark)
-        self._refresh_value_card_colors()
-    def _refresh_value_card_colors(self):
-        if hasattr(self, 'player_label'):
-            self.player_label.setObjectName('statsField')
-            self.player_label.setStyleSheet('')
-        if hasattr(self, 'player_value'):
-            self.player_value.setObjectName('statsValue')
-            self.player_value.setStyleSheet('')
-        if hasattr(self, 'guild_label'):
-            self.guild_label.setObjectName('statsField')
-            self.guild_label.setStyleSheet('')
-        if hasattr(self, 'guild_value'):
-            self.guild_value.setObjectName('statsValue')
-            self.guild_value.setStyleSheet('')
-        if hasattr(self, 'base_label'):
-            self.base_label.setObjectName('statsField')
-            self.base_label.setStyleSheet('')
-        if hasattr(self, 'base_value'):
-            self.base_value.setObjectName('statsValue')
-            self.base_value.setStyleSheet('')
     def update_stats(self, stats):
         if hasattr(self, 'stats_panel') and self.stats_panel:
             self.stats_panel.update_stats(stats)

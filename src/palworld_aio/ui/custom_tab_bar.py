@@ -45,6 +45,3 @@ class TabBarContainer(QWidget):
     def refresh_labels(self):
         collapsed = self.collapse_btn.text().startswith(nf.icons['nf-cod-triangle_left'])
         self.set_sidebar_collapsed(collapsed)
-    def set_theme(self, is_dark):
-        if hasattr(self.tab_bar, 'set_theme'):
-            self.tab_bar.set_theme(is_dark)

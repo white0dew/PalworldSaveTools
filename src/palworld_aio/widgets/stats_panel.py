@@ -3,10 +3,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from i18n import t
 from loading_manager import show_information, show_warning
-try:
-    from palworld_aio import constants
-except ImportError:
-    from .. import constants
+from palworld_aio import constants
 class StatsPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -79,20 +76,6 @@ class StatsPanel(QWidget):
                     after_val = int(after_val) if after_val.isdigit() else 0
                 result[external_key] = before_val - after_val
             self.update_stats(result, 'result')
-    def set_theme(self, is_dark):
-        self.is_dark_mode = is_dark
-        self._update_colors()
-    def _update_colors(self):
-        for key, (label, _) in self.stat_key_labels.items():
-            if key.startswith('header_'):
-                label.setObjectName('statsHeader')
-                label.setStyleSheet('')
-            elif key.startswith('field_'):
-                label.setObjectName('statsField')
-                label.setStyleSheet('')
-        for label in self.stat_labels.values():
-            label.setObjectName('statsValue')
-            label.setStyleSheet('')
     def refresh_labels(self):
         for key, (label, label_key) in self.stat_key_labels.items():
             if key.startswith('header_'):

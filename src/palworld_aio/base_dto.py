@@ -16,10 +16,7 @@ class ContainerDTO(BaseModel):
     map_object_id: str
     is_guild_chest: bool = False
 def get_base_containers_simple(base_id: UUID) -> List[ContainerDTO]:
-    try:
-        from palworld_aio import constants
-    except ImportError:
-        from . import constants
+    from palworld_aio import constants
     if not constants.loaded_level_json:
         return []
     wsd = constants.loaded_level_json['properties']['worldSaveData']['value']

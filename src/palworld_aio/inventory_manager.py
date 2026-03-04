@@ -5,22 +5,17 @@ import uuid
 from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtCore import QSize, Qt
 from typing import Optional, Dict, List, Any
-try:
-    from palworld_aio import constants
-    from palworld_aio.utils import sav_to_gvasfile, gvasfile_to_sav, as_uuid, are_equal_uuids, fast_deepcopy
-    from palworld_aio.dynamic_item_manager import get_dynamic_item_manager, generate_dynamic_item_uuid
-    from palworld_aio.standardized_container import StandardizedContainer, ContainerSlot
-except ImportError:
-    from . import constants
-    from .utils import sav_to_gvasfile, gvasfile_to_sav, as_uuid, are_equal_uuids, fast_deepcopy
-    from .dynamic_item_manager import get_dynamic_item_manager, generate_dynamic_item_uuid
-    from .standardized_container import StandardizedContainer, ContainerSlot
+from palworld_aio import constants
+from palworld_aio.utils import sav_to_gvasfile, gvasfile_to_sav, as_uuid, are_equal_uuids, fast_deepcopy
+from palworld_aio.dynamic_item_manager import get_dynamic_item_manager, generate_dynamic_item_uuid
+from palworld_aio.standardized_container import StandardizedContainer, ContainerSlot
 ITEM_CATEGORIES = {'weapon': ['Bat', 'Torch', 'Spear', 'Axe', 'Pickaxe', 'Sword', 'Katana', 'Bow', 'BowGun', 'HandGun', 'Revolver', 'Rifle', 'Shotgun', 'SMG', 'Launcher', 'Gatling', 'FlameThrower', 'LaserRifle', 'GrenadeLauncher', 'Musket', 'CompoundBow', 'SFBow'], 'armor': ['Armor', 'Helm', 'Helmet', 'Outfit', 'Shield', 'HeadEquip'], 'accessory': ['Accessory', 'Pendant', 'Ring', 'Whistle', 'Boots', 'Belt'], 'food': ['Food', 'Meat', 'Berry', 'Berries', 'Egg', 'Milk', 'Honey', 'Potion', 'Elixir'], 'material': ['Wood', 'Stone', 'Ore', 'Fiber', 'Cloth', 'Ingot', 'Leather', 'Bone', 'Horn', 'Organ', 'Fluid', 'Oil', 'Parts', 'Crystal', 'Seed', 'Fiber'], 'sphere': ['PalSphere', 'Sphere'], 'ammo': ['Arrow', 'Bullet', 'Ammo', 'Cartridge'], 'key_item': ['Key', 'Summon', 'Relic', 'Unlock', 'SkillUnlock', 'Blueprint'], 'tool': ['FishingRod', 'GrapplingGun', 'Glider', 'Lantern', 'MetalDetector', 'Pouch']}
 class ItemData:
     _instance = None
     _item_data = None
     _icon_cache = {}
     _asset_to_item = {}
+    _asset_to_item_lower = {}
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
@@ -35,6 +30,7 @@ class ItemData:
             with open(item_file, 'r', encoding='utf-8') as f:
                 cls._item_data = json.load(f).get('items', [])
                 cls._asset_to_item = {item['asset']: item for item in cls._item_data}
+                cls._asset_to_item_lower = {item['asset'].lower(): item for item in cls._item_data}
                 return cls._item_data
         except Exception as e:
             cls._item_data = []
@@ -42,7 +38,15 @@ class ItemData:
     @classmethod
     def get_item_by_asset(cls, asset_name: str) -> dict:
         cls.load_item_data()
-        return cls._asset_to_item.get(asset_name, {'name': asset_name, 'asset': asset_name, 'icon': '/icons/items/T_icon_unknown.webp'})
+        if not asset_name:
+            return {'name': 'Unknown', 'asset': '', 'icon': '/icons/items/T_icon_unknown.webp'}
+        item = cls._asset_to_item.get(asset_name)
+        if item:
+            return item
+        item = cls._asset_to_item_lower.get(asset_name.lower())
+        if item:
+            return item
+        return {'name': asset_name, 'asset': asset_name, 'icon': '/icons/items/T_icon_unknown.webp'}
     @classmethod
     def get_item_icon(cls, icon_path: str, size: QSize=QSize(48, 48)) -> QPixmap:
         cache_key = f'{icon_path}_{size.width()}x{size.height()}'

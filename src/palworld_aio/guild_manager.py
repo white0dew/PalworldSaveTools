@@ -1,14 +1,9 @@
 import os
 from palworld_save_tools.archive import UUID
 from i18n import t
-try:
-    from palworld_aio import constants
-    from palworld_aio.utils import are_equal_uuids, as_uuid, fast_deepcopy
-    from palworld_aio.data_manager import delete_base_camp
-except ImportError:
-    from . import constants
-    from .utils import are_equal_uuids, as_uuid, fast_deepcopy
-    from .data_manager import delete_base_camp
+from palworld_aio import constants
+from palworld_aio.utils import are_equal_uuids, as_uuid, fast_deepcopy
+from palworld_aio.data_manager import delete_base_camp
 def move_player_to_guild(player_uid, target_guild_id):
     if not constants.current_save_path or not constants.loaded_level_json:
         return False

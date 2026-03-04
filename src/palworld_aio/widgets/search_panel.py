@@ -2,10 +2,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEd
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QColor
 from i18n import t
-try:
-    from palworld_aio import constants
-except ImportError:
-    from .. import constants
+from palworld_aio import constants
 class SearchPanel(QWidget):
     item_selected = Signal(object)
     item_double_clicked = Signal(object)

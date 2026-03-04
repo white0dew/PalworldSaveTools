@@ -2,14 +2,9 @@ import os
 import json
 from PySide6.QtWidgets import QApplication, QMessageBox
 from i18n import t
-try:
-    from palworld_aio import constants
-    from palworld_aio.utils import are_equal_uuids, as_uuid, sav_to_gvasfile, gvasfile_to_sav
-    from palworld_aio.data_manager import delete_player
-except ImportError:
-    from . import constants
-    from .utils import are_equal_uuids, as_uuid, sav_to_gvasfile, gvasfile_to_sav
-    from .data_manager import delete_player
+from palworld_aio import constants
+from palworld_aio.utils import are_equal_uuids, as_uuid, sav_to_gvasfile, gvasfile_to_sav
+from palworld_aio.data_manager import delete_player
 def _load_exp_data():
     base_dir = constants.get_base_path()
     exp_file = os.path.join(base_dir, 'resources', 'game_data', 'pal_exp_table.json')
