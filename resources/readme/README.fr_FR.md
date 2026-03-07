@@ -24,14 +24,14 @@
 ## Table des matières
 
 - [Fonctionnalités](#fonctionnalités)
+- [Installation](#installation)
 - [Démarrage rapide](#démarrage-rapide)
+- [Outils Présentation](#outils-présentation)
+- [Guides](#guides)
 - [Dépannage](#dépannage)
 - [Création d'un exécutable autonome (Windows uniquement)](#création-dun-exécutable-autonome-windows-uniquement)
 - [Contribuer](#contribuer)
-- [Avertissement](#avertissement)
-- [Assistance](#assistance)
 - [Licence](#licence)
-- [Remerciements](#remerciements)
 
 ---
 
@@ -44,7 +44,7 @@
 | **Analyse de sauvegarde rapide** | L'un des lecteurs de fichiers de sauvegarde les plus rapides disponibles |
 | **Gestion des joueurs** | Afficher, modifier, renommer, changer de niveau, débloquer des technologies et gérer les joueurs |
 | **Gestion de guilde** | Créez, renommez, déplacez des joueurs, débloquez des recherches en laboratoire et gérez des guildes |
-| **Éditeur Pal** | Éditeur complet pour les statistiques, les compétences, les IV, le rang, les âmes, le sexe, le boss/le bouton chanceux |
+| **Pal Editor** | Éditeur complet pour les statistiques, les compétences, IVs, le rang, les âmes, le sexe, le boss/le bouton chanceux |
 | **Outils du camp de base** | Exporter, importer, cloner, ajuster le rayon et gérer les bases |
 | **Visionneuse de carte** | Base interactive et carte des joueurs avec coordonnées et détails |
 | **Transfert de personnage** | Transférer des personnages entre différents mondes/serveurs (sauvegarde croisée) |
@@ -64,11 +64,11 @@ La suite **All-in-One Tools** offre une gestion complète des sauvegardes :
 
 - **Outils de nettoyage**
   - Supprimer les éléments invalides/modifiés
-  - Supprimer les copains et passifs invalides
-  - Correction des copains illégaux (plafond aux statistiques maximales légales)
+  - Supprimer les pals et passives invalides
+  - Correction du pals illégal (plafond aux statistiques maximales légales)
   - Supprimer les structures invalides
   - Réinitialiser les tourelles anti-aériennes
-  - Débloquez des coffres privés
+  - Débloquez private chests
 
 - **Outils de guilde**
   - Reconstruire toutes les guildes
@@ -79,7 +79,7 @@ La suite **All-in-One Tools** offre une gestion complète des sauvegardes :
   - Débloquez toutes les recherches en laboratoire
 
 - **Outils du joueur**
-  - Modifier les statistiques et les compétences des amis des joueurs
+  - Modifier les statistiques et les compétences du joueur pal
   - Débloquez toutes les technologies
   - Déverrouiller la cage de visualisation
   - Joueurs de niveau supérieur/vers le bas
@@ -96,8 +96,8 @@ La suite **All-in-One Tools** offre une gestion complète des sauvegardes :
 
 | Outil | Descriptif |
 |------|-------------|
-| **Modifier les amis joueurs** | Éditeur pal complet avec statistiques, compétences, IV, talents, âmes, rang et sexe |
-| **Convertisseur SteamID** | Convertir les identifiants Steam en UID Palworld |
+| **Modifier le joueur Pals** | pal editor complet avec statistiques, compétences, IVs, talents, âmes, rang et sexe |
+| **SteamConvertisseur d'ID** | Convertir les identifiants Steam en UID Palworld |
 | **Correction de la sauvegarde de l'hôte** | Échanger les UID entre deux joueurs (par exemple, pour l'échange d'hôte) |
 | **Injecteur à fente** | Augmenter les emplacements palbox par joueur |
 | **Restaurer la carte** | Appliquer la progression de la carte déverrouillée sur tous les mondes/serveurs |
@@ -107,7 +107,7 @@ La suite **All-in-One Tools** offre une gestion complète des sauvegardes :
 
 ---
 
-##Installation
+## Installation
 
 ### Prérequis
 
@@ -127,6 +127,14 @@ La suite **All-in-One Tools** offre une gestion complète des sauvegardes :
 ### Depuis la source (toutes les plateformes)
 
 Les scripts de démarrage créent automatiquement un environnement virtuel et installent toutes les dépendances.
+
+**En utilisant uv :**
+```bash
+git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
+cd PalworldSaveTools
+uv venv --python 3.12
+uv run start.py
+```
 
 **Fenêtres :**
 ```bash
@@ -172,14 +180,14 @@ chmod +x start_linux.sh
 
 ---
 
-## Outils Présentation
+## Outils Présentation
 
 ### Outils tout-en-un (AIO)
 
 L'interface principale pour une gestion complète des sauvegardes avec trois onglets :
 
 **Onglet Joueurs** - Affichez et gérez tous les joueurs sur le serveur
-- Modifiez les noms des joueurs, les niveaux et le nombre de copains
+- Modifiez les noms des joueurs, les niveaux et les comptes pal
 - Supprimer les joueurs inactifs
 - Afficher les guildes de joueurs et la dernière fois en ligne
 
@@ -205,7 +213,7 @@ Visualisation interactive de votre monde :
 
 Transférer des personnages entre différents mondes/serveurs (sauvegarde croisée) :
 - Transférer un seul ou tous les joueurs
-- Préserve les personnages, les amis, l'inventaire et la technologie
+- Préserve les personnages, pals, l'inventaire et la technologie
 - Utile pour migrer entre des serveurs coopératifs et dédiés
 
 ### Correction de la sauvegarde de l'hôte
@@ -220,7 +228,7 @@ Transférer des personnages entre différents mondes/serveurs (sauvegarde crois�
 
 ---
 
-## Guides
+## Guides
 
 ### Enregistrer les emplacements des fichiers
 
@@ -297,7 +305,7 @@ Les deux joueurs (ancien hôte et nouvel hôte) doivent avoir leurs sauvegardes 
    - (Cela déplace la progression du nouvel hôte vers l'emplacement de l'hôte)
 
 **Résultat :**
-- Le joueur B est désormais l'hôte avec son propre personnage et ses amis dans `0001.sav`
+- Le joueur B est désormais l'hôte avec son propre personnage et pals dans `0001.sav`
 - Le joueur A devient client avec sa progression initiale en `123xxx.sav`
 
 </details>
@@ -311,7 +319,7 @@ Les deux joueurs (ancien hôte et nouvel hôte) doivent avoir leurs sauvegardes 
 1. Chargez votre sauvegarde dans PST
 2. Accédez à l'onglet Bases
 3. Cliquez avec le bouton droit sur une base → Exporter la base
-4. Enregistrez sous le fichier `.json`
+4. Enregistrer sous le fichier `.json`
 
 **Importation d'une base :**
 1. Accédez à l'onglet Bases ou à la visionneuse de carte de base.
@@ -367,10 +375,10 @@ scripts\build.cmd
 ```
 
 Cela crée `PST_standalone_v{version}.7z` à la racine du projet.
-
 ---
 
 ## Contribuer
+
 Les contributions sont les bienvenues ! N'hésitez pas à soumettre une Pull Request.
 
 1. Forkez le référentiel
@@ -391,8 +399,8 @@ Les développeurs ne sont pas responsables de toute perte de données de sauvega
 
 ## Assistance
 
-- **Discorde :** [Join us for support, base builds, and more!](https://discord.gg/sYcZwcT4cT)
-- **Problèmes GitHub :** [Report a bug](https://github.com/deafdudecomputers/PalworldSaveTools/issues)
+-**Discord :** [Join us for support, base builds, and more!](https://discord.gg/sYcZwcT4cT)
+- **GitHub Problèmes :** [Report a bug](https://github.com/deafdudecomputers/PalworldSaveTools/issues)
 - **Documentation :** [Wiki](https://github.com/deafdudecomputers/PalworldSaveTools/wiki) *(Actuellement en développement)*
 
 ---

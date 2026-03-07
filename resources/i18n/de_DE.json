@@ -1075,5 +1075,19 @@
   "base.import.search_label": "Suche:",
   "base.import.select_guild_prompt": "Wähle eine Gilde aus, um die Basis/Basen zu importieren:",
   "base.import.showing_all": "Zeige alle {count} Gilden",
-  "base.import.filtered_status": "Gefiltert: {filtered}/{total} Gilden"
+  "base.import.filtered_status": "Gefiltert: {filtered}/{total} Gilden",
+  "base.radius.input_mode": "Eingabemodus:",
+  "base.radius.mode.percentage": "Prozent",
+  "base.radius.mode.actual": "Tatsächlicher Wert",
+  "base.radius.input_value": "Wert eingeben:",
+  "base.radius.apply": "Anwenden",
+  "slotinjector.description": "Verwalte Spielercontainer-Slot-Anzahlen und räume überschüssige Slots auf, wenn die Kapazität reduziert wird",
+  "slotinjector.group_save_data": "Gruppenspeicherdaten",
+  "slotinjector.slot_reduction_warning": "Warnung vor Slot-Reduzierung",
+  "slotinjector.yes": "Ja",
+  "slotinjector.no": "Nein",
+  "slotinjector.save_file": "Speicherdatei",
+  "slotinjector.slot_configuration": "Slot-Konfiguration",
+  "slotinjector.clear": "Löschen",
+  "slotinjector.update_confirmation": "Container {count} aktualisieren: {parts} auf {new} Slots?"
 }

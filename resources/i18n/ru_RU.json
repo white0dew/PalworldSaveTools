@@ -1049,5 +1049,19 @@
   "base.import.search_label": "Поиск:",
   "base.import.select_guild_prompt": "Выберите гильдию для импорта базы(баз):",
   "base.import.showing_all": "Показано всех {count} гильдий",
-  "base.import.filtered_status": "Отфильтровано: {filtered}/{total} гильдий"
+  "base.import.filtered_status": "Отфильтровано: {filtered}/{total} гильдий",
+  "base.radius.input_mode": "Режим ввода:",
+  "base.radius.mode.percentage": "Процент",
+  "base.radius.mode.actual": "Фактическое значение",
+  "base.radius.input_value": "Введите значение:",
+  "base.radius.apply": "Применить",
+  "slotinjector.description": "Управление количеством слотов контейнеров игроков и очистка избыточных слотов при уменьшении емкости",
+  "slotinjector.group_save_data": "Данные сохранения группы",
+  "slotinjector.slot_reduction_warning": "Предупреждение об уменьшении слотов",
+  "slotinjector.yes": "Да",
+  "slotinjector.no": "Нет",
+  "slotinjector.save_file": "Файл сохранения",
+  "slotinjector.slot_configuration": "Конфигурация слотов",
+  "slotinjector.clear": "Очистить",
+  "slotinjector.update_confirmation": "Обновить {count} контейнер(ов): {parts} до {new} слотов?"
 }

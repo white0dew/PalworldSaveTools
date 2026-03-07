@@ -1044,5 +1044,19 @@
   "base.import.search_label": "Buscar:",
   "base.import.select_guild_prompt": "Selecciona una guild para importar la(s) base(s):",
   "base.import.showing_all": "Mostrando todas las {count} guilds",
-  "base.import.filtered_status": "Filtrado: {filtered}/{total} guilds"
+  "base.import.filtered_status": "Filtrado: {filtered}/{total} guilds",
+  "base.radius.input_mode": "Modo de entrada:",
+  "base.radius.mode.percentage": "Porcentaje",
+  "base.radius.mode.actual": "Valor real",
+  "base.radius.input_value": "Ingresar valor:",
+  "base.radius.apply": "Aplicar",
+  "slotinjector.description": "Gestionar las cantidades de ranuras de contenedores de jugadores y limpiar ranuras excesivas al reducir la capacidad",
+  "slotinjector.group_save_data": "Datos de guardado de grupo",
+  "slotinjector.slot_reduction_warning": "Advertencia de reducción de ranuras",
+  "slotinjector.yes": "Sí",
+  "slotinjector.no": "No",
+  "slotinjector.save_file": "Archivo de guardado",
+  "slotinjector.slot_configuration": "Configuración de ranuras",
+  "slotinjector.clear": "Limpiar",
+  "slotinjector.update_confirmation": "Actualizar {count} contenedor(es): {parts} a {new} ranuras?"
 }

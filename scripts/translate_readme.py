@@ -95,6 +95,31 @@ def protect_html_tags(text: str, pm: PlaceholderManager) -> str:
     result = HTML_TAG_PATTERN.sub(replace_tag, text)
     result = HTML_CLOSING_TAG_PATTERN.sub(replace_tag, result)
     return result
+def protect_platform_terms(text: str, pm: PlaceholderManager) -> str:
+    platform_terms = ['Discord', 'GitHub', 'Steam', 'GamePass', 'NexusMods', 'Wiki', 'uv']
+    protected_text = text
+    for term in platform_terms:
+        pattern = re.compile(re.escape(term))
+        def replace_platform(match):
+            return pm.add(match.group(0), 'P')
+        protected_text = pattern.sub(replace_platform, protected_text)
+    return protected_text
+def protect_game_terms(text: str, pm: PlaceholderManager) -> str:
+    game_terms = ['Pal Editor', '\\bpals?\\b', '\\bPal\\b', '\\bIVs\\b', '\\bIV\\b', 'passives', 'private chests', 'PalworldSaveTools']
+    for term in sorted(game_terms, key=len, reverse=True):
+        pattern = re.compile(term, re.IGNORECASE)
+        def replace_game(match):
+            return pm.add(match.group(0), 'G')
+        text = pattern.sub(replace_game, text)
+    return text
+def protect_common_terms(text: str, pm: PlaceholderManager) -> str:
+    common_terms = [('private', '\\bprivate\\b')]
+    for term, pattern_str in common_terms:
+        pattern = re.compile(pattern_str)
+        def replace_common(match):
+            return pm.add(match.group(0), 'C')
+        text = pattern.sub(replace_common, text)
+    return text
 def generate_anchor_id(text: str) -> str:
     anchor = text.lower().strip()
     anchor = re.sub('[^\\w\\s-]', '', anchor, flags=re.UNICODE)
@@ -171,7 +196,14 @@ def fix_section_anchors(content: str) -> str:
 _print_lock = threading.Lock()
 def safe_print(*args, **kwargs):
     with _print_lock:
-        print(*args, **kwargs)
+        try:
+            print(*args, **kwargs)
+        except UnicodeEncodeError:
+            for arg in args:
+                try:
+                    print(str(arg).encode('utf-8', errors='ignore').decode('utf-8'), **kwargs)
+                except:
+                    print('[Unicode Error]', **kwargs)
 def translate_readme(target_lang_code: str, target_file_code: str, lang_name: str, quiet: bool=False):
     if not quiet:
         safe_print(f"\n{'=' * 50}")
@@ -190,20 +222,27 @@ def translate_readme(target_lang_code: str, target_file_code: str, lang_name: st
     protected = protect_markdown_links(protected, pm)
     protected = protect_anchor_links(protected, pm)
     protected = protect_html_tags(protected, pm)
+    protected = protect_platform_terms(protected, pm)
+    protected = protect_game_terms(protected, pm)
     if not quiet:
         safe_print(f'  Protected {len(pm.placeholders)} elements')
         safe_print(f'  Translating body content...')
     translated = translate_text(protected, target_lang_code)
     translated = pm.restore(translated)
     translated = re.sub('\\!\\[([^\\]]*)\\]\\(resources/', '![\\1](../', translated)
+    translated = re.sub('^(#{2,4})[ \\u00a0\\t]?', '\\1 ', translated, flags=re.MULTILINE)
+    translated = re.sub('^(#{2,4})([^\\s#])', '\\1 \\2', translated, flags=re.MULTILINE)
     toc_header = translations.get('toc', 'Table of Contents')
     heading_pattern = re.compile('^## ([^\\n]+)', re.MULTILINE)
     headings = heading_pattern.findall(translated)
     new_toc_items = []
+    toc_variants = ['table of contents', 'contents', '目录', 'inhaltsverzeichnis', 'índice', 'indice', 'table des matières', 'содержание', '目次', '목차', 'tabla de contenidos']
+    excluded_sections = ['disclaimer', '免責事項', '免责声明', '면책조항', 'haftungsausschluss', 'descargo de responsabilidad', 'exonération de responsabilité', 'avertissement', 'отказ от ответственности', 'support', 'サポート', '지원', '支持', 'unterstützung', 'soporte', 'soutien', 'assistance', 'поддержка', 'acknowledgments', '謝辞', '致谢', 'danksagungen', 'agradecimientos', 'remerciements', 'благодарности', '감사의 말씀']
     for heading in headings:
         heading_lower = heading.lower().strip()
-        toc_variants = ['table of contents', 'contents', '目录', 'inhaltsverzeichnis', 'índice', 'indice', 'table des matières', 'содержание', '目次', '목차', 'tabla de contenidos']
         if heading_lower in [v.lower() for v in toc_variants]:
+            continue
+        if any((excl in heading_lower for excl in excluded_sections)):
             continue
         anchor = generate_anchor_id(heading)
         new_toc_items.append(f'- [{heading}](#{anchor})')

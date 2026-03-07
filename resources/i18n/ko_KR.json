@@ -1050,5 +1050,19 @@
   "base.import.search_label": "검색:",
   "base.import.select_guild_prompt": "기지(들)을 가져올 길드 선택:",
   "base.import.showing_all": "모든 {count} 길드 표시 중",
-  "base.import.filtered_status": "필터링됨: {filtered}/{total} 길드"
+  "base.import.filtered_status": "필터링됨: {filtered}/{total} 길드",
+  "base.radius.input_mode": "입력 모드:",
+  "base.radius.mode.percentage": "백분율",
+  "base.radius.mode.actual": "실제 값",
+  "base.radius.input_value": "값 입력:",
+  "base.radius.apply": "적용",
+  "slotinjector.description": "플레이어 컨테이너 슬롯 수를 관리하고 용량을 줄일 때 초과 슬롯을 정리합니다",
+  "slotinjector.group_save_data": "그룹 저장 데이터",
+  "slotinjector.slot_reduction_warning": "슬롯 감소 경고",
+  "slotinjector.yes": "예",
+  "slotinjector.no": "아니요",
+  "slotinjector.save_file": "저장 파일",
+  "slotinjector.slot_configuration": "슬롯 구성",
+  "slotinjector.clear": "지우기",
+  "slotinjector.update_confirmation": "{count}개의 컨테이너 업데이트: {parts}를 {new} 슬롯으로?"
 }

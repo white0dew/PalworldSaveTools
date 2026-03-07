@@ -31,10 +31,7 @@
 - [Solución de problemas](#solución-de-problemas)
 - [Creación de ejecutable independiente (solo Windows)](#creación-de-ejecutable-independiente-solo-windows)
 - [Contribuyendo](#contribuyendo)
-- [Descargo de responsabilidad](#descargo-de-responsabilidad)
-- [Soporte](#soporte)
 - [Licencia](#licencia)
-- [Agradecimientos](#agradecimientos)
 
 ---
 
@@ -47,7 +44,7 @@
 | **Análisis de guardado rápido** | Uno de los lectores de archivos guardados más rápidos disponibles |
 | **Gestión de jugadores** | Ver, editar, cambiar nombre, cambiar nivel, desbloquear tecnologías y administrar jugadores |
 | **Gestión del gremio** | Crea, cambia el nombre, mueve jugadores, desbloquea investigaciones de laboratorio y gestiona gremios |
-| **Amigo editor** | Editor completo de estadísticas, habilidades, IV, rango, almas, género, jefe/cambio de suerte |
+| **Pal Editor** | Editor completo de estadísticas, habilidades, IVs, rango, almas, género, jefe/alternancia de suerte |
 | **Herramientas del campamento base** | Exportar, importar, clonar, ajustar radios y gestionar bases |
 | **Visor de mapas** | Mapa interactivo de base y jugadores con coordenadas y detalles |
 | **Transferencia de personaje** | Transferir personajes entre diferentes mundos/servidores (guardado cruzado) |
@@ -67,11 +64,11 @@ El paquete **Herramientas todo en uno** proporciona una gestión integral de gua
 
 - **Herramientas de limpieza**
   - Eliminar elementos no válidos/modificados
-  - Eliminar amigos inválidos y pasivos.
-  - Corregir amigos ilegales (límite máximo de estadísticas legales)
+  - Eliminar pals y passives no válidos
+  - Arreglar pals ilegal (límite máximo de estadísticas legales)
   - Eliminar estructuras no válidas
   - Restablecer torretas antiaéreas
-  - Desbloquear cofres privados
+  - Desbloquear private chests
 
 - **Herramientas del gremio**
   - Reconstruir todos los gremios
@@ -82,7 +79,7 @@ El paquete **Herramientas todo en uno** proporciona una gestión integral de gua
   - Desbloquear todas las investigaciones de laboratorio
 
 - **Herramientas del reproductor**
-  - Editar estadísticas y habilidades de amigos del jugador.
+  - Editar estadísticas y habilidades del jugador pal
   - Desbloquear todas las tecnologías
   - Desbloquear la jaula de visualización
   - Subir o bajar de nivel a los jugadores.
@@ -99,8 +96,8 @@ El paquete **Herramientas todo en uno** proporciona una gestión integral de gua
 
 | Herramienta | Descripción |
 |------|-------------|
-| **Editar amigos jugadores** | Editor de amigos completo con estadísticas, habilidades, IV, talentos, almas, rango y género |
-| **Convertidor SteamID** | Convierta ID de Steam a UID de Palworld |
+| **Editar jugador Pals** | pal editor completo con estadísticas, habilidades, IVs, talentos, almas, rango y género |
+| **SteamConvertidor ID** | Convierta ID de Steam a UID de Palworld |
 | **Reparar el guardado del host** | Intercambiar UID entre dos jugadores (por ejemplo, para intercambio de host) |
 | **Inyector de ranura** | Aumentar espacios de palbox por jugador |
 | **Restaurar mapa** | Aplicar el progreso del mapa desbloqueado en todos los mundos/servidores |
@@ -116,7 +113,7 @@ El paquete **Herramientas todo en uno** proporciona una gestión integral de gua
 
 **Para independiente (Windows):**
 -Windows 10/11
--[Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version) (2015-2022)
+- [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version) (2015-2022)
 
 **Para ejecutar desde el código fuente (todas las plataformas):**
 - Python 3.11 o superior
@@ -130,6 +127,14 @@ El paquete **Herramientas todo en uno** proporciona una gestión integral de gua
 ### Desde la fuente (todas las plataformas)
 
 Los scripts de inicio crean automáticamente un entorno virtual e instalan todas las dependencias.
+
+**Usando uv:**
+```bash
+git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
+cd PalworldSaveTools
+uv venv --python 3.12
+uv run start.py
+```
 
 **Windows:**
 ```bash
@@ -182,7 +187,7 @@ chmod +x start_linux.sh
 La interfaz principal para una gestión integral de guardados con tres pestañas:
 
 **Pestaña Jugadores** - Ver y administrar todos los jugadores en el servidor
-- Editar nombres de jugadores, niveles y recuentos de amigos.
+- Editar nombres de jugadores, niveles y recuentos de pal
 - Eliminar jugadores inactivos
 - Ver gremios de jugadores y el último tiempo en línea
 
@@ -208,7 +213,7 @@ Visualización interactiva de tu mundo:
 
 Transferir personajes entre diferentes mundos/servidores (guardado cruzado):
 - Transferir uno o todos los jugadores.
-- Conserva personajes, amigos, inventario y tecnología.
+- Conserva personajes, pals, inventario y tecnología.
 - Útil para migrar entre servidores cooperativos y dedicados
 
 ### Reparar host Guardar
@@ -286,13 +291,13 @@ Ambos jugadores (antiguo anfitrión y nuevo anfitrión) deben generar sus partid
 **Pasos:**
 
 1. **Asegúrese de que existan guardados regulares**
-   - El jugador A (antiguo anfitrión) debe tener una partida guardada regularmente (p. ej., `123xxx.sav`)
+   - El jugador A (antiguo anfitrión) debe tener una partida guardada regularmente (por ejemplo, `123xxx.sav`)
    - El jugador B (nuevo anfitrión) debe tener una partida guardada regularmente (por ejemplo, `987xxx.sav`)
 
 2. **Cambie el guardado del host anterior al guardado normal**
    - Utilice PalworldSaveTools **Fix Host Save** para intercambiar:
    - `0001.sav` → `123xxx.sav` del antiguo anfitrión
-   - (Esto mueve el progreso del anfitrión anterior del espacio de anfitrión al espacio de jugador habitual)
+   - (Esto mueve el progreso del antiguo anfitrión del puesto de anfitrión al puesto de jugador habitual)
 
 3. **Cambiar el guardado normal del nuevo anfitrión por el guardado del anfitrión**
    - Utilice PalworldSaveTools **Fix Host Save** para intercambiar:
@@ -300,7 +305,7 @@ Ambos jugadores (antiguo anfitrión y nuevo anfitrión) deben generar sus partid
    - (Esto mueve el progreso del nuevo anfitrión al espacio de anfitrión)
 
 **Resultado:**
-- El jugador B ahora es el anfitrión con su propio personaje y amigos en `0001.sav`
+- El jugador B ahora es el anfitrión con su propio personaje y pals en `0001.sav`
 - El jugador A se convierte en cliente con su progreso original en `123xxx.sav`
 
 </details>
@@ -356,7 +361,7 @@ Ambos jugadores (antiguo anfitrión y nuevo anfitrión) deben generar sus partid
 **Solución:**
 1. Cierra la versión GamePass de Palworld
 2. Espera unos minutos
-3. Ejecute el conversor Steam → GamePass
+3. Ejecute el convertidor Steam → GamePass
 4. Inicie Palworld en GamePass para verificar
 
 ---
@@ -370,10 +375,10 @@ scripts\build.cmd
 ```
 
 Esto crea `PST_standalone_v{version}.7z` en la raíz del proyecto.
-
 ---
 
 ## Contribuyendo
+
 ¡Las contribuciones son bienvenidas! No dude en enviar una solicitud de extracción.
 
 1. Bifurcar el repositorio
@@ -394,8 +399,8 @@ Los desarrolladores no son responsables de ninguna pérdida de datos guardados o
 
 ## Soporte
 
-- **Discordia:** [Join us for support, base builds, and more!](https://discord.gg/sYcZwcT4cT)
-- **Problemas de GitHub:** [Report a bug](https://github.com/deafdudecomputers/PalworldSaveTools/issues)
+- **Discord:** [Join us for support, base builds, and more!](https://discord.gg/sYcZwcT4cT)
+- **GitHub Problemas:** [Report a bug](https://github.com/deafdudecomputers/PalworldSaveTools/issues)
 - **Documentación:** [Wiki](https://github.com/deafdudecomputers/PalworldSaveTools/wiki) *(Actualmente en desarrollo)*
 
 ---

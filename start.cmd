@@ -1,5 +1,5 @@
 @echo off
 title PalworldSaveTools Launcher
-python "%~dp0setup_pst.py"
+python "%~dp0start.py"
 pause
 exit /b %errorlevel%

@@ -1051,5 +1051,19 @@
   "base.import.search_label": "検索:",
   "base.import.select_guild_prompt": "拠点をインポートするギルドを選択:",
   "base.import.showing_all": "すべての{count}ギルドを表示中",
-  "base.import.filtered_status": "フィルタリング: {filtered}/{total}ギルド"
+  "base.import.filtered_status": "フィルタリング: {filtered}/{total}ギルド",
+  "base.radius.input_mode": "入力モード:",
+  "base.radius.mode.percentage": "パーセンテージ",
+  "base.radius.mode.actual": "実際の値",
+  "base.radius.input_value": "値を入力:",
+  "base.radius.apply": "適用",
+  "slotinjector.description": "プレイヤーコンテナのスロット数を管理し、容量を減らすときに余分なスロットをクリーンアップします",
+  "slotinjector.group_save_data": "グループ保存データ",
+  "slotinjector.slot_reduction_warning": "スロット削減警告",
+  "slotinjector.yes": "はい",
+  "slotinjector.no": "いいえ",
+  "slotinjector.save_file": "保存ファイル",
+  "slotinjector.slot_configuration": "スロット設定",
+  "slotinjector.clear": "クリア",
+  "slotinjector.update_confirmation": "{count}個のコンテナを更新: {parts} を {new} スロットに？"
 }

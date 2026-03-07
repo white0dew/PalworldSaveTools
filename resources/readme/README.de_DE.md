@@ -31,10 +31,7 @@
 - [Fehlerbehebung](#fehlerbehebung)
 - [Erstellen einer eigenständigen ausführbaren Datei (nur Windows)](#erstellen-einer-eigenständigen-ausführbaren-datei-nur-windows)
 - [Mitwirken](#mitwirken)
-- [Haftungsausschluss](#haftungsausschluss)
-- [Unterstützung](#unterstützung)
 - [Lizenz](#lizenz)
-- [Danksagungen](#danksagungen)
 
 ---
 
@@ -47,11 +44,11 @@
 | **Schnelles Speichern-Parsen** | Einer der schnellsten verfügbaren Lesegeräte für gespeicherte Dateien |
 | **Spielerverwaltung** | Anzeigen, Bearbeiten, Umbenennen, Level ändern, Technologien freischalten und Spieler verwalten |
 | **Gildenverwaltung** | Spieler erstellen, umbenennen, verschieben, Laborforschung freischalten und Gilden verwalten |
-| **Pal Editor** | Vollständiger Editor für Statistiken, Fähigkeiten, IVs, Rang, Seelen, Geschlecht, Boss/Glücksbringer-Umschaltung |
+| **Pal Editor** | Vollständiger Editor für Statistiken, Fähigkeiten, IVs, Rang, Seelen, Geschlecht, Boss/Glücksschalter |
 | **Basislager-Werkzeuge** | Exportieren, importieren, klonen, Radius anpassen und Basen verwalten |
 | **Kartenbetrachter** | Interaktive Basis- und Spielerkarte mit Koordinaten und Details |
 | **Charakterübertragung** | Charaktere zwischen verschiedenen Welten/Servern übertragen (Cross-Save) |
-| **Konvertierung speichern** | Konvertieren zwischen Steam- und GamePass-Formaten |
+| **Konvertierung speichern** | Konvertieren zwischen den Formaten Steam und GamePass |
 | **Welteinstellungen** | WorldOption- und LevelMeta-Einstellungen bearbeiten |
 | **Zeitstempel-Tools** | Negative Zeitstempel korrigieren und Spielerzeiten zurücksetzen |
 
@@ -67,11 +64,11 @@ Die Suite **All-in-One Tools** bietet umfassende Speicherverwaltung:
 
 - **Bereinigungstools**
   - Entfernen Sie ungültige/modifizierte Elemente
-  - Entfernen Sie ungültige Kumpels und Passive
-  - Illegale Freunde reparieren (Obergrenze auf legale Maximalwerte)
+  - Entfernen Sie ungültige pals und passives
+  - Behebung des illegalen pals (Obergrenze für zulässige Höchstwerte)
   - Entfernen Sie ungültige Strukturen
   - Luftabwehrtürme zurücksetzen
-  - Schalte private Truhen frei
+  - Schalte private chests frei
 
 - **Gildenwerkzeuge**
   - Alle Gilden neu aufbauen
@@ -82,7 +79,7 @@ Die Suite **All-in-One Tools** bietet umfassende Speicherverwaltung:
   - Schalten Sie alle Laborforschungen frei
 
 - **Player-Tools**
-  - Bearbeiten Sie die Statistiken und Fähigkeiten von Spielerfreunden
+  - Bearbeiten Sie die Statistiken und Fähigkeiten des Spielers pal
   - Schalten Sie alle Technologien frei
   - Schalte den Sichtkäfig frei
   - Spieler im Level auf-/absteigen
@@ -99,7 +96,7 @@ Die Suite **All-in-One Tools** bietet umfassende Speicherverwaltung:
 
 | Werkzeug | Beschreibung |
 |------|-------------|
-| **Spielerfreunde bearbeiten** | Vollständiger Kumpel-Editor mit Statistiken, Fähigkeiten, IVs, Talenten, Seelen, Rang und Geschlecht |
+| **Spieler Pals** bearbeiten | Vollständiger pal editor mit Statistiken, Fähigkeiten, IVs, Talenten, Seelen, Rang und Geschlecht |
 | **SteamID-Konverter** | Konvertieren Sie Steam-IDs in Palworld-UIDs |
 | **Host-Speicherung beheben** | UIDs zwischen zwei Spielern austauschen (z. B. für Host-Swap) |
 | **Schlitzinjektor** | Palbox-Slots pro Spieler erhöhen |
@@ -130,6 +127,14 @@ Die Suite **All-in-One Tools** bietet umfassende Speicherverwaltung:
 ### Aus der Quelle (Alle Plattformen)
 
 Die Startskripte erstellen automatisch eine virtuelle Umgebung und installieren alle Abhängigkeiten.
+
+**Mit uv:**
+```bash
+git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
+cd PalworldSaveTools
+uv venv --python 3.12
+uv run start.py
+```
 
 **Windows:**
 ```bash
@@ -182,7 +187,7 @@ chmod +x start_linux.sh
 Die Hauptoberfläche für eine umfassende Speicherverwaltung mit drei Registerkarten:
 
 **Registerkarte „Spieler“** – Alle Spieler auf dem Server anzeigen und verwalten
-- Bearbeiten Sie Spielernamen, Level und Freundeszahlen
+- Bearbeiten Sie Spielernamen, Level und pal-Zählungen
 - Löschen Sie inaktive Spieler
 - Spielergilden und letzte Onlinezeit anzeigen
 
@@ -208,7 +213,7 @@ Interaktive Visualisierung Ihrer Welt:
 
 Charaktere zwischen verschiedenen Welten/Servern übertragen (Cross-Save):
 - Transfer einzelner oder aller Spieler
-- Bewahrt Charaktere, Freunde, Inventar und Technologie
+- Bewahrt Charaktere, pals, Inventar und Technologie
 – Nützlich für die Migration zwischen Koop- und dedizierten Servern
 
 ### Host-Speicherung beheben
@@ -296,11 +301,11 @@ Für beide Spieler (alter Host und neuer Host) müssen ihre regulären Spielstä
 
 3. **Tauschen Sie den regulären Speicher des neuen Hosts gegen den Host-Speicher aus**
    - Verwenden Sie PalworldSaveTools **Fix Host Save**, um Folgendes auszutauschen:
-   - `987xxx.sav` → `0001.sav` des neuen Gastgebers
+   - `987xxx.sav` → `0001.sav` des neuen Hosts
    - (Dies verschiebt den Fortschritt des neuen Hosts in den Host-Slot)
 
 **Ergebnis:**
-– Spieler B ist jetzt der Gastgeber mit seinem eigenen Charakter und seinen eigenen Freunden in `0001.sav`
+- Spieler B ist jetzt der Gastgeber mit seinem eigenen Charakter und pals in `0001.sav`
 - Spieler A wird mit seinem ursprünglichen Fortschritt in `123xxx.sav` Kunde.
 
 </details>
@@ -351,12 +356,12 @@ Für beide Spieler (alter Host und neuer Host) müssen ihre regulären Spielstä
 2. Dadurch wird eine automatische Strukturaktualisierung ausgelöst
 3. Stellen Sie sicher, dass der Speicherstand mit oder nach dem neuesten Spiel-Patch aktualisiert wurde
 
-### GamePass-Konverter funktioniert nicht
+### GamePass Konverter funktioniert nicht
 
 **Lösung:**
 1. Schließen Sie die GamePass-Version von Palworld
 2. Warten Sie einige Minuten
-3. Führen Sie den Steam → GamePass-Konverter aus
+3. Führen Sie den Konverter Steam → GamePass aus
 4. Starten Sie Palworld zur Überprüfung auf GamePass
 
 ---
@@ -370,10 +375,10 @@ scripts\build.cmd
 ```
 
 Dadurch wird `PST_standalone_v{version}.7z` im Projektstamm erstellt.
-
 ---
 
 ## Mitwirken
+
 Beiträge sind willkommen! Bitte senden Sie gerne einen Pull Request.
 
 1. Forken Sie das Repository
@@ -394,8 +399,8 @@ Die Entwickler sind nicht verantwortlich für den Verlust gespeicherter Daten od
 
 ## Unterstützung
 
-- **Zwietracht:** [Join us for support, base builds, and more!](https://discord.gg/sYcZwcT4cT)
-- **GitHub-Probleme:** [Report a bug](https://github.com/deafdudecomputers/PalworldSaveTools/issues)
+- **Discord:** [Join us for support, base builds, and more!](https://discord.gg/sYcZwcT4cT)
+- **GitHub Probleme:** [Report a bug](https://github.com/deafdudecomputers/PalworldSaveTools/issues)
 - **Dokumentation:** [Wiki](https://github.com/deafdudecomputers/PalworldSaveTools/wiki) *(Derzeit in Entwicklung)*
 
 ---

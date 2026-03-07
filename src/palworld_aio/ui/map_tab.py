@@ -870,6 +870,9 @@ class MapTab(QWidget):
             marker.update_glow()
     def _on_toggle_changed(self):
         self._update_markers()
+        show_base_markers = hasattr(self, 'toggle_map_bases') and self.toggle_map_bases.isChecked()
+        if not show_base_markers:
+            self._hide_all_radius_rings()
     def _on_tab_changed(self, index):
         if index == 0:
             self.info_label.setText(t('map.info.select_base') if t else 'Click on a base marker or list item to view details')
@@ -1199,6 +1202,10 @@ class MapTab(QWidget):
             marker.scale_to_zoom(zoom_level)
         self._update_radius_rings_visibility()
     def _update_radius_rings_visibility(self):
+        show_base_markers = hasattr(self, 'toggle_map_bases') and self.toggle_map_bases.isChecked()
+        if not show_base_markers:
+            self._hide_all_radius_rings()
+            return
         if not hasattr(self, 'toggle_base_radius_rings') or not self.toggle_base_radius_rings.isChecked():
             return
         if not self.all_radius_rings:

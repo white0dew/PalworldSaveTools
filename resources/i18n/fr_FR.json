@@ -1033,5 +1033,19 @@
   "base.import.search_label": "Rechercher:",
   "base.import.select_guild_prompt": "Sélectionnez une guilde pour importer la/les base(s):",
   "base.import.showing_all": "Affichage de toutes les {count} guildes",
-  "base.import.filtered_status": "Filtré: {filtered}/{total} guildes"
+  "base.import.filtered_status": "Filtré: {filtered}/{total} guildes",
+  "base.radius.input_mode": "Mode de saisie:",
+  "base.radius.mode.percentage": "Pourcentage",
+  "base.radius.mode.actual": "Valeur réelle",
+  "base.radius.input_value": "Entrez la valeur:",
+  "base.radius.apply": "Appliquer",
+  "slotinjector.description": "Gérer les nombres de slots des conteneurs de joueurs et nettoyer les slots excédentaires lors de la réduction de la capacité",
+  "slotinjector.group_save_data": "Données de sauvegarde de groupe",
+  "slotinjector.slot_reduction_warning": "Avertissement de réduction de slots",
+  "slotinjector.yes": "Oui",
+  "slotinjector.no": "Non",
+  "slotinjector.save_file": "Fichier de sauvegarde",
+  "slotinjector.slot_configuration": "Configuration des emplacements",
+  "slotinjector.clear": "Effacer",
+  "slotinjector.update_confirmation": "Mettre à jour {count} conteneur(s) : {parts} à {new} emplacements ?"
 }

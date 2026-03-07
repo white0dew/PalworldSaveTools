@@ -10,8 +10,7 @@ PST_standalone/
 build/
 PalworldSaveTools.egg-info/
 src/data/configs/
-.pst_venv/
-pst_venv/
+.venv/
 CLAUDE.md
 .claude/
 Logs/
@@ -23,3 +22,8 @@ Backups/
 src/palworld_base_editor/base_json_eg
 Agent.md
 runtime.cfg
+uv.lock
+.ruff_cache
+PST_standalone_v*
+.build
+PalworldSaveTools-beta

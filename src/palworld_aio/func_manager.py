@@ -886,6 +886,7 @@ def reset_dungeons(parent=None):
         wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
     except KeyError:
         return None
+    total_reset = 0
     if 'DungeonPointMarkerSaveData' in wsd:
         data = wsd['DungeonPointMarkerSaveData']
         count = 0
@@ -896,8 +897,19 @@ def reset_dungeons(parent=None):
             elif isinstance(values, dict):
                 count = len(values.get('values', []))
         del wsd['DungeonPointMarkerSaveData']
-        return count if count > 0 else 1
-    return 0
+        total_reset += count if count > 0 else 1
+    if 'DungeonSaveData' in wsd:
+        data = wsd['DungeonSaveData']
+        count = 0
+        if isinstance(data, dict):
+            values = data.get('value', [])
+            if isinstance(values, list):
+                count = len(values)
+            elif isinstance(values, dict):
+                count = len(values.get('values', []))
+        del wsd['DungeonSaveData']
+        total_reset += count if count > 0 else 1
+    return total_reset if total_reset > 0 else None
 def unlock_viewing_cage_for_player(player_uid, parent=None):
     if not constants.current_save_path:
         return False

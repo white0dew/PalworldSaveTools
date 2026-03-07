@@ -1053,5 +1053,19 @@
   "base.import.search_label": "搜索:",
   "base.import.select_guild_prompt": "选择要导入基地的公会:",
   "base.import.showing_all": "显示所有 {count} 个公会",
-  "base.import.filtered_status": "已过滤: {filtered}/{total} 个公会"
+  "base.import.filtered_status": "已过滤: {filtered}/{total} 个公会",
+  "base.radius.input_mode": "输入模式:",
+  "base.radius.mode.percentage": "百分比",
+  "base.radius.mode.actual": "实际值",
+  "base.radius.input_value": "输入值:",
+  "base.radius.apply": "应用",
+  "slotinjector.description": "管理玩家容器槽位数量，并在减少容量时清理多余的槽位",
+  "slotinjector.group_save_data": "组保存数据",
+  "slotinjector.slot_reduction_warning": "槽位减少警告",
+  "slotinjector.yes": "是",
+  "slotinjector.no": "否",
+  "slotinjector.save_file": "保存文件",
+  "slotinjector.slot_configuration": "插槽配置",
+  "slotinjector.clear": "清除",
+  "slotinjector.update_confirmation": "更新 {count} 个容器：{parts} 到 {new} 个插槽？"
 }

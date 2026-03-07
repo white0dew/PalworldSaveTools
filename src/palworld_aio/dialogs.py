@@ -1,6 +1,6 @@
 import os
 import json
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QSpinBox, QComboBox, QTextEdit, QFileDialog, QGroupBox, QFormLayout, QCheckBox, QFrame, QTabWidget, QScrollArea, QWidget, QGridLayout, QSlider, QProgressBar, QApplication
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QSpinBox, QComboBox, QTextEdit, QFileDialog, QGroupBox, QFormLayout, QCheckBox, QRadioButton, QFrame, QTabWidget, QScrollArea, QWidget, QGridLayout, QSlider, QProgressBar, QApplication, QButtonGroup
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QIcon, QFont, QColor, QPen, QBrush, QPainter, QLinearGradient
 from i18n import t
@@ -351,12 +351,13 @@ class RadiusPreviewDialog(ThemedDialog):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setModal(True)
-        self.setMinimumWidth(500)
-        self.setMaximumWidth(600)
+        self.setMinimumWidth(550)
+        self.setMaximumWidth(700)
         if os.path.exists(constants.ICON_PATH):
             self.setWindowIcon(QIcon(constants.ICON_PATH))
         self.current_actual_radius = current_radius
         self.current_percent = int(round(current_radius / 35.0))
+        self.input_mode = 'percentage'
         self.preview_active = False
         self._setup_ui(prompt_text)
         self._connect_signals()
@@ -378,7 +379,46 @@ class RadiusPreviewDialog(ThemedDialog):
         current_layout.addStretch()
         current_layout.addWidget(self.current_display)
         layout.addWidget(current_frame)
-        slider_group = QGroupBox(t('base.radius.adjust') if t else 'Adjust Radius')
+        mode_frame = QFrame()
+        mode_frame.setFrameShape(QFrame.StyledPanel)
+        mode_layout = QVBoxLayout(mode_frame)
+        mode_layout.setContentsMargins(10, 10, 10, 10)
+        mode_label = QLabel(t('base.radius.input_mode') if t else 'Input Mode:')
+        mode_label.setFont(QFont(constants.FONT_FAMILY, constants.FONT_SIZE, QFont.Bold))
+        mode_layout.addWidget(mode_label)
+        mode_buttons_layout = QHBoxLayout()
+        self.percentage_radio = QRadioButton(t('base.radius.mode.percentage') if t else 'Percentage (50-1000%)')
+        self.actual_radio = QRadioButton(t('base.radius.mode.actual') if t else 'Actual Value (1750-35000)')
+        self.mode_group = QButtonGroup(self)
+        self.mode_group.addButton(self.percentage_radio, 1)
+        self.mode_group.addButton(self.actual_radio, 2)
+        self.percentage_radio.setChecked(True)
+        mode_buttons_layout.addWidget(self.percentage_radio)
+        mode_buttons_layout.addWidget(self.actual_radio)
+        mode_buttons_layout.addStretch()
+        mode_layout.addLayout(mode_buttons_layout)
+        layout.addWidget(mode_frame)
+        input_frame = QFrame()
+        input_frame.setFrameShape(QFrame.StyledPanel)
+        input_layout = QHBoxLayout(input_frame)
+        input_layout.setContentsMargins(10, 10, 10, 10)
+        input_label = QLabel(t('base.radius.input_value') if t else 'Input Value:')
+        input_label.setFont(QFont(constants.FONT_FAMILY, constants.FONT_SIZE, QFont.Bold))
+        input_layout.addWidget(input_label)
+        self.input_field = QLineEdit()
+        self.input_field.setMinimumWidth(150)
+        self.input_field.setText(str(self.current_percent))
+        self.input_field.setAlignment(Qt.AlignRight)
+        input_layout.addWidget(self.input_field)
+        self.input_suffix = QLabel('%')
+        self.input_suffix.setFont(QFont(constants.FONT_FAMILY, constants.FONT_SIZE, QFont.Bold))
+        self.input_suffix.setStyleSheet('color: #64748b;')
+        input_layout.addWidget(self.input_suffix)
+        self.apply_btn = QPushButton(t('base.radius.apply') if t else 'Apply')
+        self.apply_btn.setMinimumWidth(80)
+        input_layout.addWidget(self.apply_btn)
+        layout.addWidget(input_frame)
+        slider_group = QGroupBox(t('base.radius.adjust') if t else 'Visual Slider')
         slider_layout = QVBoxLayout(slider_group)
         self.value_display = QLabel(f'{self.current_percent}%')
         self.value_display.setAlignment(Qt.AlignCenter)
@@ -407,6 +447,7 @@ class RadiusPreviewDialog(ThemedDialog):
         actual_frame = QFrame()
         actual_frame.setFrameShape(QFrame.StyledPanel)
         actual_layout = QHBoxLayout(actual_frame)
+        actual_layout.setContentsMargins(10, 10, 10, 10)
         actual_label = QLabel(t('base.radius.actual') if t else 'Actual Value:')
         actual_label.setFont(QFont(constants.FONT_FAMILY, constants.FONT_SIZE, QFont.Bold))
         self.actual_display = QLabel(f'{int(self.current_actual_radius)}')
@@ -432,26 +473,103 @@ class RadiusPreviewDialog(ThemedDialog):
         button_layout.addWidget(cancel_btn)
         button_layout.addWidget(ok_btn)
         layout.addLayout(button_layout)
-        self.preview_status = QLabel(t('base.radius.preview.ready') if t else 'Preview ready - drag slider to see changes on map')
+        self.preview_status = QLabel(t('base.radius.preview.ready') if t else 'Preview ready - drag slider or enter value to adjust')
         self.preview_status.setStyleSheet('color: #64748b; font-size: 11px; font-style: italic;')
         layout.addWidget(self.preview_status)
     def _connect_signals(self):
         self.slider.valueChanged.connect(self._on_slider_changed)
         self.valueChanged.connect(self._on_value_changed)
+        self.mode_group.buttonClicked.connect(self._on_mode_changed)
+        self.input_field.returnPressed.connect(self._on_input_applied)
+        self.apply_btn.clicked.connect(self._on_input_applied)
+        self.input_field.textChanged.connect(self._on_input_changed)
+    def _on_mode_changed(self, button):
+        mode_id = self.mode_group.id(button)
+        if mode_id == 1:
+            self.input_mode = 'percentage'
+            self.input_suffix.setText('%')
+            self.input_field.setText(str(self._get_current_percent()))
+            self.input_field.setPlaceholderText('50 - 1000')
+        else:
+            self.input_mode = 'actual'
+            self.input_suffix.setText('')
+            self.input_field.setText(str(self._get_current_actual()))
+            self.input_field.setPlaceholderText('1750 - 35000')
+        self._update_input_field_style()
+    def _on_input_changed(self, text):
+        self._update_input_field_style()
+    def _update_input_field_style(self):
+        if self.input_field.text().strip():
+            self.input_field.setStyleSheet('\n                QLineEdit {\n                    background-color: rgba(255,255,255,0.1);\n                    color: #dfeefc;\n                    border: 1px solid rgba(255,255,255,0.2);\n                    border-radius: 4px;\n                    padding: 6px;\n                }\n            ')
+        else:
+            self.input_field.setStyleSheet('\n                QLineEdit {\n                    background-color: rgba(255,255,255,0.05);\n                    color: #64748b;\n                    border: 1px solid rgba(255,255,255,0.1);\n                    border-radius: 4px;\n                    padding: 6px;\n                }\n            ')
+    def _on_input_applied(self):
+        text = self.input_field.text().strip()
+        if not text:
+            return
+        try:
+            if self.input_mode == 'percentage':
+                value = float(text.replace('%', ''))
+                if value < 50:
+                    value = 50
+                    self.input_field.setText('50')
+                elif value > 1000:
+                    value = 1000
+                    self.input_field.setText('1000')
+                actual = int(round(value * 35.0))
+                self.slider.setValue(int(value))
+                self._update_displays(int(value), actual)
+            else:
+                value = float(text)
+                if value < 1750:
+                    value = 1750
+                    self.input_field.setText('1750')
+                elif value > 35000:
+                    value = 35000
+                    self.input_field.setText('35000')
+                percent = int(round(value / 35.0))
+                self.slider.setValue(percent)
+                self._update_displays(percent, int(value))
+        except ValueError:
+            self._show_error(t('base.radius.error.invalid_input') if t else 'Invalid input. Please enter a number.')
+    def _show_error(self, message):
+        self.preview_status.setText(message)
+        self.preview_status.setStyleSheet('color: #ef4444; font-size: 11px; font-weight: bold;')
+        QTimer.singleShot(3000, self._reset_status_style)
+    def _reset_status_style(self):
+        self.preview_status.setText(t('base.radius.preview.ready') if t else 'Preview ready - drag slider or enter value to adjust')
+        self.preview_status.setStyleSheet('color: #64748b; font-size: 11px; font-style: italic;')
+    def _get_current_percent(self):
+        if self.input_mode == 'percentage':
+            return self.slider.value()
+        else:
+            return int(round(self.current_actual_radius / 35.0))
+    def _get_current_actual(self):
+        if self.input_mode == 'actual':
+            return int(self.current_actual_radius)
+        else:
+            return int(round(self.slider.value() * 35.0))
     def _on_slider_changed(self, value):
         actual = int(round(value * 35.0))
         self.valueChanged.emit(value, actual)
         self._update_displays(value, actual)
+        if self.input_mode == 'percentage':
+            self.input_field.setText(str(value))
+        else:
+            self.input_field.setText(str(actual))
     def _on_value_changed(self, percent, actual):
         pass
     def _update_displays(self, percent, actual):
         self.value_display.setText(f'{percent}%')
         self.actual_display.setText(f'{actual}')
         self.progress_bar.setValue(percent)
-        self.preview_status.setText(f'Preview: {percent}% ({actual}) - Drag slider to adjust')
+        self.preview_status.setText(f'Preview: {percent}% ({actual}) - Drag slider or enter value to adjust')
+        self.current_percent = percent
+        self.current_actual_radius = actual
     def _reset_to_default(self):
         self.slider.setValue(100)
         self._update_displays(100, 3500)
+        self.input_field.setText('100')
     def accept(self):
         percent = self.slider.value()
         self.result_value = float(percent * 35.0)

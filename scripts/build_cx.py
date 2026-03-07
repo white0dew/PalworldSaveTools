@@ -2,10 +2,11 @@ import os, sys, subprocess, shutil, re, argparse, configparser
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
 os.chdir(ROOT_DIR)
-VENV_DIR = 'pst_venv'
+VENV_DIR = '.venv'
 PYTHON_EXE = os.path.join(VENV_DIR, 'Scripts', 'python.exe') if os.name == 'nt' else os.path.join(VENV_DIR, 'bin', 'python')
 USE_EXISTING_VENV = False
 BUILD_CFG_PATH = os.path.join('src', 'data', 'configs', 'runtime.cfg')
+BUILD_CFG_DIR = os.path.join('src', 'data', 'configs')
 def create_venv():
     if not os.path.exists(VENV_DIR):
         print('Creating virtual environment...')
@@ -50,7 +51,7 @@ def build_with_cx_freeze():
 def clean_build_artifacts():
     items = ['build', 'PalworldSaveTools.egg-info', 'Backups', 'PST_standalone', 'Logs', 'psp_windows', 'ppe_windows', 'updated_worldmap.png', 'PalDefender', 'XGP_converted_saves', 'saves']
     if not USE_EXISTING_VENV:
-        items.extend(['.pst_venv', 'pst_venv'])
+        items.extend(['.venv'])
     for item in items:
         if os.path.exists(item):
             print(f'Removing {item}...')
@@ -64,6 +65,12 @@ def clean_build_artifacts():
                 path = os.path.join(root, d)
                 shutil.rmtree(path, ignore_errors=True)
 def set_standalone_mode(enabled: bool):
+    os.makedirs(BUILD_CFG_DIR, exist_ok=True)
+    if not os.path.exists(BUILD_CFG_PATH):
+        cfg = configparser.ConfigParser()
+        cfg['build'] = {'standalone': 'false'}
+        with open(BUILD_CFG_PATH, 'w', encoding='utf-8') as f:
+            cfg.write(f)
     cfg = configparser.ConfigParser()
     cfg['build'] = {'standalone': 'true' if enabled else 'false'}
     with open(BUILD_CFG_PATH, 'w', encoding='utf-8') as f:

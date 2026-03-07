@@ -27,9 +27,6 @@ def get_base_containers(base_id):
         map_object_id = obj.get('MapObjectId', {}).get('value', '')
         if not map_object_id:
             continue
-        is_container = any((container_type in map_object_id for container_type in ['ItemChest', 'StorageBox', 'ItemBox', 'ItemContainer']))
-        if not is_container:
-            continue
         bp = obj.get('Model', {}).get('value', {}).get('BuildProcess', {}).get('value', {}).get('RawData', {}).get('value', {})
         if bp.get('state') != 1:
             continue
@@ -38,6 +35,9 @@ def get_base_containers(base_id):
         if not base_camp_id or str(base_camp_id).replace('-', '').lower() != base_id_low:
             continue
         module_map = obj.get('ConcreteModel', {}).get('value', {}).get('ModuleMap', {}).get('value', [])
+        has_item_container_module = any((module.get('key') == 'EPalMapObjectConcreteModelModuleType::ItemContainer' for module in module_map))
+        if not has_item_container_module:
+            continue
         container_id = None
         for module in module_map:
             if module.get('key') == 'EPalMapObjectConcreteModelModuleType::ItemContainer':
@@ -810,9 +810,6 @@ def find_item_locations_efficient(item_id):
             map_object_id = obj.get('MapObjectId', {}).get('value', '')
             if not map_object_id:
                 continue
-            is_container = any((container_type in map_object_id for container_type in ['ItemChest', 'StorageBox', 'ItemBox', 'ItemContainer']))
-            if not is_container:
-                continue
             bp = obj.get('Model', {}).get('value', {}).get('BuildProcess', {}).get('value', {}).get('RawData', {}).get('value', {})
             if bp.get('state') != 1:
                 continue
@@ -822,6 +819,9 @@ def find_item_locations_efficient(item_id):
                 continue
             base_camp_id_str = str(base_camp_id).replace('-', '').lower()
             module_map = obj.get('ConcreteModel', {}).get('value', {}).get('ModuleMap', {}).get('value', [])
+            has_item_container_module = any((module.get('key') == 'EPalMapObjectConcreteModelModuleType::ItemContainer' for module in module_map))
+            if not has_item_container_module:
+                continue
             for module in module_map:
                 if module.get('key') == 'EPalMapObjectConcreteModelModuleType::ItemContainer':
                     module_raw = module.get('value', {}).get('RawData', {}).get('value', {})

@@ -31,10 +31,7 @@
 - [故障排除](#故障排除)
 - [构建独立可执行文件（仅限 Windows）](#构建独立可执行文件仅限-windows)
 - [贡献](#贡献)
-- [免责声明](#免责声明)
-- [支持](#支持)
 - [许可证](#许可证)
-- [致谢](#致谢)
 
 ---
 
@@ -42,16 +39,16 @@
 
 ### 核心功能
 
-|特色 |描述 |
+|特色|描述 |
 |---------|-------------|
 | **快速保存解析** |最快的保存文件阅读器之一 |
 | **玩家管理** |查看、编辑、重命名、更改级别、解锁技术和管理玩家 |
 | **公会管理** |创建、重命名、移动玩家、解锁实验室研究以及管理公会 |
-| **朋友编辑** |统计、技能、IV、等级、灵魂、性别、老板/幸运切换的完整编辑器 |
+| **Pal Editor** |统计、技能、IVs、等级、灵魂、性别、老板/幸运切换的完整编辑器 |
 | **大本营工具** |导出、导入、克隆、调整半径和管理基地 |
 | **地图查看器** |带有坐标和详细信息的交互式基地和玩家地图 |
 | **角色转移** |在不同世界/服务器之间转移角色（交叉保存）|
-| **保存转换** | Steam 和 GamePass 格式之间的转换 |
+| **保存转换** |在 Steam 和 GamePass 格式之间转换 |
 | **世界设置** |编辑 WorldOption 和 LevelMeta 设置 |
 | **时间戳工具** |修复负时间戳并重置玩家时间 |
 
@@ -67,11 +64,11 @@
 
 - **清理工具**
   - 删除无效/修改的项目
-  - 删除无效的好友和被动者
-  - 修复非法好友（上限为合法最大统计数据）
+  - 删除无效的pals和passives
+  - 修复非法的pals（上限为合法的最大统计数据）
   - 删除无效结构
   - 重置防空炮塔
-  - 解锁私人宝箱
+  - 解锁private chests
 
 - **公会工具**
   - 重建所有公会
@@ -82,7 +79,7 @@
   - 解锁所有实验室研究
 
 - **玩家工具**
-  - 编辑玩家好友的统计数据和技能
+  - 编辑玩家pal统计数据和技能
   - 解锁所有技术
   - 解锁观察笼
   - 升级/降低玩家等级
@@ -99,7 +96,7 @@
 
 |工具|描述 |
 |------|-------------|
-| **编辑玩家好友** |完整的好友编辑器，包含统计数据、技能、IV、天赋、灵魂、等级和性别 |
+| **编辑玩家Pals** |完整的pal editor，包含统计数据、技能、IVs、天赋、灵魂、等级和性别|
 | **SteamID 转换器** |将 Steam ID 转换为 Palworld UID |
 | **修复主机保存** |在两个玩家之间交换 UID（例如，用于主机交换） |
 | **槽式注入器** |增加每位玩家的 palbox 槽位 |
@@ -130,6 +127,14 @@
 ### 来自源头（所有平台）
 
 启动脚本会自动创建虚拟环境并安装所有依赖项。
+
+**使用uv：**
+```bash
+git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
+cd PalworldSaveTools
+uv venv --python 3.12
+uv run start.py
+```
 
 **Windows：**
 ```bash
@@ -182,7 +187,7 @@ chmod +x start_linux.sh
 全面保存管理的主界面包含三个选项卡：
 
 **玩家选项卡** - 查看和管理服务器上的所有玩家
-- 编辑玩家姓名、等级和好友数量
+- 编辑玩家姓名、等级和 pal 计数
 - 删除不活跃的玩家
 - 查看玩家公会和最后在线时间
 
@@ -208,7 +213,7 @@ chmod +x start_linux.sh
 
 在不同世界/服务器之间转移角色（交叉保存）：
 - 转移单个或所有玩家
-- 保留角色、伙伴、库存和技术
+- 保留角色、pals、库存和技术
 - 对于在合作服务器和专用服务器之间迁移很有用
 
 ### 修复主机保存
@@ -290,17 +295,17 @@ steamapps\common\Palworld\Pal\Saved\SaveGames\0\RANDOMSERVERID\
    - 玩家 B（新主机）应该定期保存（例如 `987xxx.sav`）
 
 2. **将旧主机的主机保存交换为常规保存**
-   - 使用 PalworldSaveTools **修复主机保存** 进行交换：
+   - 使用PalworldSaveTools **修复主机保存**来交换：
    - 老主机的 `0001.sav` → `123xxx.sav`
    -（这会将旧主机的进度从主机位置移至其常规玩家位置）
 
 3. **将新主机的常规存档交换为主机存档**
-   - 使用 PalworldSaveTools **修复主机保存** 进行交换：
+   - 使用PalworldSaveTools **修复主机保存**来交换：
    - 新主机的 `987xxx.sav` → `0001.sav`
    -（这会将新主机的进度移至主机槽中）
 
 **结果：**
-- 玩家 B 现在是 `0001.sav` 中的主持人，拥有自己的角色和伙伴
+- 玩家 B 现在是主机，拥有自己的角色和 `0001.sav` 中的 pals
 - 玩家 A 成为客户，并拥有 `123xxx.sav` 的原始进度
 
 </details>
@@ -338,7 +343,7 @@ steamapps\common\Palworld\Pal\Saved\SaveGames\0\RANDOMSERVERID\
 
 ## 故障排除
 
-###“未找到 VCRUNTIME140.dll”
+### “未找到 VCRUNTIME140.dll”
 
 **解决方案：** 安装[Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170#latest-microsoft-visual-c-redistributable-version)
 
@@ -370,10 +375,10 @@ scripts\build.cmd
 ```
 
 这将在项目根目录中创建 `PST_standalone_v{version}.7z` 。
-
 ---
 
 ## 贡献
+
 欢迎贡献！请随时提交 Pull 请求。
 
 1. 分叉存储库
@@ -394,7 +399,7 @@ scripts\build.cmd
 
 ## 支持
 
-- **不和谐：** [Join us for support, base builds, and more!](https://discord.gg/sYcZwcT4cT)
+- **Discord：** [Join us for support, base builds, and more!](https://discord.gg/sYcZwcT4cT)
 - **GitHub 问题：** [Report a bug](https://github.com/deafdudecomputers/PalworldSaveTools/issues)
 - **文档：** [Wiki](https://github.com/deafdudecomputers/PalworldSaveTools/wiki) *（目前正在开发中）*
 

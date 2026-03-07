@@ -31,10 +31,7 @@
 - [문제 해결](#문제-해결)
 - [독립형 실행 파일 빌드(Windows에만 해당)](#독립형-실행-파일-빌드windows에만-해당)
 - [기여](#기여)
-- [면책조항](#면책조항)
-- [지원](#지원)
-- [라이선스](#라이선스)
-- [감사의 말씀](#감사의-말씀)
+- [라이센스](#라이센스)
 
 ---
 
@@ -47,11 +44,11 @@
 | **빠른 저장 구문 분석** | 사용 가능한 가장 빠른 저장 파일 리더 중 하나 |
 | **플레이어 관리** | 보기, 편집, 이름 바꾸기, 레벨 변경, 기술 잠금 해제 및 플레이어 관리 |
 | **길드 관리** | 플레이어 생성, 이름 변경, 이동, 실험실 연구 잠금 해제 및 길드 관리 |
-| **Pal 편집자** | 통계, 기술, IV, 순위, 영혼, 성별, 보스/행운 토글을 위한 전체 편집기 |
+| **Pal Editor** | 통계, 기술, IVs, 순위, 영혼, 성별, 보스/행운 토글에 대한 전체 편집기 |
 | **베이스캠프 도구** | 내보내기, 가져오기, 복제, 반경 조정 및 기지 관리 |
 | **맵 뷰어** | 좌표와 세부정보가 포함된 대화형 기지 및 플레이어 지도 |
 | **캐릭터 이전** | 다른 월드/서버 간 캐릭터 전송(교차 저장) |
-| **전환 저장** | Steam과 GamePass 형식 간 변환 |
+| **전환 저장** | Steam 및 GamePass 형식 간 변환 |
 | **월드 설정** | WorldOption 및 LevelMeta 설정 편집 |
 | **타임스탬프 도구** | 부정적인 타임스탬프 수정 및 플레이어 시간 재설정 |
 
@@ -67,11 +64,11 @@
 
 - **정리 도구**
   - 유효하지 않거나 수정된 항목 제거
-  - 유효하지 않은 친구와 패시브를 제거하세요
-  - 불법 친구 수정(법적 최대 통계로 제한)
+  - 유효하지 않은 pals 및 passives 제거
+  - 불법적인 pals 수정(법적 최대 통계로 제한)
   - 유효하지 않은 구조 제거
   - 대공 포탑 재설정
-  - 개인 상자 잠금 해제
+  - private chests 잠금 해제
 
 - **길드 도구**
   - 모든 길드 재건
@@ -82,7 +79,7 @@
   - 모든 연구실 연구 잠금 해제
 
 - **플레이어 도구**
-  - 플레이어 친구 통계 및 기술 편집
+  - 플레이어 pal 통계 및 기술 편집
   - 모든 기술 잠금 해제
   - 관찰 케이지 잠금 해제
   - 레벨 업/다운 플레이어
@@ -99,7 +96,7 @@
 
 | 도구 | 설명 |
 |------|-------------|
-| **플레이어 친구 편집** | 통계, 기술, IV, 재능, 영혼, 순위 및 성별을 갖춘 완전한 친구 편집자 |
+| **플레이어 편집 Pals** | 통계, 기술, IVs, 재능, 영혼, 순위 및 성별이 포함된 전체 pal editor |
 | **SteamID 변환기** | Steam ID를 Palworld UID로 변환 |
 | **호스트 저장 수정** | 두 플레이어 간 UID 교환(예: 호스트 교환) |
 | **슬롯 인젝터** | 플레이어당 팔박스 슬롯 늘리기 |
@@ -112,7 +109,7 @@
 
 ## 설치
 
-### 전제조건
+### 전제 조건
 
 **독립형(Windows)의 경우:**
 - 윈도우 10/11
@@ -125,11 +122,19 @@
 
 1. [GitHub Releases](https://github.com/deafdudecomputers/PalworldSaveTools/releases/latest)에서 최신 릴리스를 다운로드하세요.
 2. zip 파일 추출
-3. `PalworldSaveTools.exe`를 실행하세요.
+3. `PalworldSaveTools.exe`을 실행하세요.
 
 ### 소스에서(모든 플랫폼)
 
 시작 스크립트는 자동으로 가상 환경을 생성하고 모든 종속성을 설치합니다.
+
+**uv 사용:**
+```bash
+git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
+cd PalworldSaveTools
+uv venv --python 3.12
+uv run start.py
+```
 
 **윈도우:**
 ```bash
@@ -182,7 +187,7 @@ chmod +x start_linux.sh
 세 개의 탭으로 구성된 포괄적인 저장 관리를 위한 기본 인터페이스:
 
 **플레이어 탭** - 서버의 모든 플레이어를 보고 관리합니다.
-- 플레이어 이름, 레벨, 친구 수 편집
+- 플레이어 이름, 레벨 및 pal 카운트 편집
 - 비활성 플레이어 삭제
 - 플레이어 길드 및 마지막 온라인 시간 보기
 
@@ -208,7 +213,7 @@ chmod +x start_linux.sh
 
 다른 세계/서버 간 캐릭터 전송(교차 저장):
 - 단일 또는 모든 플레이어 전송
-- 캐릭터, 친구, 인벤토리, 기술을 보존합니다.
+- 캐릭터, pals, 인벤토리, 기술을 보존합니다.
 - 협동 서버와 전용 서버 간 마이그레이션에 유용합니다.
 
 ### 호스트 저장 수정
@@ -287,20 +292,20 @@ steamapps\common\Palworld\Pal\Saved\SaveGames\0\RANDOMSERVERID\
 
 1. **정기 저장이 있는지 확인**
    - 플레이어 A(이전 호스트)는 일반 저장을 가지고 있어야 합니다(예: `123xxx.sav`).
-   - 플레이어 B(새 호스트)는 정기적으로 저장해야 합니다(예: `987xxx.sav`).
+   - 플레이어 B(새 호스트)는 일반 저장을 가지고 있어야 합니다(예: `987xxx.sav`).
 
 2. **이전 호스트의 호스트 저장을 일반 저장으로 교체**
-   - PalworldSaveTools **Fix Host Save**를 사용하여 다음을 교체합니다.
+   - PalworldSaveTools **Fix Host Save**를 사용하여 교체합니다.
    - 이전 호스트의 `0001.sav` → `123xxx.sav`
    - (이전 호스트의 진행 상황이 호스트 슬롯에서 일반 플레이어 슬롯으로 이동됩니다.)
 
 3. **새 호스트의 일반 저장을 호스트 저장으로 전환**
-   - PalworldSaveTools **Fix Host Save**를 사용하여 다음을 교체합니다.
+   - PalworldSaveTools **Fix Host Save**를 사용하여 교체합니다.
    - 새로운 호스트의 `987xxx.sav` → `0001.sav`
    - (이것은 새로운 호스트의 진행 상황을 호스트 슬롯으로 이동시킵니다)
 
 **결과:**
-- 플레이어 B는 이제 `0001.sav`에서 자신의 캐릭터와 친구들이 있는 호스트입니다.
+- 플레이어 B는 이제 `0001.sav`에서 자신의 캐릭터와 pals을 가진 호스트입니다.
 - 플레이어 A는 `123xxx.sav`에서 원래 진행 상황으로 클라이언트가 됩니다.
 
 </details>
@@ -351,12 +356,12 @@ steamapps\common\Palworld\Pal\Saved\SaveGames\0\RANDOMSERVERID\
 2. 자동 구조 업데이트가 시작됩니다.
 3. 최신 게임 패치 이후에 저장 내용이 업데이트되었는지 확인하세요.
 
-### GamePass 변환기가 작동하지 않음
+### GamePass 변환기가 작동하지 않습니다
 
 **해결책:**
 1. Palworld의 GamePass 버전을 닫습니다.
 2. 몇 분 정도 기다리세요
-3. Steam → GamePass 변환기 실행
+3. Steam → GamePass 변환기를 실행합니다.
 4. GamePass에서 Palworld를 실행하여 확인하세요.
 
 ---
@@ -370,10 +375,10 @@ scripts\build.cmd
 ```
 
 그러면 프로젝트 루트에 `PST_standalone_v{version}.7z`이 생성됩니다.
-
 ---
 
 ## 기여
+
 기여를 환영합니다! 언제든지 Pull Request를 제출해 주세요.
 
 1. 저장소 포크
@@ -386,7 +391,7 @@ scripts\build.cmd
 
 ## 면책조항
 
-**이 도구를 사용하는 데 따른 위험은 사용자 본인의 책임입니다. 수정하기 전에 항상 저장 파일을 백업하십시오.**
+**이 도구를 사용할 때 발생하는 위험은 사용자 본인의 책임입니다. 수정하기 전에 항상 저장 파일을 백업하십시오.**
 
 이 도구를 사용함으로써 발생할 수 있는 저장 데이터의 손실이나 문제에 대해 개발자는 책임을 지지 않습니다.
 
@@ -394,13 +399,13 @@ scripts\build.cmd
 
 ## 지원
 
-- **불협화음:** [Join us for support, base builds, and more!](https://discord.gg/sYcZwcT4cT)
+- **Discord:** [Join us for support, base builds, and more!](https://discord.gg/sYcZwcT4cT)
 - **GitHub 문제:** [Report a bug](https://github.com/deafdudecomputers/PalworldSaveTools/issues)
 - **문서:** [Wiki](https://github.com/deafdudecomputers/PalworldSaveTools/wiki) *(현재 개발 중)*
 
 ---
 
-## 라이선스
+## 라이센스
 
 이 프로젝트는 MIT 라이선스에 따라 라이선스가 부여됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
 

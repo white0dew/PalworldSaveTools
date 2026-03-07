@@ -1,8 +1,8 @@
 from import_libs import *
 from loading_manager import show_information, show_critical
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QFileDialog, QApplication, QFrame, QGridLayout, QTableWidget, QTableWidgetItem, QHeaderView, QCheckBox, QAbstractItemView, QMessageBox, QSpinBox
-from PySide6.QtGui import QIcon, QFont
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QFileDialog, QApplication, QFrame, QGridLayout, QTableWidget, QTableWidgetItem, QHeaderView, QCheckBox, QAbstractItemView, QMessageBox, QSpinBox, QGroupBox, QWidget, QScrollArea, QProgressBar, QStatusBar
+from PySide6.QtGui import QIcon, QFont, QPixmap, QColor, QPalette
+from PySide6.QtCore import Qt, QTimer, QThread, Signal
 from concurrent.futures import ThreadPoolExecutor
 import os
 def sav_to_gvasfile(filepath):
@@ -140,115 +140,159 @@ def get_player_containers(gvas_file, players_folder=None):
                     container_type = 'Unknown'
                 player_containers.append({'index': i, 'container_id': container_id_str, 'slot_num': slot_num, 'used_slots': len(slots_values), 'max_slots': slot_num, 'player_uid': player_uid, 'player_name': player_name, 'guild': guild, 'container_type': container_type, 'entry': entry})
     return player_containers
+class LoadingThread(QThread):
+    progress = Signal(int, str)
+    finished = Signal(object)
+    error = Signal(str)
+    def __init__(self, task_func, parent=None):
+        super().__init__(parent)
+        self.task_func = task_func
+    def run(self):
+        try:
+            result = self.task_func()
+            self.finished.emit(result)
+        except Exception as e:
+            self.error.emit(str(e))
 class SlotNumUpdaterApp(QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(t('tool.slot_injector'))
-        self.setMinimumSize(900, 500)
-        self.resize(1000, 600)
+        self.setMinimumSize(1000, 650)
+        self.resize(1100, 700)
         self.gvas_file = None
         self.player_containers = []
         self.save_folder = None
+        self.loading_thread = None
         self.load_styles()
-        try:
-            if ICON_PATH and os.path.exists(ICON_PATH):
-                self.setWindowIcon(QIcon(ICON_PATH))
-        except Exception:
-            pass
+        self.setup_ui()
+        self.center_window()
+    def center_window(self):
+        screen = QApplication.primaryScreen().availableGeometry()
+        size = self.sizeHint()
+        if not size.isValid():
+            self.adjustSize()
+            size = self.size()
+        self.move((screen.width() - size.width()) // 2, (screen.height() - size.height()) // 2)
+    def setup_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(14, 14, 14, 14)
-        main_layout.setSpacing(12)
-        file_frame = QFrame()
-        file_frame.setObjectName('glass')
-        file_layout = QHBoxLayout(file_frame)
+        main_layout.setContentsMargins(16, 16, 16, 16)
+        main_layout.setSpacing(16)
+        header_frame = QFrame()
+        header_frame.setObjectName('glass')
+        header_layout = QVBoxLayout(header_frame)
+        header_layout.setContentsMargins(16, 12, 16, 12)
+        header_layout.setSpacing(12)
+        title_label = QLabel(t('slotinjector.table_title'))
+        title_label.setFont(QFont('Segoe UI', 14, QFont.Bold))
+        description_label = QLabel(t('slotinjector.description'))
+        description_label.setStyleSheet('color: #888888; font-size: 12px;')
+        header_layout.addWidget(title_label)
+        header_layout.addWidget(description_label)
+        file_group = QGroupBox(t('slotinjector.save_file'))
+        file_group.setObjectName('glass')
+        file_layout = QHBoxLayout(file_group)
         file_layout.setContentsMargins(12, 8, 12, 8)
-        self.browse_button = QPushButton(t('browse'))
-        self.browse_button.setFixedWidth(100)
+        self.browse_button = QPushButton('📁 ' + t('browse'))
+        self.browse_button.setFixedWidth(120)
         self.browse_button.clicked.connect(self.browse_file)
         self.file_entry = QLineEdit()
         self.file_entry.setPlaceholderText(t('slot.path_placeholder'))
         self.file_entry.setReadOnly(True)
         file_layout.addWidget(self.browse_button)
         file_layout.addWidget(self.file_entry)
-        main_layout.addWidget(file_frame)
-        self.table_label = QLabel(t('slotinjector.table_title'))
-        self.table_label.setFont(QFont('Segoe UI', 11, QFont.Bold))
-        main_layout.addWidget(self.table_label)
+        controls_group = QGroupBox(t('slotinjector.slot_configuration'))
+        controls_group.setObjectName('glass')
+        controls_layout = QHBoxLayout(controls_group)
+        controls_layout.setContentsMargins(12, 8, 12, 8)
+        controls_layout.setSpacing(16)
+        slots_layout = QVBoxLayout()
+        slots_label = QLabel(t('slotinjector.new_slots_label'))
+        slots_label.setFont(QFont('Segoe UI', 10, QFont.Bold))
+        self.new_slots_entry = QSpinBox()
+        self.new_slots_entry.setRange(1, 99999)
+        self.new_slots_entry.setValue(960)
+        self.new_slots_entry.setFixedWidth(120)
+        self.new_slots_entry.setToolTip('Set the new maximum number of slots for selected containers')
+        slots_layout.addWidget(slots_label)
+        slots_layout.addWidget(self.new_slots_entry)
+        slots_layout.addStretch()
+        buttons_layout = QVBoxLayout()
+        self.apply_selected_btn = QPushButton('✅ ' + t('slotinjector.apply_selected'))
+        self.apply_selected_btn.setObjectName('ApplyButton')
+        self.apply_selected_btn.clicked.connect(self.apply_selected)
+        self.apply_all_btn = QPushButton('🎯 ' + t('slotinjector.apply_all'))
+        self.apply_all_btn.setObjectName('ApplyButton')
+        self.apply_all_btn.clicked.connect(self.apply_all)
+        self.save_changes_btn = QPushButton('💾 ' + t('menu.file.save_changes'))
+        self.save_changes_btn.setObjectName('ApplyButton')
+        self.save_changes_btn.clicked.connect(self.save_changes)
+        buttons_layout.addWidget(self.apply_selected_btn)
+        buttons_layout.addWidget(self.apply_all_btn)
+        buttons_layout.addWidget(self.save_changes_btn)
+        buttons_layout.addStretch()
+        controls_layout.addLayout(slots_layout)
+        controls_layout.addLayout(buttons_layout)
         search_frame = QFrame()
         search_frame.setObjectName('glass')
         search_layout = QHBoxLayout(search_frame)
         search_layout.setContentsMargins(12, 8, 12, 8)
+        search_layout.setSpacing(12)
         search_icon_label = QLabel('🔍')
-        search_icon_label.setFont(QFont('Segoe UI', 12))
+        search_icon_label.setFont(QFont('Segoe UI', 14))
         self.search_entry = QLineEdit()
         self.search_entry.setPlaceholderText(t('slotinjector.search_placeholder'))
         self.search_entry.textChanged.connect(self.filter_table)
-        self.clear_search_btn = QPushButton('×')
-        self.clear_search_btn.setFixedSize(24, 24)
+        self.search_entry.setFixedHeight(32)
+        self.clear_search_btn = QPushButton('🗑️ ' + t('slotinjector.clear'))
+        self.clear_search_btn.setFixedHeight(32)
         self.clear_search_btn.clicked.connect(self.clear_search)
         search_layout.addWidget(search_icon_label)
         search_layout.addWidget(self.search_entry)
         search_layout.addWidget(self.clear_search_btn)
-        main_layout.addWidget(search_frame)
+        table_frame = QFrame()
+        table_frame.setObjectName('glass')
+        table_layout = QVBoxLayout(table_frame)
+        table_layout.setContentsMargins(12, 8, 12, 8)
+        selection_layout = QHBoxLayout()
+        self.select_all_btn = QPushButton('✓ ' + t('slotinjector.select_all'))
+        self.select_all_btn.clicked.connect(self.select_all)
+        self.select_none_btn = QPushButton('✗ ' + t('slotinjector.select_none'))
+        self.select_none_btn.clicked.connect(self.select_none)
+        selection_layout.addWidget(self.select_all_btn)
+        selection_layout.addWidget(self.select_none_btn)
+        selection_layout.addStretch()
         self.table = QTableWidget()
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([t('slotinjector.col_select'), t('slotinjector.col_player'), t('slotinjector.col_uid'), t('slotinjector.col_guild'), t('slotinjector.col_current'), t('slotinjector.col_used'), t('slotinjector.col_new_value')])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Interactive)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.Interactive)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.Interactive)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.table.horizontalHeader().setStretchLastSection(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setAlternatingRowColors(True)
-        self.table.setColumnWidth(0, 50)
-        self.table.setColumnWidth(1, 150)
-        self.table.setColumnWidth(2, 280)
-        self.table.setColumnWidth(3, 150)
-        main_layout.addWidget(self.table)
-        select_layout = QHBoxLayout()
-        self.select_all_btn = QPushButton(t('slotinjector.select_all'))
-        self.select_all_btn.clicked.connect(self.select_all)
-        self.select_none_btn = QPushButton(t('slotinjector.select_none'))
-        self.select_none_btn.clicked.connect(self.select_none)
-        select_layout.addWidget(self.select_all_btn)
-        select_layout.addWidget(self.select_none_btn)
-        select_layout.addStretch()
-        main_layout.addLayout(select_layout)
-        input_frame = QFrame()
-        input_frame.setObjectName('glass')
-        input_layout = QHBoxLayout(input_frame)
-        input_layout.setContentsMargins(12, 12, 12, 12)
-        self.new_slots_label = QLabel(t('slotinjector.new_slots_label'))
-        self.new_slots_label.setFont(QFont('Segoe UI', 10, QFont.Bold))
-        self.new_slots_entry = QSpinBox()
-        self.new_slots_entry.setRange(1, 99999)
-        self.new_slots_entry.setValue(960)
-        self.new_slots_entry.setFixedWidth(100)
-        input_layout.addWidget(self.new_slots_label)
-        input_layout.addWidget(self.new_slots_entry)
-        input_layout.addStretch()
-        main_layout.addWidget(input_frame)
-        button_layout = QHBoxLayout()
-        self.apply_selected_btn = QPushButton(t('slotinjector.apply_selected'))
-        self.apply_selected_btn.setObjectName('ApplyButton')
-        self.apply_selected_btn.clicked.connect(self.apply_selected)
-        self.apply_all_btn = QPushButton(t('slotinjector.apply_all'))
-        self.apply_all_btn.setObjectName('ApplyButton')
-        self.apply_all_btn.clicked.connect(self.apply_all)
-        self.save_changes_btn = QPushButton(t('menu.file.save_changes'))
-        self.save_changes_btn.setObjectName('ApplyButton')
-        self.save_changes_btn.clicked.connect(self.save_changes)
-        button_layout.addStretch()
-        button_layout.addWidget(self.apply_selected_btn)
-        button_layout.addWidget(self.apply_all_btn)
-        button_layout.addWidget(self.save_changes_btn)
-        button_layout.addStretch()
-        main_layout.addLayout(button_layout)
+        self.table.setSortingEnabled(True)
+        self.table.setColumnWidth(0, 60)
+        self.table.setColumnWidth(1, 200)
+        self.table.setColumnWidth(2, 250)
+        self.table.setColumnWidth(3, 180)
+        self.table.setColumnWidth(4, 120)
+        self.table.setColumnWidth(5, 100)
+        self.table.setColumnWidth(6, 120)
+        table_layout.addLayout(selection_layout)
+        table_layout.addWidget(self.table)
+        self.status_bar = QStatusBar()
+        self.status_bar.showMessage('Ready')
+        main_layout.addWidget(header_frame)
+        main_layout.addWidget(file_group)
+        main_layout.addWidget(controls_group)
+        main_layout.addWidget(search_frame)
+        main_layout.addWidget(table_frame)
+        main_layout.addWidget(self.status_bar)
         self.has_changes = False
         self.pending_new_value = None
-        QTimer.singleShot(0, lambda: center_window(self))
+        try:
+            if ICON_PATH and os.path.exists(ICON_PATH):
+                self.setWindowIcon(QIcon(ICON_PATH))
+        except Exception:
+            pass
     def showEvent(self, event):
         super().showEvent(event)
         if not event.spontaneous():
@@ -265,6 +309,7 @@ class SlotNumUpdaterApp(QDialog):
         if not fp.endswith('Level.sav'):
             show_critical(self, t('error.title'), t('slot.invalid_file'))
             return
+        self.set_loading_state(True, 'Loading save file...')
         def task():
             return sav_to_gvasfile(fp)
         def on_finished(result):
@@ -272,8 +317,40 @@ class SlotNumUpdaterApp(QDialog):
             players_folder = os.path.join(self.save_folder, 'Players') if self.save_folder else None
             self.player_containers = get_player_containers(self.gvas_file, players_folder)
             self.populate_table()
+            self.set_loading_state(False)
             show_information(self, t('slot.loaded_title'), t('slotinjector.loaded_msg', count=len(self.player_containers)))
-        run_with_loading(on_finished, task)
+        def on_error(error_msg):
+            self.set_loading_state(False)
+            show_critical(self, t('error.title'), f'Failed to load save file: {error_msg}')
+        self.loading_thread = LoadingThread(task, self)
+        self.loading_thread.finished.connect(on_finished)
+        self.loading_thread.error.connect(on_error)
+        self.loading_thread.start()
+    def set_loading_state(self, loading, message='Processing...'):
+        if loading:
+            self.status_bar.showMessage(message)
+            self.browse_button.setEnabled(False)
+            self.apply_selected_btn.setEnabled(False)
+            self.apply_all_btn.setEnabled(False)
+            self.save_changes_btn.setEnabled(False)
+            self.new_slots_entry.setEnabled(False)
+            self.search_entry.setEnabled(False)
+            self.clear_search_btn.setEnabled(False)
+            self.select_all_btn.setEnabled(False)
+            self.select_none_btn.setEnabled(False)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+        else:
+            self.status_bar.showMessage('Ready')
+            self.browse_button.setEnabled(True)
+            self.apply_selected_btn.setEnabled(True)
+            self.apply_all_btn.setEnabled(True)
+            self.save_changes_btn.setEnabled(True)
+            self.new_slots_entry.setEnabled(True)
+            self.search_entry.setEnabled(True)
+            self.clear_search_btn.setEnabled(True)
+            self.select_all_btn.setEnabled(True)
+            self.select_none_btn.setEnabled(True)
+            QApplication.restoreOverrideCursor()
     def populate_table(self):
         self.table.setRowCount(len(self.player_containers))
         for row, container in enumerate(self.player_containers):
@@ -358,27 +435,185 @@ class SlotNumUpdaterApp(QDialog):
             show_critical(self, t('error.title'), t('slot.load_first'))
             return
         new_value = self.new_slots_entry.value()
-        reply = QMessageBox.question(self, t('slot.confirm_title'), t('slotinjector.confirm_msg', count=len(containers), new=new_value), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        containers_to_reduce = []
+        containers_to_increase = []
+        containers_unchanged = []
+        for container in containers:
+            if container['slot_num'] > new_value:
+                containers_to_reduce.append(container)
+            elif container['slot_num'] < new_value:
+                containers_to_increase.append(container)
+            else:
+                containers_unchanged.append(container)
+        if containers_to_reduce:
+            reduction_count = sum((1 for c in containers_to_reduce if c['used_slots'] > new_value))
+            if reduction_count > 0:
+                warning_msg = f'Warning: {reduction_count} container(s) will have slots reduced below their current usage.\n'
+                warning_msg += 'This will remove excess slots and their associated pals.\n\n'
+                warning_msg += 'Are you sure you want to continue?'
+                reply = QMessageBox.warning(self, 'Slot Reduction Warning', warning_msg, QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if reply != QMessageBox.Yes:
+                    return
+        msg_parts = []
+        if containers_to_reduce:
+            msg_parts.append(f'{len(containers_to_reduce)} container(s) reduced')
+        if containers_to_increase:
+            msg_parts.append(f'{len(containers_to_increase)} container(s) increased')
+        if containers_unchanged:
+            msg_parts.append(f'{len(containers_unchanged)} container(s) unchanged')
+        confirm_msg = t('slotinjector.update_confirmation', count=len(containers), parts=', '.join(msg_parts), new=new_value)
+        reply = QMessageBox.question(self, t('slot.confirm_title'), confirm_msg, QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply != QMessageBox.Yes:
             return
-        for container in containers:
-            container['entry']['value']['SlotNum']['value'] = new_value
-        self.has_changes = True
-        self.pending_new_value = new_value
-        for row, container in enumerate(self.player_containers):
-            new_item = QTableWidgetItem(str(new_value))
-            new_item.setFlags(new_item.flags() & ~Qt.ItemIsEditable)
-            self.table.setItem(row, 6, new_item)
-            current_item = QTableWidgetItem(str(new_value))
-            current_item.setFlags(current_item.flags() & ~Qt.ItemIsEditable)
-            self.table.setItem(row, 4, current_item)
-            used_item = QTableWidgetItem(f"{container['used_slots']}/{new_value}")
-            used_item.setFlags(used_item.flags() & ~Qt.ItemIsEditable)
-            self.table.setItem(row, 5, used_item)
-        for container in self.player_containers:
-            container['slot_num'] = new_value
-            container['max_slots'] = new_value
-        show_information(self, t('success.title'), t('slotinjector.applied_in_memory', count=len(containers), new=new_value))
+        self.set_loading_state(True, 'Updating containers...')
+        def task():
+            for container in containers:
+                old_slot_num = container['slot_num']
+                container['entry']['value']['SlotNum']['value'] = new_value
+                if old_slot_num > new_value:
+                    self._cleanup_excess_slots(container, new_value)
+                container['slot_num'] = new_value
+                container['max_slots'] = new_value
+            return True
+        def on_finished(result):
+            self.has_changes = True
+            self.pending_new_value = new_value
+            for row, container in enumerate(self.player_containers):
+                new_item = QTableWidgetItem(str(new_value))
+                new_item.setFlags(new_item.flags() & ~Qt.ItemIsEditable)
+                self.table.setItem(row, 6, new_item)
+                current_item = QTableWidgetItem(str(new_value))
+                current_item.setFlags(current_item.flags() & ~Qt.ItemIsEditable)
+                self.table.setItem(row, 4, current_item)
+                used_item = QTableWidgetItem(f"{container['used_slots']}/{new_value}")
+                used_item.setFlags(used_item.flags() & ~Qt.ItemIsEditable)
+                self.table.setItem(row, 5, used_item)
+            self.set_loading_state(False)
+            show_information(self, t('success.title'), t('slotinjector.applied_in_memory', count=len(containers), new=new_value))
+        def on_error(error_msg):
+            self.set_loading_state(False)
+            show_critical(self, t('error.title'), f'Failed to update containers: {error_msg}')
+        self.loading_thread = LoadingThread(task, self)
+        self.loading_thread.finished.connect(on_finished)
+        self.loading_thread.error.connect(on_error)
+        self.loading_thread.start()
+    def _cleanup_excess_slots(self, container, new_slot_count):
+        try:
+            removed_slots = []
+            removed_instance_ids = set()
+            slots_data = container['entry']['value']['Slots']['value']
+            slots_values = slots_data.get('values', [])
+            container_id = container['container_id']
+            if len(slots_values) > new_slot_count:
+                removed_slots = slots_values[new_slot_count:]
+                slots_data['values'] = slots_values[:new_slot_count]
+                for slot in removed_slots:
+                    instance_id = slot.get('RawData', {}).get('value', {}).get('instance_id')
+                    if instance_id:
+                        removed_instance_ids.add(str(instance_id))
+                logger.info(f'Removed {len(removed_slots)} excess slots from container {container_id}')
+            container['used_slots'] = min(container['used_slots'], new_slot_count)
+            char_map = self.gvas_file.properties['worldSaveData']['value']['CharacterSaveParameterMap']['value']
+            initial_char_count = len(char_map)
+            removed_pals_count = 0
+            filtered_char_map = []
+            for entry in char_map:
+                try:
+                    instance_id = entry['key']['InstanceId']['value']
+                    if str(instance_id) in removed_instance_ids:
+                        removed_pals_count += 1
+                    else:
+                        filtered_char_map.append(entry)
+                except Exception:
+                    filtered_char_map.append(entry)
+            self.gvas_file.properties['worldSaveData']['value']['CharacterSaveParameterMap']['value'] = filtered_char_map
+            container_map = self.gvas_file.properties['worldSaveData']['value']['CharacterContainerSaveData']['value']
+            valid_container_ids = set()
+            if isinstance(container_map, list):
+                for cont_entry in container_map:
+                    try:
+                        cont_id = cont_entry['key']['ID']['value']
+                        if cont_id:
+                            valid_container_ids.add(str(cont_id).lower())
+                    except Exception:
+                        continue
+            orphaned_pals_count = 0
+            final_char_map = []
+            for entry in filtered_char_map:
+                try:
+                    raw = entry['value']['RawData']['value']['object']['SaveParameter']['value']
+                    slot_id = raw.get('SlotId', {})
+                    if slot_id:
+                        container_id_ref = slot_id.get('value', {}).get('ContainerId', {}).get('value', {}).get('ID', {}).get('value')
+                        if container_id_ref:
+                            container_id_str = str(container_id_ref).lower()
+                            if container_id_str not in valid_container_ids:
+                                orphaned_pals_count += 1
+                                continue
+                    final_char_map.append(entry)
+                except Exception:
+                    final_char_map.append(entry)
+            self.gvas_file.properties['worldSaveData']['value']['CharacterSaveParameterMap']['value'] = final_char_map
+            invalid_slot_count = 0
+            final_char_map_2 = []
+            for entry in final_char_map:
+                try:
+                    raw = entry['value']['RawData']['value']['object']['SaveParameter']['value']
+                    slot_id = raw.get('SlotId', {})
+                    if slot_id:
+                        container_id_ref = slot_id.get('value', {}).get('ContainerId', {}).get('value', {}).get('ID', {}).get('value')
+                        slot_index = slot_id.get('value', {}).get('SlotIndex', {}).get('value')
+                        if container_id_ref and slot_index is not None:
+                            container_id_str = str(container_id_ref).lower()
+                            container_max_slots = None
+                            for cont_entry in container_map:
+                                try:
+                                    cont_id = cont_entry['key']['ID']['value']
+                                    if str(cont_id).lower() == container_id_str:
+                                        container_max_slots = cont_entry['value']['SlotNum']['value']
+                                        break
+                                except Exception:
+                                    continue
+                            if container_max_slots is not None and slot_index >= container_max_slots:
+                                invalid_slot_count += 1
+                                continue
+                    final_char_map_2.append(entry)
+                except Exception:
+                    final_char_map_2.append(entry)
+            self.gvas_file.properties['worldSaveData']['value']['CharacterSaveParameterMap']['value'] = final_char_map_2
+            group_map = self.gvas_file.properties['worldSaveData']['value']['GroupSaveDataMap']['value']
+            removed_handles_count = 0
+            for group in group_map:
+                try:
+                    handle_ids = group['value']['RawData']['value'].get('individual_character_handle_ids', [])
+                    if handle_ids:
+                        filtered_handles = []
+                        for h in handle_ids:
+                            if isinstance(h, dict):
+                                instance_id = h.get('instance_id', '')
+                                if str(instance_id) not in removed_instance_ids:
+                                    filtered_handles.append(h)
+                                else:
+                                    removed_handles_count += 1
+                            else:
+                                filtered_handles.append(h)
+                        group['value']['RawData']['value']['individual_character_handle_ids'] = filtered_handles
+                except Exception as e:
+                    logger.warning(f'Error updating group handle IDs: {e}')
+            total_removed = removed_pals_count + orphaned_pals_count + invalid_slot_count
+            logger.info(f'Successfully updated container {container_id} from {len(slots_values)} to {new_slot_count} slots')
+            logger.info(f'Cleanup results:')
+            logger.info(f'  - Removed {len(removed_slots)} excess slots')
+            logger.info(f'  - Removed {removed_pals_count} pals from removed slots')
+            logger.info(f'  - Removed {orphaned_pals_count} orphaned pals (invalid container references)')
+            logger.info(f'  - Removed {invalid_slot_count} pals with invalid slot indices')
+            logger.info(f'  - Removed {removed_handles_count} handle IDs from GroupSaveDataMap')
+            logger.info(f'  - Total pals removed: {total_removed}')
+            if orphaned_pals_count > 0 or invalid_slot_count > 0:
+                logger.warning(f'Found and cleaned up {orphaned_pals_count + invalid_slot_count} problematic pal references')
+        except Exception as e:
+            logger.error(f'Error during comprehensive slot cleanup: {e}')
+            raise
     def save_changes(self):
         if not hasattr(self, 'gvas_file'):
             show_critical(self, t('error.title'), t('slot.load_first'))
@@ -388,14 +623,22 @@ class SlotNumUpdaterApp(QDialog):
             return
         filepath = self.file_entry.text()
         gvas_file = self.gvas_file
+        self.set_loading_state(True, 'Saving changes...')
         def task():
             backup_whole_directory(os.path.dirname(filepath), 'Backups/Slot Injector')
             gvasfile_to_sav(gvas_file, filepath)
             return True
         def on_finished(result):
+            self.set_loading_state(False)
             show_information(self, t('success.title'), t('slotinjector.saved_success'))
             self.accept()
-        run_with_loading(on_finished, task)
+        def on_error(error_msg):
+            self.set_loading_state(False)
+            show_critical(self, t('error.title'), f'Failed to save changes: {error_msg}')
+        self.loading_thread = LoadingThread(task, self)
+        self.loading_thread.finished.connect(on_finished)
+        self.loading_thread.error.connect(on_error)
+        self.loading_thread.start()
     def closeEvent(self, event):
         if self.has_changes:
             reply = QMessageBox.question(self, t('warning.title'), t('slotinjector.unsaved_changes'), QMessageBox.Yes | QMessageBox.No, QMessageBox.No)

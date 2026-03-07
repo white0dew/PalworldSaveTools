@@ -128,6 +128,14 @@ The **All-in-One Tools** suite provides comprehensive save management:
 
 The start scripts automatically create a virtual environment and install all dependencies.
 
+**Using uv:**
+```bash
+git clone https://github.com/deafdudecomputers/PalworldSaveTools.git
+cd PalworldSaveTools
+uv venv --python 3.12
+uv run start.py
+```
+
 **Windows:**
 ```bash
 git clone https://github.com/deafdudecomputers/PalworldSaveTools.git

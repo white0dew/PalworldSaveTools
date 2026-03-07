@@ -348,7 +348,6 @@
   "base_inventory.refresh_success": "Container refreshed",
   "base_inventory.refreshing": "Refreshing...",
   "base_inventory.remove_count": "Remove Count",
-  "base_inventory.remove_item": "Remove Item",
   "base_inventory.remove_item_confirm": "Remove Item",
   "base_inventory.remove_item_failed": "Failed to remove item",
   "base_inventory.remove_item_success": "Item removed successfully",
@@ -1352,5 +1351,19 @@
   "base.import.search_placeholder": "Search bases...",
   "base.import.search_label": "Search:",
   "base.import.showing_all": "Showing all {count} guilds",
-  "base.import.filtered_status": "Filtered: {filtered}/{total} guilds"
+  "base.import.filtered_status": "Filtered: {filtered}/{total} guilds",
+  "base.radius.input_mode": "Input Mode:",
+  "base.radius.mode.percentage": "Percentage",
+  "base.radius.mode.actual": "Actual Value",
+  "base.radius.input_value": "Enter Value:",
+  "base.radius.apply": "Apply",
+  "slotinjector.description": "Manage player container slot counts and clean up excess slots when reducing capacity",
+  "slotinjector.group_save_data": "Group Save Data",
+  "slotinjector.slot_reduction_warning": "Slot Reduction Warning",
+  "slotinjector.yes": "Yes",
+  "slotinjector.no": "No",
+  "slotinjector.save_file": "Save File",
+  "slotinjector.slot_configuration": "Slot Configuration",
+  "slotinjector.clear": "Clear",
+  "slotinjector.update_confirmation": "Update {count} container(s): {parts} to {new} slots?"
 }
