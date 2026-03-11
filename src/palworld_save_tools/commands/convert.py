@@ -9,6 +9,8 @@ from palworld_save_tools.json_tools import CustomEncoder
 from palworld_save_tools.palsav import compress_gvas_to_sav, decompress_sav_to_gvas
 from palworld_save_tools.paltypes import DISABLED_PROPERTIES, PALWORLD_CUSTOM_PROPERTIES, PALWORLD_TYPE_HINTS
 def main():
+    import loguru
+    loguru.logger.remove()
     parser = argparse.ArgumentParser(prog='palworld-save-tools', description='Converts Palworld save files to and from JSON')
     parser.add_argument('filename')
     parser.add_argument('--to-json', action='store_true', help='Override heuristics and convert SAV file to JSON')
