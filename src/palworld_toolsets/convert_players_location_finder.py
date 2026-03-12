@@ -5,8 +5,8 @@ from PySide6.QtCore import QEventLoop
 from PySide6.QtWidgets import QApplication, QFileDialog
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'palworld_save_tools', 'commands'))
 from convert import main as convert_main
-from concurrent.futures import ProcessPoolExecutor, as_completed
-import multiprocessing
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 def convert_single_file(args):
     src, dst, ext = args
     try:
@@ -63,8 +63,9 @@ def convert_players_location_finder(ext):
     failed_count = 0
     def task():
         nonlocal converted_count, failed_count
-        max_workers = min(len(files_to_convert), multiprocessing.cpu_count())
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        cpu_count = os.cpu_count() or 1
+        max_workers = min(len(files_to_convert), max(8, cpu_count * 4))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(convert_single_file, args) for args in files_to_convert]
             for future in as_completed(futures):
                 src, dst, success, error = future.result()
