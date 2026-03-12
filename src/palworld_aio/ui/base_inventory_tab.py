@@ -17,6 +17,74 @@ from palworld_aio.ui.inventory_tab import InventoryGridWidget, ItemPickerDialog
 from palworld_aio.ui.styled_combo import StyledCombo
 from palworld_aio.utils import format_duration_short
 from i18n import t
+class ContainerSlotModificationDialog(QDialog):
+    def __init__(self, parent=None, current_slots=0, current_items=0):
+        super().__init__(parent)
+        self.current_slots = current_slots
+        self.current_items = current_items
+        self.new_slot_count = current_slots
+        self._setup_ui()
+    def _setup_ui(self):
+        self.setWindowTitle(t('base_inventory.modify_container_slots') if t else 'Modify Container Slots')
+        self.setModal(True)
+        self.setMinimumWidth(350)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(10)
+        status_group = QGroupBox(t('base_inventory.current_status') if t else 'Current Status')
+        status_layout = QVBoxLayout()
+        current_slots_label = QLabel(t('base_inventory.current_slots').format(count=self.current_slots) if t else f'Current Slots: {self.current_slots}')
+        current_slots_label.setStyleSheet('font-weight: bold;')
+        status_layout.addWidget(current_slots_label)
+        current_items_label = QLabel(t('base_inventory.current_items').format(count=self.current_items) if t else f'Current Items: {self.current_items}')
+        current_items_label.setStyleSheet('font-weight: bold;')
+        status_layout.addWidget(current_items_label)
+        status_group.setLayout(status_layout)
+        layout.addWidget(status_group)
+        input_group = QGroupBox(t('base_inventory.new_slot_count') if t else 'New Slot Count')
+        input_layout = QVBoxLayout()
+        self.slot_spinbox = QSpinBox()
+        self.slot_spinbox.setMinimum(1)
+        self.slot_spinbox.setMaximum(999)
+        self.slot_spinbox.setValue(self.current_slots)
+        self.slot_spinbox.valueChanged.connect(self._on_slot_count_changed)
+        input_layout.addWidget(self.slot_spinbox)
+        self.warning_label = QLabel('')
+        self.warning_label.setStyleSheet('color: #ff6b6b; font-weight: bold;')
+        self.warning_label.setVisible(False)
+        input_layout.addWidget(self.warning_label)
+        input_group.setLayout(input_layout)
+        layout.addWidget(input_group)
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        self.ok_button = QPushButton(t('base_inventory.ok') if t else 'OK')
+        self.ok_button.clicked.connect(self._on_ok_clicked)
+        self.ok_button.setEnabled(False)
+        button_layout.addWidget(self.ok_button)
+        cancel_button = QPushButton(t('base_inventory.cancel') if t else 'Cancel')
+        cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_button)
+        layout.addLayout(button_layout)
+        self._update_validation()
+    def _on_slot_count_changed(self, value):
+        self.new_slot_count = value
+        self._update_validation()
+    def _update_validation(self):
+        if self.new_slot_count < self.current_items:
+            self.warning_label.setText(t('base_inventory.warning_cannot_reduce_below_items').format(item_count=self.current_items) if t else f'Warning: Cannot reduce slots below current item count ({self.current_items})')
+            self.warning_label.setVisible(True)
+            self.ok_button.setEnabled(False)
+        elif self.new_slot_count == self.current_slots:
+            self.warning_label.setText(t('base_inventory.no_change_needed') if t else 'No change needed - slot count is the same')
+            self.warning_label.setVisible(True)
+            self.ok_button.setEnabled(False)
+        else:
+            self.warning_label.setVisible(False)
+            self.ok_button.setEnabled(True)
+    def _on_ok_clicked(self):
+        self.accept()
+    def get_slot_count(self):
+        return self.new_slot_count
 class ContainerListWidget(QTreeWidget):
     container_selected = Signal(str)
     def __init__(self, parent=None):
@@ -29,6 +97,8 @@ class ContainerListWidget(QTreeWidget):
         self.setAcceptDrops(False)
         self.setDropIndicatorShown(False)
         self.setSortingEnabled(False)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
         self.itemSelectionChanged.connect(self._on_selection_changed)
     def _update_styles(self):
         self.setStyleSheet('\n                QTreeWidget {\n                    background-color: rgba(20, 25, 35, 0.8);\n                    border: 1px solid rgba(255, 255, 255, 0.1);\n                    border-radius: 6px;\n                    color: #e0e0e0;\n                }\n                QTreeWidget::item {\n                    padding: 8px;\n                    margin: 2px 0;\n                    border-radius: 4px;\n                    background-color: rgba(30, 35, 45, 0.8);\n                }\n                QTreeWidget::item:selected {\n                    background-color: rgba(74, 144, 226, 0.3);\n                    border: 1px solid rgba(74, 144, 226, 0.5);\n                }\n                QTreeWidget::item:hover {\n                    background-color: rgba(50, 55, 65, 0.8);\n                }\n                QTreeWidget::branch {\n                    background-color: transparent;\n                }\n            ')
@@ -89,10 +159,17 @@ class ContainerListWidget(QTreeWidget):
         if item:
             container_id = item.data(0, Qt.UserRole)
             menu = QMenu(self)
-            menu.addAction(t('base_inventory.add_item') if t else 'Add Item', lambda: self._add_item(container_id))
-            menu.addAction(t('base_inventory.clear_container') if t else 'Clear Container', lambda: self._clear_container(container_id))
-            menu.addAction(t('base_inventory.delete_container') if t else 'Delete Container', lambda: self._delete_container(container_id))
+            add_item_action = menu.addAction(t('base_inventory.add_item') if t else 'Add Item')
+            add_item_action.triggered.connect(lambda: self._add_item_debug(container_id))
+            clear_container_action = menu.addAction(t('base_inventory.clear_container') if t else 'Clear Container')
+            clear_container_action.triggered.connect(lambda: self._clear_container_debug(container_id))
+            modify_slots_action = menu.addAction(t('base_inventory.modify_container_slots') if t else 'Modify Container Slots')
+            modify_slots_action.triggered.connect(lambda: self._modify_container_slots_debug(container_id))
+            delete_container_action = menu.addAction(t('base_inventory.delete_container') if t else 'Delete Container')
+            delete_container_action.triggered.connect(lambda: self._delete_container_debug(container_id))
             menu.exec(self.viewport().mapToGlobal(position))
+        else:
+            pass
     def _view_container_details(self, container_id):
         for i in range(self.topLevelItemCount()):
             item = self.topLevelItem(i)
@@ -121,10 +198,8 @@ class ContainerListWidget(QTreeWidget):
         parent = self.parent()
         if hasattr(parent, 'manager'):
             parent.manager.refresh_container(container_id)
-            if hasattr(parent, '_load_containers_for_base'):
-                base_id = parent.base_combo.currentData()
-                if base_id:
-                    parent._load_containers_for_base(base_id)
+            if hasattr(parent, '_refresh_container_ui'):
+                parent._refresh_container_ui()
     def _export_container(self, container_id):
         parent = self.parent()
         if hasattr(parent, 'manager'):
@@ -139,31 +214,88 @@ class ContainerListWidget(QTreeWidget):
                     except Exception as e:
                         parent._show_warning(f'Failed to export container: {str(e)}')
     def _add_item(self, container_id):
-        parent = self.parent()
-        if hasattr(parent, 'manager'):
-            parent.manager.select_container(container_id)
-            parent._add_item()
-            base_id = parent.base_combo.currentData()
-            if base_id:
-                parent._load_containers_for_base(base_id)
+        try:
+            parent = self.parent()
+            base_inventory_tab = None
+            current_widget = parent
+            while current_widget is not None:
+                if hasattr(current_widget, 'manager') and hasattr(current_widget, '_add_item'):
+                    base_inventory_tab = current_widget
+                    break
+                current_widget = current_widget.parent()
+            if base_inventory_tab is None:
+                self._show_warning('Could not find inventory manager')
+                return
+            base_inventory_tab.manager.select_container(container_id)
+            base_inventory_tab._add_item()
+        except Exception as e:
+            self._show_warning(f'Failed to add item: {str(e)}')
     def _delete_container(self, container_id):
-        parent = self.parent()
-        if hasattr(parent, 'manager'):
-            parent.manager.select_container(container_id)
-            parent._delete_container(container_id)
-            base_id = parent.base_combo.currentData()
-            if base_id:
-                parent._load_containers_for_base(base_id)
+        try:
+            parent = self.parent()
+            base_inventory_tab = None
+            current_widget = parent
+            while current_widget is not None:
+                if hasattr(current_widget, 'manager') and hasattr(current_widget, '_delete_container'):
+                    base_inventory_tab = current_widget
+                    break
+                current_widget = current_widget.parent()
+            if base_inventory_tab is None:
+                self._show_warning('Could not find inventory manager')
+                return
+            base_inventory_tab.manager.select_container(container_id)
+            base_inventory_tab._delete_container(container_id)
+        except Exception as e:
+            self._show_warning(f'Failed to delete container: {str(e)}')
     def _clear_container(self, container_id):
-        parent = self.parent()
-        if hasattr(parent, 'manager'):
+        try:
+            parent = self.parent()
+            base_inventory_tab = None
+            current_widget = parent
+            while current_widget is not None:
+                if hasattr(current_widget, 'manager') and hasattr(current_widget, '_clear_container'):
+                    base_inventory_tab = current_widget
+                    break
+                current_widget = current_widget.parent()
+            if base_inventory_tab is None:
+                self._show_warning('Could not find inventory manager')
+                return
             reply = QMessageBox.question(self, t('base_inventory.clear_container') if t else 'Clear Container', t('base_inventory.clear_container_confirm') if t else 'Are you sure you want to clear all items from this container?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if reply == QMessageBox.Yes:
-                if parent.manager.clear_container(container_id):
-                    parent._show_info(t('base_inventory.container_cleared') if t else 'Container cleared successfully')
-                    self._refresh_container(container_id)
+                if base_inventory_tab.manager.clear_container(container_id):
+                    base_inventory_tab.manager.select_container(container_id)
+                    base_inventory_tab._refresh_container_ui()
+                    base_inventory_tab._show_info(t('base_inventory.container_cleared') if t else 'Container cleared successfully')
                 else:
-                    parent._show_warning(t('base_inventory.failed_to_clear_container') if t else 'Failed to clear container')
+                    base_inventory_tab._show_warning(t('base_inventory.failed_to_clear_container') if t else 'Failed to clear container')
+        except Exception as e:
+            self._show_warning(f'Failed to clear container: {str(e)}')
+    def _modify_container_slots(self, container_id):
+        try:
+            parent = self.parent()
+            base_inventory_tab = None
+            current_widget = parent
+            while current_widget is not None:
+                if hasattr(current_widget, 'manager') and hasattr(current_widget, '_modify_container_slots'):
+                    base_inventory_tab = current_widget
+                    break
+                current_widget = current_widget.parent()
+            if base_inventory_tab is None:
+                self._show_warning('Could not find inventory manager')
+                return
+            base_inventory_tab.manager.select_container(container_id)
+            base_inventory_tab._modify_container_slots()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+    def _add_item_debug(self, container_id):
+        self._add_item(container_id)
+    def _clear_container_debug(self, container_id):
+        self._clear_container(container_id)
+    def _modify_container_slots_debug(self, container_id):
+        self._modify_container_slots(container_id)
+    def _delete_container_debug(self, container_id):
+        self._delete_container(container_id)
 class ContainerInfoWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -237,6 +369,18 @@ class BaseInventoryTab(QWidget):
         self._auto_save_timer.setSingleShot(True)
         self._auto_save_timer.setInterval(2000)
         self._auto_save_timer.timeout.connect(self._auto_save_changes)
+    def _restore_container_selection(self, previous_container_id=None):
+        if not previous_container_id:
+            if self.container_list.topLevelItemCount() > 0:
+                self.container_list.setCurrentItem(self.container_list.topLevelItem(0))
+            return
+        for i in range(self.container_list.topLevelItemCount()):
+            item = self.container_list.topLevelItem(i)
+            if item.data(0, Qt.UserRole) == previous_container_id:
+                self.container_list.setCurrentItem(item)
+                return
+        if self.container_list.topLevelItemCount() > 0:
+            self.container_list.setCurrentItem(self.container_list.topLevelItem(0))
     def refresh_labels(self):
         if hasattr(self, 'guild_label'):
             self.guild_label.setText(t('base_inventory.select_guild') if t else 'Select Guild:')
@@ -257,6 +401,16 @@ class BaseInventoryTab(QWidget):
             pass
         if hasattr(self, 'inventory_grid'):
             self.inventory_grid.refresh_labels()
+        current_base_index = self.base_combo.currentIndex()
+        current_container_id = None
+        if self.manager.current_container:
+            current_container_id = self.manager.current_container.get('id')
+        if current_base_index >= 0:
+            base_id = self.base_combo.itemData(current_base_index)
+            if base_id:
+                self._load_containers_for_base(base_id)
+                self._restore_container_selection(current_container_id)
+        self._update_container_stats()
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -555,11 +709,8 @@ class BaseInventoryTab(QWidget):
             container_id = self.manager.current_container['id'] if self.manager.current_container else None
             if container_id:
                 if self.manager.clear_container(container_id):
-                    inventory_container = self.manager.select_container(container_id)
-                    if inventory_container:
-                        items = inventory_container.get_items()
-                        max_slots = inventory_container.get_max_slots()
-                        self.inventory_grid.load_items(items, max_slots=max_slots)
+                    self.manager.select_container(container_id)
+                    self._refresh_container_ui()
                     self._update_container_stats()
                     self._show_info(t('base_inventory.container_cleared') if t else 'Container cleared successfully')
                 else:
@@ -574,13 +725,14 @@ class BaseInventoryTab(QWidget):
         if is_guild_chest:
             self._show_warning('Cannot delete Guild Chest')
             return
-        reply = QMessageBox.question(self, t('base_inventory.clear_container') if t else 'Delete Container', t('base_inventory.delete_container_confirm') if t else 'Are you sure you want to delete this container and its map object? This action cannot be undone.', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        reply = QMessageBox.question(self, t('base_inventory.delete_container') if t else 'Delete Container', t('base_inventory.delete_container_confirm') if t else 'Are you sure you want to delete this container and its map object? This action cannot be undone.', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
             if self.manager.delete_container(container_id):
-                self._show_info(t('base_inventory.container_cleared') if t else 'Container deleted successfully')
                 base_id = container_info.get('base_id')
                 if base_id:
                     self._load_containers_for_base(base_id)
+                    self._restore_container_selection()
+                self._show_info(t('base_inventory.container_deleted') if t else 'Container deleted successfully')
             else:
                 self._show_warning(t('base_inventory.failed_to_clear_container') if t else 'Failed to delete container')
     def _save_changes(self):
@@ -816,3 +968,35 @@ class BaseInventoryTab(QWidget):
         self.item_button.setText(t('base_inventory.all_items') if t else 'All Items')
         self.clear_item_button.setVisible(False)
         self._reset_filters()
+    def _modify_container_slots(self):
+        if not self.manager.inventory_container:
+            self._show_warning(t('base_inventory.select_container_first') if t else 'Please select a container first')
+            return
+        container_info = self.manager.current_container
+        if not container_info:
+            self._show_warning(t('base_inventory.select_container_first') if t else 'Please select a container first')
+            return
+        container_id = container_info['id']
+        from palworld_aio import constants
+        constants.invalidate_container_lookup()
+        self.manager.select_container(container_id)
+        container_info = self.manager.current_container
+        if not container_info:
+            self._show_warning(t('base_inventory.select_container_first') if t else 'Please select a container first')
+            return
+        current_slots = container_info['slot_count']
+        current_items = self.manager.get_items_count()
+        dialog = ContainerSlotModificationDialog(self, current_slots, current_items)
+        if dialog.exec() == QDialog.Accepted:
+            new_slot_count = dialog.get_slot_count()
+            if new_slot_count != current_slots:
+                if self.manager.expand_container_capacity(container_info['id'], new_slot_count):
+                    current_container_id = container_info['id']
+                    base_id = self.base_combo.currentData()
+                    if base_id:
+                        self._load_containers_for_base(base_id)
+                        self._restore_container_selection(current_container_id)
+                    self._trigger_auto_save()
+                    self._show_info(t('base_inventory.container_slots_modified').format(new_count=new_slot_count) if t else f'Container slots modified to {new_slot_count}')
+                else:
+                    self._show_warning(t('base_inventory.failed_to_modify_slots') if t else 'Failed to modify container slots')

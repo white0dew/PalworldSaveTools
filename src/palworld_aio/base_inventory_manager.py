@@ -148,6 +148,7 @@ def update_container_contents(container_id, items):
         return False
     container_id_str = str(container_id)
     container_id_low = container_id_str.replace('-', '').lower()
+    constants.invalidate_container_lookup()
     lookup = constants.get_container_lookup()
     cont = lookup.get(container_id_low)
     if cont:
@@ -392,6 +393,7 @@ class BaseInventoryManager:
         export_data = {'container_info': container_info, 'items': inventory_container.get_items(), 'exported_at': self._get_current_timestamp()}
         return export_data
     def clear_container(self, container_id):
+        constants.invalidate_container_lookup()
         inventory_container = self.select_container(container_id)
         if not inventory_container:
             return False
@@ -401,7 +403,13 @@ class BaseInventoryManager:
             if slot_index is not None:
                 self.inventory_container._standardized_container.remove_item(slot_index)
         raw_slots = self.inventory_container._standardized_container.get_raw_slots()
-        success = update_container_contents(container_id, raw_slots)
+        constants.invalidate_container_lookup()
+        lookup = constants.get_container_lookup()
+        container_id_low = str(container_id).replace('-', '').lower()
+        cont = lookup.get(container_id_low)
+        if cont:
+            cont['value']['Slots']['value']['values'] = []
+        success = True
         if success:
             self.select_container(container_id)
             self.invalidate_cache()
@@ -420,23 +428,7 @@ class BaseInventoryManager:
         containers_item = wsd.get('ItemContainerSaveData', {}).get('value', [])
         if not is_guild_chest:
             container_base_id = container_info.get('base_id', '')
-            for i, obj in enumerate(map_objs):
-                try:
-                    mr = obj.get('Model', {}).get('value', {}).get('RawData', {}).get('value', {})
-                    if container_base_id and str(mr.get('base_camp_id_belong_to', '')).replace('-', '').lower() != str(container_base_id).replace('-', '').lower():
-                        continue
-                    mm = obj.get('ConcreteModel', {}).get('value', {}).get('ModuleMap', {}).get('value', [])
-                    for module in mm:
-                        if module.get('key') != 'EPalMapObjectConcreteModelModuleType::ItemContainer':
-                            continue
-                        module_raw = module.get('value', {}).get('RawData', {}).get('value', {})
-                        cont_id = module_raw.get('target_container_id', '')
-                        if str(cont_id).replace('-', '').lower() == container_id_low:
-                            map_objs.pop(i)
-                            break
-                    break
-                except:
-                    continue
+            map_objs[:] = [obj for obj in map_objs if not self._is_container_map_object(obj, container_id_low, container_base_id)]
         containers_item[:] = [c for c in containers_item if str(c.get('key', {}).get('ID', {}).get('value', '')).replace('-', '').lower() != container_id_low]
         from .utils import are_equal_uuids
         dynamic_items = wsd.get('DynamicItemSaveData', {}).get('value', {}).get('values', [])
@@ -445,6 +437,21 @@ class BaseInventoryManager:
         self.invalidate_cache()
         self.containers = [c for c in self.containers if c['id'] != container_id]
         return True
+    def _is_container_map_object(self, map_obj, container_id_low, container_base_id):
+        try:
+            mr = map_obj.get('Model', {}).get('value', {}).get('RawData', {}).get('value', {})
+            if container_base_id and str(mr.get('base_camp_id_belong_to', '')).replace('-', '').lower() != str(container_base_id).replace('-', '').lower():
+                return False
+            mm = map_obj.get('ConcreteModel', {}).get('value', {}).get('ModuleMap', {}).get('value', [])
+            for module in mm:
+                if module.get('key') == 'EPalMapObjectConcreteModelModuleType::ItemContainer':
+                    module_raw = module.get('value', {}).get('RawData', {}).get('value', {})
+                    cont_id = module_raw.get('target_container_id', '')
+                    if str(cont_id).replace('-', '').lower() == container_id_low:
+                        return True
+            return False
+        except:
+            return False
     def update_container_contents(self, container_id, items):
         return update_container_contents(container_id, items)
     def update_item_count(self, slot_index, count):
@@ -561,17 +568,38 @@ class BaseInventoryManager:
             return False
         container_id_str = str(container_id)
         container_id_low = container_id_str.replace('-', '').lower()
+        constants.invalidate_container_lookup()
         lookup = constants.get_container_lookup()
         cont = lookup.get(container_id_low)
         if cont:
             try:
+                current_items = self.get_items_count()
+                if new_slot_count < current_items:
+                    return False
                 cont['value']['SlotNum']['value'] = new_slot_count
                 if self.current_container and self.current_container['id'] == container_id:
                     self.current_container['slot_count'] = new_slot_count
                 return True
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                return False
+        return False
+    def _get_container_item_count(self, container_id):
+        if not constants.loaded_level_json:
+            return 0
+        container_id_str = str(container_id)
+        container_id_low = container_id_str.replace('-', '').lower()
+        constants.invalidate_container_lookup()
+        lookup = constants.get_container_lookup()
+        cont = lookup.get(container_id_low)
+        if cont:
+            try:
+                slots = cont['value'].get('Slots', {}).get('value', {}).get('values', [])
+                return len([s for s in slots if s.get('RawData', {}).get('value', {})])
             except:
                 pass
-        return False
+        return 0
     def _generate_dynamic_item_uuids(self):
         return {'created_world_id': str(uuid.uuid4()), 'local_id_in_created_world': str(uuid.uuid4())}
     def _update_container_contents_from_inventory(self):
