@@ -154,27 +154,6 @@ def update_container_contents(container_id, items):
     if cont:
         try:
             cont['value']['Slots']['value']['values'] = items
-            item_ids = []
-            for item in items:
-                item_id = None
-                raw_data = item.get('RawData', {})
-                if raw_data.get('type') == 'Array':
-                    values = raw_data.get('value', {}).get('values', {})
-                    item_info = values.get('item', {})
-                    item_id = item_info.get('static_id')
-                elif raw_data.get('type') == 'ArrayProperty':
-                    item_info = raw_data.get('value', {}).get('item', {})
-                    item_id = item_info.get('static_id')
-                elif 'item' in raw_data.get('value', {}):
-                    item_info = raw_data.get('value', {}).get('item', {})
-                    item_id = item_info.get('static_id')
-                if item_id and item_id not in item_ids:
-                    item_ids.append(item_id)
-            if 'RawData' in cont['value']:
-                raw_data = cont['value']['RawData'].get('value', {})
-                if 'permission' not in raw_data:
-                    raw_data['permission'] = {'item_static_ids': [], 'type_a': [], 'type_b': []}
-                raw_data['permission']['item_static_ids'] = item_ids
             return True
         except Exception as e:
             pass
@@ -576,6 +555,20 @@ class BaseInventoryManager:
                 current_items = self.get_items_count()
                 if new_slot_count < current_items:
                     return False
+                slots = cont['value'].get('Slots', {}).get('value', {}).get('values', [])
+                current_slot_count = len(slots)
+                if new_slot_count > current_slot_count:
+                    if slots:
+                        import copy
+                        template = copy.deepcopy(slots[0])
+                        template['RawData']['value']['item']['static_id'] = ''
+                        template['RawData']['value']['item']['dynamic_id']['created_world_id'] = '00000000-0000-0000-0000-000000000000'
+                        template['RawData']['value']['item']['dynamic_id']['local_id'] = '00000000-0000-0000-0000-000000000000'
+                        template['RawData']['value']['count'] = 0
+                        while len(slots) < new_slot_count:
+                            slots.append(copy.deepcopy(template))
+                    else:
+                        pass
                 cont['value']['SlotNum']['value'] = new_slot_count
                 if self.current_container and self.current_container['id'] == container_id:
                     self.current_container['slot_count'] = new_slot_count
