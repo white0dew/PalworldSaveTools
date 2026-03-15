@@ -1079,8 +1079,8 @@ class BaseInventoryTab(QWidget):
                 self.clear_item_button.setVisible(True)
                 self._filter_guilds_and_bases_by_item()
         elif action == 'economy':
-            from palworld_aio.func_manager import get_item_economy_stats
-            stats = get_item_economy_stats(item_id, self)
+            from palworld_aio.base_inventory_manager import get_item_economy_stats
+            stats = get_item_economy_stats(item_id)
             if stats:
                 dialog = EconomyStatsDialog(stats, item_name, self)
                 dialog.exec()
@@ -1088,8 +1088,8 @@ class BaseInventoryTab(QWidget):
                 self._show_warning(t('base_inventory.economy_failed') if t else 'Failed to get economy stats')
         elif action.startswith('remove_pct:'):
             percentage = int(action.split(':')[1])
-            from palworld_aio.func_manager import remove_item_from_guilds
-            result = remove_item_from_guilds(item_id, percentage, self)
+            from palworld_aio.base_inventory_manager import remove_item_from_guilds
+            result = remove_item_from_guilds(item_id, percentage)
             if result and result.get('removed', 0) > 0:
                 msg = t('base_inventory.removed_items').format(count=result.get('removed', 0)) if t else f"Removed {result.get('removed', 0)} items"
                 self._show_info(msg)
@@ -1097,8 +1097,8 @@ class BaseInventoryTab(QWidget):
             else:
                 self._show_warning(t('base_inventory.no_items_removed') if t else 'No items found to remove')
         elif action == 'remove_all':
-            from palworld_aio.func_manager import remove_item_from_guilds
-            result = remove_item_from_guilds(item_id, None, self)
+            from palworld_aio.base_inventory_manager import remove_item_from_guilds
+            result = remove_item_from_guilds(item_id, None)
             if result and result.get('removed', 0) > 0:
                 msg = t('base_inventory.removed_items').format(count=result.get('removed', 0)) if t else f"Removed {result.get('removed', 0)} items"
                 self._show_info(msg)
