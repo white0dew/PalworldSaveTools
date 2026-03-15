@@ -851,6 +851,7 @@ def find_item_locations_efficient(item_id):
                         container_to_base[str(container_id).replace('-', '').lower()] = base_camp_id_str
                     break
         guild_extra_map = wsd.get('GuildExtraSaveDataMap', {}).get('value', [])
+        container_to_guild = {}
         for guild_entry in guild_extra_map:
             try:
                 guild_key = str(guild_entry.get('key', '')).replace('-', '').lower()
@@ -859,26 +860,28 @@ def find_item_locations_efficient(item_id):
                 container_id = raw_data.get('container_id')
                 if container_id:
                     container_id_str = str(container_id).replace('-', '').lower()
-                    for base_id, guild_info in base_guild_lookup.items():
-                        if str(base_id).replace('-', '').lower() == guild_key:
-                            container_to_base[container_id_str] = str(base_id).replace('-', '').lower()
-                            break
+                    container_to_guild[container_id_str] = guild_key
             except:
                 continue
         for container_id_low, container_data in container_lookup.items():
             try:
+                guild_id = None
                 base_id = container_to_base.get(container_id_low)
-                if not base_id:
+                if base_id:
+                    base_id_normalized = base_id.replace('-', '').lower()
+                    guild_info = base_guild_lookup.get(base_id_normalized)
+                    if not guild_info:
+                        for lookup_key, lookup_val in base_guild_lookup.items():
+                            if lookup_key.replace('-', '').lower() == base_id_normalized:
+                                guild_info = lookup_val
+                                break
+                    if guild_info:
+                        guild_id = guild_info.get('GuildID', '')
+                else:
+                    guild_id = container_to_guild.get(container_id_low)
+                if not guild_id:
                     continue
-                base_id_normalized = base_id.replace('-', '').lower()
-                guild_info = base_guild_lookup.get(base_id_normalized)
-                if not guild_info:
-                    for lookup_key, lookup_val in base_guild_lookup.items():
-                        if lookup_key.replace('-', '').lower() == base_id_normalized:
-                            guild_info = lookup_val
-                            break
-                guild_id = guild_info.get('GuildID', '') if guild_info else ''
-                guild_id_normalized = guild_id.replace('-', '').lower() if guild_id else ''
+                guild_id_normalized = str(guild_id).replace('-', '').lower() if guild_id else ''
                 if not guild_id_normalized:
                     continue
                 slots = container_data.get('value', {}).get('Slots', {}).get('value', {}).get('values', [])
@@ -901,7 +904,7 @@ def find_item_locations_efficient(item_id):
                     except:
                         continue
                 if found:
-                    base_id_normalized = base_id.replace('-', '').lower()
+                    base_id_normalized = base_id.replace('-', '').lower() if base_id else container_id_low
                     if guild_id_normalized not in item_locations:
                         item_locations[guild_id_normalized] = {}
                     if base_id_normalized not in item_locations[guild_id_normalized]:

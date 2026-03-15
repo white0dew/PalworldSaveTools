@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import time
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QTreeWidget, QTreeWidgetItem, QSplitter, QFrame, QScrollArea, QGridLayout, QGroupBox, QMenu, QHeaderView, QMessageBox, QFileDialog, QInputDialog, QDialog, QCheckBox, QSpinBox, QDoubleSpinBox, QSizePolicy, QAbstractItemView, QSpacerItem, QTabWidget, QTabBar, QStyleOptionTab, QStyle, QApplication, QStyledItemDelegate, QListWidget, QListWidgetItem
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QTreeWidget, QTreeWidgetItem, QSplitter, QFrame, QScrollArea, QGridLayout, QGroupBox, QMenu, QHeaderView, QMessageBox, QFileDialog, QInputDialog, QDialog, QCheckBox, QSpinBox, QDoubleSpinBox, QSizePolicy, QAbstractItemView, QSpacerItem, QTabWidget, QTabBar, QStyleOptionTab, QStyle, QApplication, QStyledItemDelegate, QListWidget, QListWidgetItem, QLineEdit, QListView
 from PySide6.QtCore import Qt, Signal, QTimer, QPropertyAnimation, QEasingCurve, QSize, QPoint, QRect, QEvent, QMargins
 from PySide6.QtGui import QPixmap, QIcon, QFont, QAction, QCursor, QPainter, QColor, QBrush, QPen, QLinearGradient, QPalette, QMouseEvent, QWheelEvent, QResizeEvent, QPaintEvent, QContextMenuEvent, QDragEnterEvent, QDragMoveEvent, QDropEvent, QDrag
 from PySide6.QtCore import QMimeData
@@ -17,6 +17,163 @@ from palworld_aio.ui.inventory_tab import InventoryGridWidget, ItemPickerDialog
 from palworld_aio.ui.styled_combo import StyledCombo
 from palworld_aio.utils import format_duration_short
 from i18n import t
+from palworld_aio.inventory_manager import ItemData
+class GuildItemPickerDialog(QDialog):
+    item_action_selected = Signal(str, str)
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(t('base_inventory.select_item_action') if t else 'Item Actions')
+        self.setMinimumSize(600, 500)
+        self.selected_item_id = None
+        self.selected_item_name = None
+        self._setup_ui()
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(10)
+        search_layout = QHBoxLayout()
+        search_label = QLabel(t('common.search') if t else 'Search:')
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText(t('base_inventory.search_items') if t else 'Type to search items...')
+        self.search_input.textChanged.connect(self._search)
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(self.search_input)
+        layout.addLayout(search_layout)
+        self.results_list = QListWidget()
+        self.results_list.setViewMode(QListView.IconMode)
+        self.results_list.setIconSize(QSize(40, 40))
+        self.results_list.setSpacing(4)
+        self.results_list.setResizeMode(QListWidget.Adjust)
+        self.results_list.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.results_list.setDragEnabled(False)
+        self.results_list.viewport().setAcceptDrops(False)
+        self.results_list.itemClicked.connect(self._on_item_clicked)
+        layout.addWidget(self.results_list)
+        self.info_label = QLabel(t('base_inventory.select_item') if t else 'Select an item to perform actions')
+        self.info_label.setStyleSheet('color: #888; font-style: italic; padding: 5px;')
+        layout.addWidget(self.info_label)
+        actions_group = QGroupBox(t('base_inventory.actions') if t else 'Actions')
+        actions_layout = QGridLayout()
+        self.find_btn = QPushButton(t('base_inventory.find_containers') if t else 'Find Containers')
+        self.find_btn.clicked.connect(self._on_find_containers)
+        self.find_btn.setEnabled(False)
+        self.economy_btn = QPushButton(t('base_inventory.economy_stats') if t else 'Economy Stats')
+        self.economy_btn.clicked.connect(self._on_economy_stats)
+        self.economy_btn.setEnabled(False)
+        self.remove_pct_btn = QPushButton(t('base_inventory.remove_pct') if t else 'Remove %')
+        self.remove_pct_btn.clicked.connect(self._on_remove_pct)
+        self.remove_pct_btn.setEnabled(False)
+        self.remove_all_btn = QPushButton(t('base_inventory.remove_all') if t else 'Remove All')
+        self.remove_all_btn.clicked.connect(self._on_remove_all)
+        self.remove_all_btn.setEnabled(False)
+        actions_layout.addWidget(self.find_btn, 0, 0)
+        actions_layout.addWidget(self.economy_btn, 0, 1)
+        actions_layout.addWidget(self.remove_pct_btn, 1, 0)
+        actions_layout.addWidget(self.remove_all_btn, 1, 1)
+        actions_group.setLayout(actions_layout)
+        layout.addWidget(actions_group)
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        close_btn = QPushButton(t('button.close') if t else 'Close')
+        close_btn.clicked.connect(self.accept)
+        btn_layout.addWidget(close_btn)
+        layout.addLayout(btn_layout)
+        self._load_all_items()
+    def _load_all_items(self):
+        items = ItemData.get_all_items()
+        self._display_items(items)
+    def _search(self, query: str):
+        if not query:
+            self._load_all_items()
+            return
+        try:
+            from palworld_aio.inventory_manager import search_items
+            results = search_items(query, limit=500)
+            self._display_items(results)
+        except:
+            self._load_all_items()
+    def _display_items(self, items: list):
+        self.results_list.clear()
+        for item in items:
+            list_item = QListWidgetItem(item.get('name', 'Unknown'))
+            list_item.setData(Qt.UserRole, item.get('asset', ''))
+            list_item.setData(Qt.UserRole + 1, item.get('name', 'Unknown'))
+            icon_path = item.get('icon', '')
+            if icon_path:
+                pixmap = ItemData.get_item_icon(icon_path, QSize(40, 40))
+                if not pixmap.isNull():
+                    list_item.setIcon(QIcon(pixmap))
+            self.results_list.addItem(list_item)
+    def _on_item_clicked(self, item: QListWidgetItem):
+        self.selected_item_id = item.data(Qt.UserRole)
+        self.selected_item_name = item.data(Qt.UserRole + 1)
+        self.info_label.setText(f'{self.selected_item_name}: {self.selected_item_id}')
+        self.info_label.setStyleSheet('color: #4a9; padding: 5px;')
+        self.find_btn.setEnabled(True)
+        self.economy_btn.setEnabled(True)
+        self.remove_pct_btn.setEnabled(True)
+        self.remove_all_btn.setEnabled(True)
+    def _on_find_containers(self):
+        if self.selected_item_id:
+            self.item_action_selected.emit(self.selected_item_id, 'find')
+            self.accept()
+    def _on_economy_stats(self):
+        if self.selected_item_id:
+            self.item_action_selected.emit(self.selected_item_id, 'economy')
+    def _on_remove_pct(self):
+        if self.selected_item_id:
+            pct, ok = QInputDialog.getInt(self, t('base_inventory.remove_percentage') if t else 'Remove Percentage', t('base_inventory.enter_percentage') if t else 'Enter percentage to remove (1-100):', 50, 1, 100, 10)
+            if ok:
+                self.item_action_selected.emit(self.selected_item_id, f'remove_pct:{pct}')
+                self.accept()
+    def _on_remove_all(self):
+        if self.selected_item_id:
+            reply = QMessageBox.question(self, t('base_inventory.confirm_remove_all') if t else 'Confirm Remove All', t('base_inventory.confirm_remove_all_msg') if t else f'Remove all "{self.selected_item_name}" from all guilds?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                self.item_action_selected.emit(self.selected_item_id, 'remove_all')
+                self.accept()
+class EconomyStatsDialog(QDialog):
+    def __init__(self, stats, item_name=None, parent=None):
+        super().__init__(parent)
+        self.stats = stats
+        self.item_name = item_name or stats.get('item_id', 'Unknown')
+        title = t('base_inventory.economy_title').format(item_name=self.item_name) if t else f'Economy Stats: {self.item_name}'
+        self.setWindowTitle(title)
+        self.setMinimumSize(500, 400)
+        self._setup_ui()
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        display_name = self.item_name
+        header_text = t('base_inventory.economy_for').format(item_name=display_name) if t else f'Economy Stats for {display_name}'
+        header = QLabel(header_text)
+        header.setStyleSheet('font-size: 14px; font-weight: bold; padding: 10px;')
+        layout.addWidget(header)
+        summary_group = QGroupBox(t('base_inventory.summary') if t else 'Summary')
+        summary_layout = QVBoxLayout()
+        total = self.stats.get('total_count', 0)
+        guilds = self.stats.get('guilds_with_item', 0)
+        avg = self.stats.get('avg_per_guild', 0)
+        summary_layout.addWidget(QLabel(f"<b>{(t('base_inventory.total') if t else 'Total')}:</b> {total}"))
+        summary_layout.addWidget(QLabel(f"<b>{(t('base_inventory.guilds_with_item') if t else 'Guilds with item')}:</b> {guilds}"))
+        summary_layout.addWidget(QLabel(f"<b>{(t('base_inventory.avg_per_guild') if t else 'Average per guild')}:</b> {avg:.1f}"))
+        summary_group.setLayout(summary_layout)
+        layout.addWidget(summary_group)
+        details_group = QGroupBox(t('base_inventory.per_guild') if t else 'Per Guild Breakdown')
+        details_layout = QVBoxLayout()
+        guild_details = self.stats.get('guild_details', [])
+        guild_list = QListWidget()
+        for gd in guild_details:
+            guild_list.addItem(f"{gd.get('guild_name', 'Unknown')}: {gd.get('count', 0)}")
+        if not guild_details:
+            guild_list.addItem(t('base_inventory.no_guilds') if t else 'No guilds found with this item')
+        details_layout.addWidget(guild_list)
+        details_group.setLayout(details_layout)
+        layout.addWidget(details_group)
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        close_btn = QPushButton(t('button.close') if t else 'Close')
+        close_btn.clicked.connect(self.accept)
+        btn_layout.addWidget(close_btn)
+        layout.addLayout(btn_layout)
 class ContainerSlotModificationDialog(QDialog):
     def __init__(self, parent=None, current_slots=0, current_items=0):
         super().__init__(parent)
@@ -800,9 +957,9 @@ class BaseInventoryTab(QWidget):
             self.clear_item_button.setVisible(False)
     def _get_all_items(self):
         try:
-            from palworld_aio import constants
-            if hasattr(constants, 'item_data') and constants.item_data:
-                return {item_id: item_data.get('name', item_id) for item_id, item_data in constants.item_data.items()}
+            from palworld_aio.inventory_manager import ItemData
+            all_items_list = ItemData.get_all_items()
+            return {item.get('asset', ''): item.get('name', item.get('asset', '')) for item in all_items_list if item.get('asset')}
         except:
             pass
         all_items = {}
@@ -909,50 +1066,53 @@ class BaseInventoryTab(QWidget):
         except Exception as e:
             self._show_warning(f'Auto-save error: {str(e)}')
     def _show_item_picker(self):
-        dialog = ItemPickerDialog(self)
-        dialog.item_selected.connect(self._on_item_selected_from_picker)
+        dialog = GuildItemPickerDialog(self)
+        dialog.item_action_selected.connect(self._on_item_action_selected)
         dialog.exec()
-    def _on_item_selected_from_picker(self, item_id: str, qty: int):
-        if item_id:
-            item_name = self._get_item_name(item_id)
+    def _on_item_action_selected(self, item_id: str, action: str):
+        item_name = self._get_item_name(item_id)
+        if action == 'find':
             if item_name:
                 self.selected_item_id = item_id
                 self.selected_item_name = item_name
                 self.item_button.setText(item_name)
                 self.clear_item_button.setVisible(True)
                 self._filter_guilds_and_bases_by_item()
+        elif action == 'economy':
+            from palworld_aio.func_manager import get_item_economy_stats
+            stats = get_item_economy_stats(item_id, self)
+            if stats:
+                dialog = EconomyStatsDialog(stats, item_name, self)
+                dialog.exec()
             else:
-                self._show_warning(t('base_inventory.item_not_found') if t else f'Could not find item name for ID: {item_id}')
+                self._show_warning(t('base_inventory.economy_failed') if t else 'Failed to get economy stats')
+        elif action.startswith('remove_pct:'):
+            percentage = int(action.split(':')[1])
+            from palworld_aio.func_manager import remove_item_from_guilds
+            result = remove_item_from_guilds(item_id, percentage, self)
+            if result and result.get('removed', 0) > 0:
+                msg = t('base_inventory.removed_items').format(count=result.get('removed', 0)) if t else f"Removed {result.get('removed', 0)} items"
+                self._show_info(msg)
+                self._trigger_auto_save()
+            else:
+                self._show_warning(t('base_inventory.no_items_removed') if t else 'No items found to remove')
+        elif action == 'remove_all':
+            from palworld_aio.func_manager import remove_item_from_guilds
+            result = remove_item_from_guilds(item_id, None, self)
+            if result and result.get('removed', 0) > 0:
+                msg = t('base_inventory.removed_items').format(count=result.get('removed', 0)) if t else f"Removed {result.get('removed', 0)} items"
+                self._show_info(msg)
+                self._trigger_auto_save()
+            else:
+                self._show_warning(t('base_inventory.no_items_removed') if t else 'No items found to remove')
     def _get_item_name(self, item_id: str) -> str:
         if not item_id:
             return item_id
         try:
-            from palworld_aio import constants
-            if hasattr(constants, 'item_data') and constants.item_data:
-                item_data = constants.item_data.get(item_id, {})
-                if item_data and item_data.get('name'):
-                    return item_data['name']
-        except:
-            pass
-        try:
-            all_guilds = self.manager.load_guilds()
-            if all_guilds:
-                for guild in all_guilds:
-                    guild_id = guild['id']
-                    bases = self.manager.load_bases_for_guild(guild_id)
-                    for base in bases:
-                        base_id = base['id']
-                        containers = self.manager.load_containers_for_base(base_id)
-                        for container in containers:
-                            container_id = container['id']
-                            inventory_container = self.manager.select_container(container_id)
-                            if inventory_container:
-                                items = inventory_container.get_items()
-                                for item in items:
-                                    if item.get('item_id') == item_id:
-                                        item_name = item.get('item_name')
-                                        if item_name and item_name != item_id:
-                                            return item_name
+            from palworld_aio.inventory_manager import ItemData
+            item_data = ItemData.get_item_by_asset(item_id)
+            if item_data and item_data.get('name'):
+                return item_data['name']
         except:
             pass
         try:
