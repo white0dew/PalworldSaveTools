@@ -19,13 +19,15 @@ from palworld_aio.utils import format_duration_short
 from i18n import t
 from palworld_aio.inventory_manager import ItemData
 class GuildItemPickerDialog(QDialog):
-    item_action_selected = Signal(str, str)
+    item_action_selected = Signal(str, str, list)
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(t('base_inventory.select_item_action') if t else 'Item Actions')
-        self.setMinimumSize(600, 500)
+        self.setMinimumSize(800, 650)
         self.selected_item_id = None
         self.selected_item_name = None
+        self.guild_locations = {}
+        self.guild_item_counts = {}
         self._setup_ui()
     def _setup_ui(self):
         layout = QVBoxLayout(self)
@@ -51,27 +53,63 @@ class GuildItemPickerDialog(QDialog):
         self.info_label = QLabel(t('base_inventory.select_item') if t else 'Select an item to perform actions')
         self.info_label.setStyleSheet('color: #888; font-style: italic; padding: 5px;')
         layout.addWidget(self.info_label)
-        actions_group = QGroupBox(t('base_inventory.actions') if t else 'Actions')
-        actions_layout = QGridLayout()
+        guilds_container = QWidget()
+        guilds_layout = QHBoxLayout(guilds_container)
+        guilds_layout.setContentsMargins(0, 0, 0, 0)
+        guilds_layout.setSpacing(10)
+        left_panel = QWidget()
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(5)
+        guilds_group = QGroupBox(t('base_inventory.select_guilds') if t else 'Select Guilds')
+        guilds_inner_layout = QVBoxLayout()
+        guild_buttons_layout = QHBoxLayout()
+        guild_buttons_layout.setSpacing(5)
+        self.select_all_btn = QPushButton(t('base_inventory.select_all_guilds') if t else 'Select All')
+        self.select_all_btn.clicked.connect(self._select_all_guilds)
+        self.select_all_btn.setEnabled(False)
+        self.deselect_all_btn = QPushButton(t('base_inventory.deselect_all_guilds') if t else 'Deselect All')
+        self.deselect_all_btn.clicked.connect(self._deselect_all_guilds)
+        self.deselect_all_btn.setEnabled(False)
+        self.remove_btn = QPushButton(t('base_inventory.remove_item_btn') if t else 'Remove Item')
+        self.remove_btn.clicked.connect(self._on_remove_item)
+        self.remove_btn.setEnabled(False)
+        guild_buttons_layout.addWidget(self.select_all_btn)
+        guild_buttons_layout.addWidget(self.deselect_all_btn)
+        guild_buttons_layout.addWidget(self.remove_btn)
+        guild_buttons_layout.addStretch()
+        guilds_inner_layout.addLayout(guild_buttons_layout)
+        self.guild_list = QListWidget()
+        self.guild_list.setSelectionMode(QAbstractItemView.NoSelection)
+        self.guild_list.setEnabled(False)
+        guilds_inner_layout.addWidget(self.guild_list)
+        guilds_group.setLayout(guilds_inner_layout)
+        left_layout.addWidget(guilds_group)
+        right_panel = QWidget()
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        stats_group = QGroupBox(t('base_inventory.economy_stats') if t else 'Economy Stats')
+        stats_layout = QVBoxLayout()
+        self.stats_total_label = QLabel(f"{(t('base_inventory.total') if t else 'Total')}: 0")
+        self.stats_total_label.setStyleSheet('font-weight: bold; font-size: 13px;')
+        stats_layout.addWidget(self.stats_total_label)
+        self.stats_guilds_label = QLabel(f"{(t('base_inventory.guilds') if t else 'Guilds')}: 0")
+        self.stats_guilds_label.setStyleSheet('font-size: 12px;')
+        stats_layout.addWidget(self.stats_guilds_label)
+        self.stats_avg_label = QLabel(f"{(t('base_inventory.avg_per_guild') if t else 'Avg per guild')}: 0.0")
+        self.stats_avg_label.setStyleSheet('font-size: 12px;')
+        stats_layout.addWidget(self.stats_avg_label)
+        stats_layout.addStretch()
+        stats_group.setLayout(stats_layout)
+        right_layout.addWidget(stats_group)
+        guilds_layout.addWidget(left_panel, 2)
+        guilds_layout.addWidget(right_panel, 1)
+        layout.addWidget(guilds_container)
+        btn_layout = QHBoxLayout()
         self.find_btn = QPushButton(t('base_inventory.find_containers') if t else 'Find Containers')
         self.find_btn.clicked.connect(self._on_find_containers)
         self.find_btn.setEnabled(False)
-        self.economy_btn = QPushButton(t('base_inventory.economy_stats') if t else 'Economy Stats')
-        self.economy_btn.clicked.connect(self._on_economy_stats)
-        self.economy_btn.setEnabled(False)
-        self.remove_pct_btn = QPushButton(t('base_inventory.remove_pct') if t else 'Remove %')
-        self.remove_pct_btn.clicked.connect(self._on_remove_pct)
-        self.remove_pct_btn.setEnabled(False)
-        self.remove_all_btn = QPushButton(t('base_inventory.remove_all') if t else 'Remove All')
-        self.remove_all_btn.clicked.connect(self._on_remove_all)
-        self.remove_all_btn.setEnabled(False)
-        actions_layout.addWidget(self.find_btn, 0, 0)
-        actions_layout.addWidget(self.economy_btn, 0, 1)
-        actions_layout.addWidget(self.remove_pct_btn, 1, 0)
-        actions_layout.addWidget(self.remove_all_btn, 1, 1)
-        actions_group.setLayout(actions_layout)
-        layout.addWidget(actions_group)
-        btn_layout = QHBoxLayout()
+        btn_layout.addWidget(self.find_btn)
         btn_layout.addStretch()
         close_btn = QPushButton(t('button.close') if t else 'Close')
         close_btn.clicked.connect(self.accept)
@@ -109,28 +147,117 @@ class GuildItemPickerDialog(QDialog):
         self.info_label.setText(f'{self.selected_item_name}: {self.selected_item_id}')
         self.info_label.setStyleSheet('color: #4a9; padding: 5px;')
         self.find_btn.setEnabled(True)
-        self.economy_btn.setEnabled(True)
-        self.remove_pct_btn.setEnabled(True)
-        self.remove_all_btn.setEnabled(True)
+        self.remove_btn.setEnabled(True)
+        self._load_guilds_for_item()
+    def _load_guilds_for_item(self):
+        self.guild_list.clear()
+        self.guild_locations = {}
+        self.guild_item_counts = {}
+        if not self.selected_item_id:
+            return
+        try:
+            from palworld_aio.base_inventory_manager import find_item_locations_efficient, get_item_economy_stats
+            item_locations = find_item_locations_efficient(self.selected_item_id)
+            stats = get_item_economy_stats(self.selected_item_id)
+            if stats:
+                guild_details = stats.get('guild_details', [])
+                for gd in guild_details:
+                    guild_id = gd.get('guild_id', '')
+                    count = gd.get('count', 0)
+                    if guild_id:
+                        self.guild_item_counts[guild_id] = count
+            if item_locations:
+                base_guild_lookup = constants.base_guild_lookup
+                for guild_id_normalized, bases in item_locations.items():
+                    guild_name = 'Unknown Guild'
+                    for gid, ginfo in base_guild_lookup.items():
+                        if str(ginfo.get('GuildID', '')).replace('-', '').lower() == guild_id_normalized:
+                            guild_name = ginfo.get('GuildName', 'Unknown Guild')
+                            break
+                    self.guild_locations[guild_id_normalized] = {'name': guild_name, 'bases': bases}
+                    count = self.guild_item_counts.get(guild_id_normalized, 0)
+                    display_text = f'{guild_name}: {count}'
+                    list_item = QListWidgetItem(display_text)
+                    list_item.setFlags(list_item.flags() | Qt.ItemIsUserCheckable)
+                    list_item.setCheckState(Qt.Checked)
+                    list_item.setData(Qt.UserRole, guild_id_normalized)
+                    self.guild_list.addItem(list_item)
+                self.guild_list.setEnabled(True)
+                self.select_all_btn.setEnabled(True)
+                self.deselect_all_btn.setEnabled(True)
+                total = stats.get('total_count', 0) if stats else 0
+                guilds = stats.get('guilds_with_item', 0) if stats else 0
+                avg = stats.get('avg_per_guild', 0.0) if stats else 0.0
+                self.stats_total_label.setText(f"{(t('base_inventory.total') if t else 'Total')}: {total}")
+                self.stats_guilds_label.setText(f"{(t('base_inventory.guilds') if t else 'Guilds')}: {guilds}")
+                self.stats_avg_label.setText(f"{(t('base_inventory.avg_per_guild') if t else 'Avg per guild')}: {avg:.1f}")
+            else:
+                self.guild_list.addItem(t('base_inventory.no_guilds') if t else 'No guilds found with this item')
+                self.guild_list.setEnabled(False)
+                self.select_all_btn.setEnabled(False)
+                self.deselect_all_btn.setEnabled(False)
+                self.stats_total_label.setText(f"{(t('base_inventory.total') if t else 'Total')}: 0")
+                self.stats_guilds_label.setText(f"{(t('base_inventory.guilds') if t else 'Guilds')}: 0")
+                self.stats_avg_label.setText(f"{(t('base_inventory.avg_per_guild') if t else 'Avg per guild')}: 0.0")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            self.guild_list.addItem(t('base_inventory.no_guilds') if t else 'Error loading guilds')
+            self.guild_list.setEnabled(False)
+    def _select_all_guilds(self):
+        for i in range(self.guild_list.count()):
+            item = self.guild_list.item(i)
+            if item.flags() & Qt.ItemIsUserCheckable:
+                item.setCheckState(Qt.Checked)
+    def _deselect_all_guilds(self):
+        for i in range(self.guild_list.count()):
+            item = self.guild_list.item(i)
+            if item.flags() & Qt.ItemIsUserCheckable:
+                item.setCheckState(Qt.Unchecked)
+    def _get_selected_guild_ids(self):
+        selected_guilds = []
+        for i in range(self.guild_list.count()):
+            item = self.guild_list.item(i)
+            if item.checkState() == Qt.Checked:
+                selected_guilds.append(item.data(Qt.UserRole))
+        return selected_guilds
     def _on_find_containers(self):
         if self.selected_item_id:
-            self.item_action_selected.emit(self.selected_item_id, 'find')
+            selected_guilds = self._get_selected_guild_ids()
+            self.item_action_selected.emit(self.selected_item_id, 'find', selected_guilds)
+    def _on_remove_item(self):
+        if not self.selected_item_id:
+            return
+        selected_guilds = self._get_selected_guild_ids()
+        if not selected_guilds:
+            QMessageBox.warning(self, t('base_inventory.no_guilds_selected') if t else 'No guilds selected', t('base_inventory.no_guilds_selected') if t else 'Please select at least one guild.')
+            return
+        dialog = QDialog(self)
+        dialog.setWindowTitle(t('base_inventory.remove_from_guilds') if t else 'Remove from Guilds')
+        dialog.setMinimumSize(300, 120)
+        layout = QVBoxLayout(dialog)
+        label = QLabel(t('base_inventory.choose_remove_type') if t else 'Choose remove type:')
+        layout.addWidget(label)
+        remove_pct_btn = QPushButton(t('base_inventory.remove_pct_option') if t else 'Remove Percentage')
+        remove_pct_btn.clicked.connect(lambda: self._do_remove_pct(dialog, selected_guilds))
+        layout.addWidget(remove_pct_btn)
+        remove_all_btn = QPushButton(t('base_inventory.remove_all_option') if t else 'Remove All')
+        remove_all_btn.clicked.connect(lambda: self._do_remove_all(dialog, selected_guilds))
+        layout.addWidget(remove_all_btn)
+        dialog.exec()
+    def _do_remove_pct(self, dialog, selected_guilds):
+        dialog.accept()
+        pct, ok = QInputDialog.getInt(self, t('base_inventory.remove_percentage') if t else 'Remove Percentage', t('base_inventory.enter_percentage') if t else 'Enter percentage to remove (1-100):', 50, 1, 100, 10)
+        if ok:
+            self.item_action_selected.emit(self.selected_item_id, f'remove_pct:{pct}', selected_guilds)
             self.accept()
-    def _on_economy_stats(self):
-        if self.selected_item_id:
-            self.item_action_selected.emit(self.selected_item_id, 'economy')
-    def _on_remove_pct(self):
-        if self.selected_item_id:
-            pct, ok = QInputDialog.getInt(self, t('base_inventory.remove_percentage') if t else 'Remove Percentage', t('base_inventory.enter_percentage') if t else 'Enter percentage to remove (1-100):', 50, 1, 100, 10)
-            if ok:
-                self.item_action_selected.emit(self.selected_item_id, f'remove_pct:{pct}')
-                self.accept()
-    def _on_remove_all(self):
-        if self.selected_item_id:
-            reply = QMessageBox.question(self, t('base_inventory.confirm_remove_all') if t else 'Confirm Remove All', t('base_inventory.confirm_remove_all_msg') if t else f'Remove all "{self.selected_item_name}" from all guilds?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            if reply == QMessageBox.Yes:
-                self.item_action_selected.emit(self.selected_item_id, 'remove_all')
-                self.accept()
+    def _do_remove_all(self, dialog, selected_guilds):
+        dialog.accept()
+        item_name = self.selected_item_name or 'this item'
+        reply = QMessageBox.question(self, t('base_inventory.confirm_remove_all') if t else 'Confirm Remove', t('base_inventory.confirm_remove_all_msg').format(item_name=item_name) if t else f'Remove all "{item_name}" from selected guilds?', QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            self.item_action_selected.emit(self.selected_item_id, 'remove_all', selected_guilds)
+            self.accept()
 class EconomyStatsDialog(QDialog):
     def __init__(self, stats, item_name=None, parent=None):
         super().__init__(parent)
@@ -1069,7 +1196,7 @@ class BaseInventoryTab(QWidget):
         dialog = GuildItemPickerDialog(self)
         dialog.item_action_selected.connect(self._on_item_action_selected)
         dialog.exec()
-    def _on_item_action_selected(self, item_id: str, action: str):
+    def _on_item_action_selected(self, item_id: str, action: str, guild_ids: list=None):
         item_name = self._get_item_name(item_id)
         if action == 'find':
             if item_name:
@@ -1089,18 +1216,26 @@ class BaseInventoryTab(QWidget):
         elif action.startswith('remove_pct:'):
             percentage = int(action.split(':')[1])
             from palworld_aio.base_inventory_manager import remove_item_from_guilds
-            result = remove_item_from_guilds(item_id, percentage)
+            result = remove_item_from_guilds(item_id, percentage, guild_ids)
             if result and result.get('removed', 0) > 0:
-                msg = t('base_inventory.removed_items').format(count=result.get('removed', 0)) if t else f"Removed {result.get('removed', 0)} items"
+                guilds_count = len(guild_ids) if guild_ids else 0
+                msg = t('base_inventory.items_removed').format(count=result.get('removed', 0), guilds=guilds_count) if t else f"Removed {result.get('removed', 0)} items from {guilds_count} guilds"
+                containers = result.get('containers_affected', 0)
+                if containers > 0:
+                    msg += f" ({(t('base_inventory.containers_affected').format(count=containers) if t else f'{containers} containers affected')})"
                 self._show_info(msg)
                 self._trigger_auto_save()
             else:
                 self._show_warning(t('base_inventory.no_items_removed') if t else 'No items found to remove')
         elif action == 'remove_all':
             from palworld_aio.base_inventory_manager import remove_item_from_guilds
-            result = remove_item_from_guilds(item_id, None)
+            result = remove_item_from_guilds(item_id, None, guild_ids)
             if result and result.get('removed', 0) > 0:
-                msg = t('base_inventory.removed_items').format(count=result.get('removed', 0)) if t else f"Removed {result.get('removed', 0)} items"
+                guilds_count = len(guild_ids) if guild_ids else 0
+                msg = t('base_inventory.items_removed').format(count=result.get('removed', 0), guilds=guilds_count) if t else f"Removed {result.get('removed', 0)} items from {guilds_count} guilds"
+                containers = result.get('containers_affected', 0)
+                if containers > 0:
+                    msg += f" ({(t('base_inventory.containers_affected').format(count=containers) if t else f'{containers} containers affected')})"
                 self._show_info(msg)
                 self._trigger_auto_save()
             else:

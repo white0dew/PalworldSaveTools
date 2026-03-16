@@ -1,10 +1,8 @@
 import os
 import json
-import math
-import random
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsEllipseItem, QMenu, QLineEdit, QTreeWidget, QTreeWidgetItem, QSplitter, QLabel, QFileDialog, QGraphicsItem, QGraphicsObject, QCheckBox, QPushButton, QTabWidget, QDialog
-from PySide6.QtCore import Qt, QRectF, QPointF, QPoint, Signal, QTimer, QPropertyAnimation, QEasingCurve, Property, QParallelAnimationGroup
-from PySide6.QtGui import QPixmap, QPen, QBrush, QColor, QPainter, QTransform, QRadialGradient, QFont, QCursor
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGraphicsScene, QGraphicsPixmapItem, QMenu, QLineEdit, QTreeWidget, QTreeWidgetItem, QSplitter, QLabel, QFileDialog, QCheckBox, QTabWidget, QDialog, QPushButton
+from PySide6.QtCore import Qt, QRectF, QPointF, QPoint, QTimer, QPropertyAnimation, QEasingCurve
+from PySide6.QtGui import QPixmap, QPen, QBrush, QColor, QPainter, QFont
 from i18n import t
 from loading_manager import show_information, show_warning, show_critical, show_question
 import palworld_coord
@@ -13,584 +11,13 @@ from palworld_aio.data_manager import delete_base_camp, get_tick
 from palworld_aio.base_manager import export_base_json, import_base_json, update_base_area_range
 from palworld_aio.guild_manager import rename_guild
 from palworld_aio.widgets import BaseHoverOverlay, PlayerHoverOverlay
-from palworld_aio.dialogs import RadiusInputDialog, InputDialog
+from palworld_aio.dialogs import RadiusInputDialog, InputDialog, ZoneManagementDialog
 from palworld_aio.utils import sav_to_gvasfile
 from palworld_aio.save_manager import save_manager
-class BaseMarker(QGraphicsPixmapItem):
-    def __init__(self, base_data, x, y, base_icon_pixmap, config):
-        super().__init__()
-        self.base_data = base_data
-        self.config = config
-        self.base_icon_original = base_icon_pixmap
-        self.marker_type = config['marker']['type']
-        if self.marker_type == 'dot':
-            self.current_size = config['marker']['dot']['size']
-            if not config['marker']['dot']['dynamic_sizing']:
-                self.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
-        else:
-            self.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
-            self.current_size = config['marker']['icon']['base_size']
-        self._update_icon_size(self.current_size)
-        self.center_x = x
-        self.center_y = y
-        self.setPos(x, y)
-        self.setFlag(QGraphicsItem.ItemIsSelectable, True)
-        self.setAcceptHoverEvents(True)
-        self.glow_alpha = 0
-        self.glow_increasing = True
-        self.is_hovered = False
-        self.shine_pos = 0
-    def _update_icon_size(self, size):
-        self.current_size = size
-        scaled = self.base_icon_original.scaled(int(size), int(size), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        self.scaled_pixmap = scaled
-        self.setPixmap(scaled)
-        self.setOffset(-size / 2, -size / 2)
-    def scale_to_zoom(self, zoom_level):
-        if self.marker_type == 'dot':
-            if not self.config['marker']['dot']['dynamic_sizing']:
-                return
-            size_min = self.config['marker']['dot']['size_min']
-            size_max = self.config['marker']['dot']['size_max']
-            formula = self.config['marker']['dot']['dynamic_sizing_formula']
-        else:
-            if not self.config['marker']['icon']['dynamic_sizing']:
-                return
-            size_min = self.config['marker']['icon']['size_min']
-            size_max = self.config['marker']['icon']['size_max']
-            formula = self.config['marker']['icon']['dynamic_sizing_formula']
-        clamped_zoom = max(0.05, min(zoom_level, 30.0))
-        if formula == 'sqrt':
-            raw_size = 48 / math.sqrt(clamped_zoom)
-        elif formula == 'linear':
-            raw_size = 100 - zoom_level * 10
-        elif formula == 'log':
-            raw_size = 50 / math.log(clamped_zoom + 1)
-        else:
-            raw_size = self.current_size
-        new_size = max(size_min, min(size_max, int(raw_size)))
-        if new_size != self.current_size:
-            self._update_icon_size(new_size)
-    def paint(self, painter, option, widget=None):
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform)
-        if self.marker_type == 'icon':
-            shine_pixmap = self.scaled_pixmap.copy()
-            mask_pixmap = QPixmap(self.current_size, self.current_size)
-            mask_pixmap.fill(QColor(0, 0, 0, 0))
-            mask_painter = QPainter(mask_pixmap)
-            mask_painter.setPen(Qt.NoPen)
-            mask_painter.setBrush(QColor(255, 255, 255, 120))
-            shine_pos = self.shine_pos - 50
-            points = [QPointF(shine_pos, 0), QPointF(shine_pos + 15, 0), QPointF(shine_pos - 5, self.current_size), QPointF(shine_pos - 20, self.current_size)]
-            mask_painter.drawPolygon(points)
-            mask_painter.setCompositionMode(QPainter.CompositionMode_DestinationIn)
-            mask_painter.drawPixmap(0, 0, self.scaled_pixmap)
-            mask_painter.end()
-            shine_painter = QPainter(shine_pixmap)
-            shine_painter.setCompositionMode(QPainter.CompositionMode_Plus)
-            shine_painter.drawPixmap(0, 0, mask_pixmap)
-            shine_painter.end()
-            self.setPixmap(shine_pixmap)
-        glow_config = self.config['glow']
-        if glow_config['enabled'] and (self.isSelected() or self.glow_alpha > 0 or self.is_hovered):
-            alpha = max(self.glow_alpha, glow_config['hover_alpha'] if self.is_hovered else 0)
-            glow_radius = self.current_size * glow_config['radius_multiplier']
-            glow_color = QColor(*glow_config['color'])
-            gradient = QRadialGradient(0, 0, glow_radius)
-            gradient.setColorAt(0, QColor(glow_color.red(), glow_color.green(), glow_color.blue(), alpha))
-            gradient.setColorAt(0.5, QColor(glow_color.red(), glow_color.green(), glow_color.blue(), alpha // 2))
-            gradient.setColorAt(1, QColor(glow_color.red(), glow_color.green(), glow_color.blue(), 0))
-            painter.setBrush(gradient)
-            painter.setPen(Qt.NoPen)
-            painter.drawEllipse(QRectF(-glow_radius, -glow_radius, glow_radius * 2, glow_radius * 2))
-        super().paint(painter, option, widget)
-    def hoverEnterEvent(self, event):
-        self.is_hovered = True
-        self.update()
-    def hoverLeaveEvent(self, event):
-        self.is_hovered = False
-        self.update()
-    def start_glow(self):
-        self.glow_alpha = 180
-    def update_glow(self):
-        glow_config = self.config['glow']
-        alpha_min = glow_config['selected_alpha_min']
-        alpha_max = glow_config['selected_alpha_max']
-        speed = glow_config['animation_speed']
-        if self.isSelected():
-            if self.glow_increasing:
-                self.glow_alpha += speed
-                if self.glow_alpha >= alpha_max:
-                    self.glow_increasing = False
-            else:
-                self.glow_alpha -= speed
-                if self.glow_alpha <= alpha_min:
-                    self.glow_increasing = True
-        elif self.glow_alpha > 0:
-            self.glow_alpha -= speed * 1.5
-            if self.glow_alpha < 0:
-                self.glow_alpha = 0
-        self.shine_pos = (self.shine_pos + 2) % 100
-        self.update()
-class PlayerMarker(QGraphicsPixmapItem):
-    PLAYER_GLOW_COLOR = [0, 255, 150]
-    SIZE_MIN = 32
-    SIZE_MAX = 64
-    BASE_SIZE = 48
-    def __init__(self, player_data, x, y, player_icon_pixmap):
-        super().__init__()
-        self.player_data = player_data
-        self.player_icon_original = player_icon_pixmap
-        self.current_size = self.BASE_SIZE
-        self.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
-        self._update_icon_size(self.current_size)
-        self.center_x = x
-        self.center_y = y
-        self.setPos(x, y)
-        self.setFlag(QGraphicsItem.ItemIsSelectable, True)
-        self.setAcceptHoverEvents(True)
-        self.glow_alpha = 0
-        self.glow_increasing = True
-        self.is_hovered = False
-        self.shine_pos = 0
-    def _update_icon_size(self, size):
-        self.current_size = size
-        scaled = self.player_icon_original.scaled(int(size), int(size), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        self.scaled_pixmap = scaled
-        self.setPixmap(scaled)
-        self.setOffset(-size / 2, -size / 2)
-    def scale_to_zoom(self, zoom_level):
-        clamped_zoom = max(0.05, min(zoom_level, 30.0))
-        raw_size = 48 / math.sqrt(clamped_zoom)
-        new_size = max(self.SIZE_MIN, min(self.SIZE_MAX, int(raw_size)))
-        if new_size != self.current_size:
-            self._update_icon_size(new_size)
-    def paint(self, painter, option, widget=None):
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform)
-        shine_pixmap = self.scaled_pixmap.copy()
-        mask_pixmap = QPixmap(self.current_size, self.current_size)
-        mask_pixmap.fill(QColor(0, 0, 0, 0))
-        mask_painter = QPainter(mask_pixmap)
-        mask_painter.setPen(Qt.NoPen)
-        mask_painter.setBrush(QColor(255, 255, 255, 120))
-        shine_pos = self.shine_pos - 50
-        points = [QPointF(shine_pos, 0), QPointF(shine_pos + 15, 0), QPointF(shine_pos - 5, self.current_size), QPointF(shine_pos - 20, self.current_size)]
-        mask_painter.drawPolygon(points)
-        mask_painter.setCompositionMode(QPainter.CompositionMode_DestinationIn)
-        mask_painter.drawPixmap(0, 0, self.scaled_pixmap)
-        mask_painter.end()
-        shine_painter = QPainter(shine_pixmap)
-        shine_painter.setCompositionMode(QPainter.CompositionMode_Plus)
-        shine_painter.drawPixmap(0, 0, mask_pixmap)
-        shine_painter.end()
-        self.setPixmap(shine_pixmap)
-        if self.isSelected() or self.glow_alpha > 0 or self.is_hovered:
-            alpha = max(self.glow_alpha, 80 if self.is_hovered else 0)
-            glow_radius = self.current_size * 1.5
-            gradient = QRadialGradient(0, 0, glow_radius)
-            color = QColor(*self.PLAYER_GLOW_COLOR)
-            gradient.setColorAt(0, QColor(color.red(), color.green(), color.blue(), alpha))
-            gradient.setColorAt(0.5, QColor(color.red(), color.green(), color.blue(), alpha // 2))
-            gradient.setColorAt(1, QColor(color.red(), color.green(), color.blue(), 0))
-            painter.setBrush(gradient)
-            painter.setPen(Qt.NoPen)
-            painter.drawEllipse(QRectF(-glow_radius, -glow_radius, glow_radius * 2, glow_radius * 2))
-        super().paint(painter, option, widget)
-    def hoverEnterEvent(self, event):
-        self.is_hovered = True
-        self.update()
-    def hoverLeaveEvent(self, event):
-        self.is_hovered = False
-        self.update()
-    def start_glow(self):
-        self.glow_alpha = 180
-    def update_glow(self):
-        alpha_min = 80
-        alpha_max = 180
-        speed = 8
-        if self.isSelected():
-            if self.glow_increasing:
-                self.glow_alpha += speed
-                if self.glow_alpha >= alpha_max:
-                    self.glow_increasing = False
-            else:
-                self.glow_alpha -= speed
-                if self.glow_alpha <= alpha_min:
-                    self.glow_increasing = True
-        elif self.glow_alpha > 0:
-            self.glow_alpha -= speed * 1.5
-            if self.glow_alpha < 0:
-                self.glow_alpha = 0
-        self.shine_pos = (self.shine_pos + 2) % 100
-        self.update()
-class EffectItem(QGraphicsObject):
-    def __init__(self, x, y, duration=1000):
-        super().__init__()
-        self.center_x = x
-        self.center_y = y
-        self.duration = duration
-        self._progress = 0.0
-        self.setPos(x, y)
-    @Property(float)
-    def progress(self):
-        return self._progress
-    @progress.setter
-    def progress(self, value):
-        self._progress = value
-        self.update()
-    def boundingRect(self):
-        return QRectF(-200, -200, 400, 400)
-class DeleteEffect(EffectItem):
-    def paint(self, painter, option, widget=None):
-        painter.setRenderHint(QPainter.Antialiasing)
-        radius = self._progress * 150
-        alpha = int(255 * (1 - self._progress))
-        painter.setPen(QPen(QColor(255, 80, 80, alpha), 5))
-        painter.setBrush(Qt.NoBrush)
-        painter.drawEllipse(QPointF(0, 0), radius, radius)
-        if radius > 30:
-            painter.setPen(QPen(QColor(255, 150, 0, alpha), 3))
-            painter.drawEllipse(QPointF(0, 0), radius - 30, radius - 30)
-        if self._progress < 0.3:
-            flash_alpha = int(200 * (1 - self._progress / 0.3))
-            painter.setBrush(QColor(255, 200, 0, flash_alpha))
-            painter.setPen(Qt.NoPen)
-            painter.drawEllipse(QPointF(0, 0), 40, 40)
-class ImportEffect(EffectItem):
-    def paint(self, painter, option, widget=None):
-        painter.setRenderHint(QPainter.Antialiasing)
-        for i in range(3):
-            phase = (self._progress + i * 0.33) % 1.0
-            radius = phase * 100
-            alpha = int(180 * (1 - phase))
-            painter.setPen(QPen(QColor(0, 255, 150, alpha), 3))
-            painter.setBrush(Qt.NoBrush)
-            painter.drawEllipse(QPointF(0, 0), radius, radius)
-        if self._progress < 0.7:
-            painter.setBrush(QColor(100, 255, 200, int(255 * (1 - self._progress))))
-            painter.setPen(Qt.NoPen)
-            for angle in range(0, 360, 45):
-                rad = math.radians(angle)
-                dist = 60 + self._progress * 40
-                x = math.cos(rad) * dist
-                y = math.sin(rad) * dist
-                size = 8 - self._progress * 6
-                painter.drawEllipse(QPointF(x, y), size, size)
-class ExportEffect(EffectItem):
-    def paint(self, painter, option, widget=None):
-        painter.setRenderHint(QPainter.Antialiasing)
-        beam_height = self._progress * 200
-        alpha = int(200 * (1 - self._progress))
-        gradient = QRadialGradient(0, -beam_height / 2, 30)
-        gradient.setColorAt(0, QColor(100, 200, 255, alpha))
-        gradient.setColorAt(1, QColor(100, 200, 255, 0))
-        painter.setBrush(gradient)
-        painter.setPen(Qt.NoPen)
-        painter.drawRect(QRectF(-20, -beam_height, 40, beam_height))
-        for i in range(5):
-            particle_y = -(i * 40 + self._progress * 150) % 200
-            particle_alpha = int(alpha * (1 - abs(particle_y) / 200))
-            painter.setBrush(QColor(150, 220, 255, particle_alpha))
-            painter.drawEllipse(QPointF(random.randint(-15, 15), particle_y), 4, 4)
-class BaseRadiusRing(QGraphicsEllipseItem):
-    def __init__(self, x, y, save_radius, is_preview=False):
-        super().__init__()
-        self.save_radius = save_radius
-        self.is_preview = is_preview
-        self.setPos(x, y)
-        self._update_radius()
-        self.setZValue(5)
-        self.setFlag(QGraphicsItem.ItemIgnoresTransformations, False)
-        self.setAcceptedMouseButtons(Qt.NoButton)
-        self._setup_appearance()
-    def _setup_appearance(self):
-        if self.is_preview:
-            pen = QPen(QColor(255, 215, 0, 200), 3)
-            pen.setStyle(Qt.DashLine)
-            pen.setDashPattern([10, 5])
-            self.setPen(pen)
-            self.setBrush(QColor(255, 215, 0, 30))
-        else:
-            pen = QPen(QColor(0, 255, 200, 220), 2)
-            self.setPen(pen)
-            self.setBrush(QColor(0, 255, 200, 40))
-    def _update_radius(self):
-        scene_radius = self._save_radius_to_scene_pixels(self.save_radius)
-        diameter = scene_radius * 2
-        self.setRect(-diameter / 2, -diameter / 2, diameter, diameter)
-    @staticmethod
-    def _save_radius_to_scene_pixels(save_radius):
-        display_radius = save_radius / 3500.0 * 7.9
-        scene_radius = display_radius * (2048 / 2000)
-        scene_radius = scene_radius + 5
-        return max(scene_radius, 15)
-    def update_radius(self, new_save_radius):
-        self.save_radius = new_save_radius
-        self._update_radius()
-        self.update()
-    def paint(self, painter, option, widget=None):
-        painter.setRenderHint(QPainter.Antialiasing)
-        super().paint(painter, option, widget)
-class MapGraphicsView(QGraphicsView):
-    marker_clicked = Signal(object, object)
-    marker_double_clicked = Signal(object, object)
-    marker_right_clicked = Signal(object, QPointF)
-    empty_space_right_clicked = Signal(QPointF)
-    marker_hover_entered = Signal(object, QPointF)
-    marker_hover_left = Signal()
-    zoom_changed = Signal(float)
-    def __init__(self, config):
-        super().__init__()
-        self.config = config
-        self.setRenderHint(QPainter.Antialiasing)
-        self.setRenderHint(QPainter.SmoothPixmapTransform)
-        self.setBackgroundBrush(Qt.transparent)
-        self.setDragMode(QGraphicsView.ScrollHandDrag)
-        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
-        self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setMouseTracking(True)
-        self._hovered_marker = None
-        zoom_config = self.config['zoom']
-        self.zoom_factor = zoom_config['factor']
-        self.current_zoom = 1.0
-        self.min_zoom = zoom_config['min']
-        self.max_zoom = zoom_config['max']
-        self.zoom_timer = QTimer()
-        self.zoom_timer.timeout.connect(self._smooth_zoom_step)
-        self.target_zoom = 1.0
-        self.target_center = None
-        self.is_animating = False
-        self.base_scale = 1.0
-        self.coords_label = QLabel(f"{(t('cursor_coords') if t else 'Cursor')}: 0,0", self)
-        self.coords_label.setStyleSheet('background-color: rgba(0,0,0,150); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; min-width: 120px;')
-        self.coords_label.move(10, self.height() - 30)
-        self.coords_label.setVisible(True)
-        self.coords_label.setAttribute(Qt.WA_ShowWithoutActivating)
-        self.zoom_label = QLabel((t('zoom') if t else 'Zoom') + ': 100%', self)
-        self.zoom_label.setStyleSheet('background-color: rgba(0,0,0,150); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; min-width: 80px;')
-        self.zoom_label.move(self.width() - 100, self.height() - 30)
-        self.zoom_label.setAlignment(Qt.AlignCenter)
-        self.zoom_label.setAttribute(Qt.WA_ShowWithoutActivating)
-        self.overlay_position_callback = None
-    def animate_to_coords(self, x, y, zoom_level=None):
-        if zoom_level is None:
-            zoom_level = self.config['zoom']['double_click_target']
-        self.target_zoom = zoom_level
-        self.target_center = QPointF(x, y)
-        self.resetTransform()
-        self.scale(self.base_scale, self.base_scale)
-        self.current_zoom = 1.0
-        self.centerOn(self.target_center)
-        self.is_animating = True
-        fps = self.config['zoom']['animation_fps']
-        interval = int(1000 / fps)
-        if not self.zoom_timer.isActive():
-            self.zoom_timer.start(interval)
-    def _clamp_center_to_bounds(self, center_point):
-        if not self.scene():
-            return center_point
-        scene_rect = self.scene().sceneRect()
-        if scene_rect.isEmpty():
-            return center_point
-        viewport_rect = self.mapToScene(self.viewport().rect()).boundingRect()
-        min_x = scene_rect.left() + viewport_rect.width() / 2
-        max_x = scene_rect.right() - viewport_rect.width() / 2
-        min_y = scene_rect.top() + viewport_rect.height() / 2
-        max_y = scene_rect.bottom() - viewport_rect.height() / 2
-        if min_x > max_x:
-            min_x = max_x = scene_rect.center().x()
-        if min_y > max_y:
-            min_y = max_y = scene_rect.center().y()
-        x = max(min_x, min(center_point.x(), max_x))
-        y = max(min_y, min(center_point.y(), max_y))
-        return QPointF(x, y)
-    def wheelEvent(self, event):
-        zoom_in = event.angleDelta().y() > 0
-        if zoom_in:
-            factor = self.zoom_factor
-            self.current_zoom *= factor
-        else:
-            factor = 1 / self.zoom_factor
-            self.current_zoom *= factor
-        if self.current_zoom < self.min_zoom:
-            factor = self.min_zoom / (self.current_zoom / factor)
-            self.current_zoom = self.min_zoom
-        elif self.current_zoom > self.max_zoom:
-            factor = self.max_zoom / (self.current_zoom / factor)
-            self.current_zoom = self.max_zoom
-        self.scale(factor, factor)
-        self.zoom_label.setText((t('zoom') if t else 'Zoom') + f': {int(self.current_zoom * 100)}%')
-        self.zoom_changed.emit(self.current_zoom)
-    def mousePressEvent(self, event):
-        item = self.itemAt(event.pos())
-        if isinstance(item, BaseMarker):
-            if event.button() == Qt.LeftButton:
-                self.scene().clearSelection()
-                item.setSelected(True)
-                item.start_glow()
-                self.marker_clicked.emit(item.base_data, item)
-            elif event.button() == Qt.RightButton:
-                self.marker_right_clicked.emit(item.base_data, event.globalPosition())
-                return
-        elif isinstance(item, PlayerMarker):
-            if event.button() == Qt.LeftButton:
-                self.scene().clearSelection()
-                item.setSelected(True)
-                item.start_glow()
-                self.marker_clicked.emit(item.player_data, item)
-            elif event.button() == Qt.RightButton:
-                self.marker_right_clicked.emit(item.player_data, event.globalPosition())
-                return
-        elif event.button() == Qt.RightButton:
-            self.empty_space_right_clicked.emit(event.globalPosition())
-            return
-        elif event.button() == Qt.LeftButton:
-            self.scene().clearSelection()
-        super().mousePressEvent(event)
-    def mouseDoubleClickEvent(self, event):
-        item = self.itemAt(event.pos())
-        if isinstance(item, BaseMarker):
-            if event.button() == Qt.LeftButton:
-                self.marker_double_clicked.emit(item.base_data, item)
-                zoom_level = self.config['zoom']['double_click_target']
-                self.animate_to_marker(item, zoom_level=zoom_level, duration_ms=1500)
-                return
-        elif isinstance(item, PlayerMarker):
-            if event.button() == Qt.LeftButton:
-                self.marker_double_clicked.emit(item.player_data, item)
-                zoom_level = self.config['zoom']['double_click_target']
-                self.animate_to_marker(item, zoom_level=zoom_level, duration_ms=1500)
-                return
-        super().mouseDoubleClickEvent(event)
-    def mouseMoveEvent(self, event):
-        item = self.itemAt(event.pos())
-        if isinstance(item, BaseMarker):
-            if self._hovered_marker != item:
-                if self._hovered_marker is not None:
-                    self.marker_hover_left.emit()
-                self._hovered_marker = item
-                global_pos = self.mapToGlobal(event.pos())
-                self.marker_hover_entered.emit(item.base_data, QPointF(global_pos.x(), global_pos.y()))
-        elif isinstance(item, PlayerMarker):
-            if self._hovered_marker != item:
-                if self._hovered_marker is not None:
-                    self.marker_hover_left.emit()
-                self._hovered_marker = item
-                global_pos = self.mapToGlobal(event.pos())
-                self.marker_hover_entered.emit(item.player_data, QPointF(global_pos.x(), global_pos.y()))
-        elif self._hovered_marker is not None:
-            self._hovered_marker = None
-            self.marker_hover_left.emit()
-        scene_pos = self.mapToScene(event.pos())
-        if self.scene() and self.scene().sceneRect().contains(scene_pos):
-            rect = self.scene().sceneRect()
-            width, height = (rect.width(), rect.height())
-            img_x, img_y = (scene_pos.x(), scene_pos.y())
-            x_world = img_x / width * 2000 - 1000
-            y_world = 1000 - img_y / height * 2000
-            save_x, save_y = palworld_coord.map_to_sav(x_world, y_world, new=True)
-            old_x, old_y = palworld_coord.sav_to_map(save_x, save_y, new=False)
-            self.coords_label.setText(f"{(t('cursor_coords') if t else 'Cursor')}: {int(old_x)},{int(old_y)}")
-        super().mouseMoveEvent(event)
-    def leaveEvent(self, event):
-        if self._hovered_marker is not None:
-            self._hovered_marker = None
-            self.marker_hover_left.emit()
-        super().leaveEvent(event)
-    def animate_to_marker(self, marker, zoom_level=None, duration_ms=1500):
-        if zoom_level is None:
-            zoom_level = self.config['zoom']['double_click_target']
-        zoom_level = max(self.min_zoom, min(zoom_level, self.max_zoom))
-        view_center = self.mapToScene(self.viewport().rect().center())
-        self.start_center = QPointF(view_center.x(), view_center.y())
-        target_pos = QPointF(marker.center_x, marker.center_y)
-        self.target_center = target_pos
-        self.target_zoom = zoom_level
-        self.is_animating = True
-        fps = self.config['zoom']['animation_fps']
-        interval = int(1000 / fps)
-        zoom_diff = abs(zoom_level - self.current_zoom)
-        adaptive_duration = max(100, min(int(zoom_diff * 100), duration_ms))
-        steps = max(1, int(adaptive_duration / interval))
-        self._animation_steps = steps
-        self._current_step = 0
-        if not self.zoom_timer.isActive():
-            self.zoom_timer.start(interval)
-    def _smooth_zoom_step(self):
-        if not self.is_animating:
-            self.zoom_timer.stop()
-            return
-        zoom_diff = self.target_zoom - self.current_zoom
-        if abs(zoom_diff) < 0.05:
-            factor = self.target_zoom / self.current_zoom
-            self.scale(factor, factor)
-            self.current_zoom = self.target_zoom
-            clamped_center = self._clamp_center_to_bounds(self.target_center)
-            self.centerOn(clamped_center)
-            self.is_animating = False
-            self.zoom_timer.stop()
-            self.zoom_label.setText((t('zoom') if t else 'Zoom') + f': {int(self.current_zoom * 100)}%')
-            self.zoom_changed.emit(self.current_zoom)
-            self._validate_and_recover_view()
-            return
-        if hasattr(self, '_animation_steps'):
-            self._current_step += 1
-            progress = self._current_step / self._animation_steps
-            eased_progress = 1 - (1 - progress) ** 3
-            target_zoom_for_step = self.current_zoom + (self.target_zoom - self.current_zoom) * eased_progress
-            factor = target_zoom_for_step / self.current_zoom if self.current_zoom > 0 else 1
-            self.current_zoom = target_zoom_for_step
-            self.scale(factor, factor)
-            if hasattr(self, 'start_center') and hasattr(self, 'target_center'):
-                interpolated_x = self.start_center.x() + (self.target_center.x() - self.start_center.x()) * eased_progress
-                interpolated_y = self.start_center.y() + (self.target_center.y() - self.start_center.y()) * eased_progress
-                interpolated_center = QPointF(interpolated_x, interpolated_y)
-                clamped_center = self._clamp_center_to_bounds(interpolated_center)
-                self.centerOn(clamped_center)
-            self.zoom_label.setText((t('zoom') if t else 'Zoom') + f': {int(self.current_zoom * 100)}%')
-            self.zoom_changed.emit(self.current_zoom)
-        else:
-            easing_factor = self.config['zoom']['animation_speed']
-            zoom_step = zoom_diff * easing_factor
-            factor = (self.current_zoom + zoom_step) / self.current_zoom
-            self.current_zoom += zoom_step
-            self.scale(factor, factor)
-            self.zoom_label.setText((t('zoom') if t else 'Zoom') + f': {int(self.current_zoom * 100)}%')
-            self.zoom_changed.emit(self.current_zoom)
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self.coords_label.move(10, self.height() - 30)
-        self.zoom_label.move(self.width() - 100, self.height() - 30)
-        self.coords_label.raise_()
-        self.zoom_label.raise_()
-        if self.overlay_position_callback:
-            self.overlay_position_callback()
-    def reset_view(self):
-        self.resetTransform()
-        self.current_zoom = 1.0
-        if self.scene():
-            rect = self.scene().sceneRect()
-            if rect.width() > 0 and rect.height() > 0:
-                viewport = self.viewport()
-                scale_x = viewport.width() / rect.width()
-                scale_y = viewport.height() / rect.height()
-                scale = max(scale_x, scale_y)
-                self.base_scale = scale
-                self.scale(scale, scale)
-        self.zoom_changed.emit(self.current_zoom)
-    def _validate_and_recover_view(self):
-        if not self.scene():
-            return
-        scene_rect = self.scene().sceneRect()
-        viewport_rect = self.mapToScene(self.viewport().rect()).boundingRect()
-        if not viewport_rect.intersects(scene_rect):
-            self.reset_view()
-            return True
-        return False
+from .map_markers import BaseMarker, PlayerMarker
+from .map_effects import DeleteEffect, ImportEffect, ExportEffect
+from .map_items import ExclusionZoneItem, PolygonExclusionZoneItem, BaseRadiusRing, ZonePreviewItem
+from .map_view import MapGraphicsView
 class MapTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -609,6 +36,10 @@ class MapTab(QWidget):
         self.selected_base_marker = None
         self.current_radius_ring = None
         self.all_radius_rings = []
+        self.exclusion_zones = []
+        self._zone_drawing_mode = False
+        self._zone_shape_type = 'rect'
+        self._zone_count = 0
         self._load_config()
         self.map_width = 2048
         self.map_height = 2048
@@ -616,6 +47,7 @@ class MapTab(QWidget):
         self._load_player_icon()
         self._setup_ui()
         self._setup_animation()
+        self._update_zone_items()
     def refresh_labels(self):
         if hasattr(self, 'search_input'):
             self.search_input.setPlaceholderText(t('map.search.placeholder') if t else 'Search guilds,leaders,bases...')
@@ -625,6 +57,8 @@ class MapTab(QWidget):
             self.toggle_map_players.setText(t('map.toggle.players') if t else 'Players')
         if hasattr(self, 'toggle_base_radius_rings'):
             self.toggle_base_radius_rings.setText(t('map.toggle.base_radius_rings') if t else 'Base Radius Rings')
+        if hasattr(self, 'toggle_map_zones'):
+            self.toggle_map_zones.setText(t('map.toggle.zones') if t else 'Zones')
         if hasattr(self, 'base_tree'):
             self.base_tree.setHeaderLabels([t('map.header.guild') if t else 'Guild', t('map.header.leader') if t else 'Leader', t('map.header.lastseen') if t else 'Last Seen', t('map.header.bases') if t else 'Bases'])
         if hasattr(self, 'player_tree'):
@@ -695,6 +129,13 @@ class MapTab(QWidget):
         self.view.marker_double_clicked.connect(self._on_marker_double_clicked)
         self.view.marker_right_clicked.connect(self._on_marker_right_clicked)
         self.view.empty_space_right_clicked.connect(self._on_empty_space_right_clicked)
+        self.view.zone_right_clicked.connect(self._on_zone_right_click)
+        self.view.zone_double_clicked.connect(self._on_zone_double_click)
+        self.view.zone_point_a_set.connect(self._on_zone_point_a_set)
+        self.view.zone_created.connect(self._on_zone_created)
+        self.view.zone_drawing_cancelled.connect(self._on_zone_drawing_cancelled)
+        self.view.polygon_point_added.connect(self._on_polygon_point_added)
+        self.view.polygon_closed.connect(self._on_polygon_closed)
         self.view.zoom_changed.connect(self._on_zoom_changed)
         self.hover_overlay = BaseHoverOverlay()
         self.player_hover_overlay = PlayerHoverOverlay()
@@ -724,6 +165,11 @@ class MapTab(QWidget):
         self.toggle_base_radius_rings.stateChanged.connect(self._on_radius_rings_toggle)
         self.toggle_base_radius_rings.setStyleSheet('\n            QCheckBox {\n                color: white;\n                background: rgba(0, 0, 0, 150);\n                padding: 4px 8px;\n                border-radius: 4px;\n            }\n        ')
         overlay_layout.addWidget(self.toggle_base_radius_rings)
+        self.toggle_map_zones = QCheckBox(t('map.toggle.zones') if t else 'Zones')
+        self.toggle_map_zones.setChecked(False)
+        self.toggle_map_zones.stateChanged.connect(self._on_zones_toggle)
+        self.toggle_map_zones.setStyleSheet('\n            QCheckBox {\n                color: white;\n                background: rgba(0, 0, 0, 150);\n                padding: 4px 8px;\n                border-radius: 4px;\n            }\n        ')
+        overlay_layout.addWidget(self.toggle_map_zones)
         overlay_layout.addStretch()
         self.view.overlay_position_callback = self._reposition_map_overlay
         self._sidebar_widget = QWidget()
@@ -812,7 +258,8 @@ class MapTab(QWidget):
             bases_width = self.toggle_map_bases.sizeHint().width()
             players_width = self.toggle_map_players.sizeHint().width()
             rings_width = self.toggle_base_radius_rings.sizeHint().width()
-            overlay_width = bases_width + players_width + rings_width + 20
+            zones_width = self.toggle_map_zones.sizeHint().width()
+            overlay_width = bases_width + players_width + rings_width + zones_width + 20
             self.map_overlay.setGeometry(self.view.width() - overlay_width - 10, 10, overlay_width, 30)
     def _on_marker_hover_enter(self, data, global_pos):
         if 'base_id' in data:
@@ -850,7 +297,8 @@ class MapTab(QWidget):
             bases_width = self.toggle_map_bases.sizeHint().width()
             players_width = self.toggle_map_players.sizeHint().width()
             rings_width = self.toggle_base_radius_rings.sizeHint().width()
-            overlay_width = bases_width + players_width + rings_width + 20
+            zones_width = self.toggle_map_zones.sizeHint().width()
+            overlay_width = bases_width + players_width + rings_width + zones_width + 20
             self.map_overlay.setGeometry(self.view.width() - overlay_width - 10, 10, overlay_width, 30)
             self.map_overlay.raise_()
     def resizeEvent(self, event):
@@ -1263,23 +711,45 @@ class MapTab(QWidget):
             elif action == radius_action:
                 self._adjust_base_radius(data)
     def _on_empty_space_right_clicked(self, global_pos):
-        from ..dialogs import ScrollableGuildSelectionDialog
+        from palworld_aio.dialogs import ScrollableGuildSelectionDialog
         menu = QMenu(self)
         menu.setStyleSheet('\n            QMenu {\n                background-color: rgba(18,20,24,0.95);\n                border: 1px solid rgba(125,211,252,0.3);\n                border-radius: 4px;\n                color: #e2e8f0;\n                padding: 4px;\n            }\n            QMenu::item {\n                padding: 6px 12px;\n                border-radius: 3px;\n            }\n            QMenu::item:selected {\n                background-color: rgba(59,142,208,0.3);\n            }\n        ')
-        import_action = menu.addAction(t('base.import_multi') if t else 'Import Base')
-        action = menu.exec(global_pos.toPoint())
-        if action == import_action:
-            if not self.guilds_data:
-                show_warning(self, t('error.title') if t else 'Error', t('base.import.no_guilds') if t else 'No guilds available. Please create a guild first.')
-                return
-            guild_id = ScrollableGuildSelectionDialog.get_guild(self.guilds_data, self)
-            if guild_id:
-                self._import_base_to_guild(guild_id)
+        if self._zone_drawing_mode:
+            stop_drawing_action = menu.addAction(t('zone_exclusion.stop_drawing') if t else 'Stop Drawing Zones')
+            action = menu.exec(global_pos.toPoint())
+            if action == stop_drawing_action:
+                self._set_zone_drawing_mode(False)
+        else:
+            import_action = menu.addAction(t('base.import_multi') if t else 'Import Base')
+            menu.addSeparator()
+            draw_zones_action = menu.addAction(t('zone_exclusion.draw_zones') if t else 'Draw Zones')
+            clear_zones_action = menu.addAction(t('zone_exclusion.clear_all_zones') if t else 'Clear All Zones')
+            menu.addSeparator()
+            export_zones_action = menu.addAction(t('zone_management.export') if t else 'Export Zones')
+            import_zones_action = menu.addAction(t('zone_management.import') if t else 'Import Zones')
+            action = menu.exec(global_pos.toPoint())
+            if action == import_action:
+                if not self.guilds_data:
+                    show_warning(self, t('error.title') if t else 'Error', t('base.import.no_guilds') if t else 'No guilds available. Please create a guild first.')
+                    return
+                guild_id = ScrollableGuildSelectionDialog.get_guild(self.guilds_data, self)
+                if guild_id:
+                    self._import_base_to_guild(guild_id)
+            elif action == draw_zones_action:
+                self._set_zone_drawing_mode(True)
+            elif action == clear_zones_action:
+                self._clear_zones()
+            elif action == export_zones_action:
+                self._export_zones()
+            elif action == import_zones_action:
+                self._import_zones()
     def _on_radius_rings_toggle(self, state):
         if state == 0:
             self._hide_all_radius_rings()
         else:
             self._show_all_radius_rings()
+    def _on_zones_toggle(self, state):
+        self._update_zone_items()
     def _show_radius_ring_for_marker(self, marker):
         if not hasattr(self, 'toggle_base_radius_rings') or not self.toggle_base_radius_rings.isChecked():
             return
@@ -1736,3 +1206,202 @@ class MapTab(QWidget):
                 self.selected_base_marker = target_marker
         except Exception as e:
             pass
+    def _on_zone_right_click(self, zone_item, global_pos):
+        from palworld_aio import zone_manager
+        zone_id = zone_item.zone_data.get('id')
+        zone_name = zone_item.zone_data.get('name', 'Unknown Zone')
+        menu = QMenu(self)
+        menu.setStyleSheet('\n            QMenu {\n                background-color: rgba(18,20,24,0.95);\n                border: 1px solid rgba(125,211,252,0.3);\n                border-radius: 4px;\n                color: #e2e8f0;\n                padding: 4px;\n            }\n            QMenu::item {\n                padding: 6px 12px;\n                border-radius: 3px;\n            }\n            QMenu::item:selected {\n                background-color: rgba(59,142,208,0.3);\n            }\n        ')
+        delete_action = menu.addAction(t('zone_exclusion.delete_zone') if t else 'Delete Zone')
+        rename_action = menu.addAction(t('zone_exclusion.rename_zone') if t else 'Rename Zone')
+        stop_drawing_action = None
+        if self._zone_drawing_mode:
+            menu.addSeparator()
+            stop_drawing_action = menu.addAction(t('zone_exclusion.stop_drawing') if t else 'Stop Drawing Zones')
+        action = menu.exec(global_pos.toPoint())
+        if action == delete_action:
+            confirmed = show_question(self, t('zone_exclusion.delete_zone') if t else 'Delete Zone', t('zone_exclusion.confirm_delete') if t else f"Are you sure you want to delete zone '{zone_name}'?")
+            if confirmed:
+                zone_manager.remove_zone(zone_id)
+                self._update_zone_items()
+        elif action == rename_action:
+            self._rename_zone_item(zone_item)
+        elif stop_drawing_action and action == stop_drawing_action:
+            self._set_zone_drawing_mode(False)
+    def _rename_zone_item(self, zone_item):
+        from palworld_aio import zone_manager
+        zone_id = zone_item.zone_data.get('id')
+        zone = zone_manager.get_zone(zone_id)
+        if not zone:
+            return
+        current_name = zone.get('name', 'Unknown Zone')
+        new_name = InputDialog.get_text(t('zone_exclusion.rename_zone') if t else 'Rename Zone', t('zone_exclusion.rename_prompt') if t else 'Enter new zone name:', self, initial_text=current_name)
+        if new_name and new_name != current_name:
+            zone['name'] = new_name
+            zone_manager.update_zone(zone_id, zone)
+            self._update_zone_items()
+    def _on_zone_double_click(self, zone_item):
+        self._rename_zone_item(zone_item)
+    def _update_zone_items(self):
+        for item in self.exclusion_zones:
+            if item in self.scene.items():
+                self.scene.removeItem(item)
+        self.exclusion_zones.clear()
+        if not hasattr(self, 'toggle_map_zones') or not self.toggle_map_zones.isChecked():
+            return
+        from palworld_aio import zone_manager
+        zones = zone_manager.get_zones()
+        for zone_data in zones:
+            if not zone_data.get('enabled', True):
+                continue
+            zone_type = zone_data.get('type', 'rect')
+            if zone_type == 'polygon':
+                zone_item = PolygonExclusionZoneItem(zone_data, self.map_width, self.map_height)
+            else:
+                zone_item = ExclusionZoneItem(zone_data, self.map_width, self.map_height)
+            self.scene.addItem(zone_item)
+            self.exclusion_zones.append(zone_item)
+    def _set_zone_drawing_mode(self, enabled):
+        if enabled:
+            from palworld_aio import zone_manager
+            existing_zones = zone_manager.get_zones()
+            if existing_zones:
+                action = ZoneManagementDialog.get_action(len(existing_zones), self)
+                if action is None:
+                    return
+                elif action == 'clear':
+                    zone_manager.clear_all_zones()
+                    self._update_zone_items()
+            self._zone_drawing_mode = enabled
+            self.view.set_zone_drawing_mode(enabled)
+            self._create_zone_shape_buttons()
+            self._update_zone_shape_buttons()
+            if self._zone_shape_type == 'rect':
+                self.info_label.setText(t('zone_exclusion.drawing_mode_prompt') if t else 'Zone Drawing Mode: Double-click to set Point A, then double-click Point B to create zone. Right-click to stop.')
+            else:
+                self.info_label.setText(t('zone_exclusion.drawing_mode_polygon') if t else 'Polygon Mode: Double-click to start, single-click to add points, double-click to close.')
+        else:
+            self._zone_drawing_mode = enabled
+            self.view.set_zone_drawing_mode(enabled)
+            self._hide_zone_shape_buttons()
+            self._zone_shape_type = 'rect'
+            self.view.set_zone_shape_type('rect')
+            self.info_label.setText(t('map.info.select_base') if t else 'Click on a base marker or list item to view details')
+    def _on_zone_point_a_set(self, point):
+        self.info_label.setText(t('zone_exclusion.set_point_b_prompt') if t else 'Zone Drawing Mode: Point A set. Double-click to set Point B.')
+    def _on_zone_created(self, point_a, point_b):
+        from palworld_aio import zone_manager
+        width = self.map_width
+        height = self.map_height
+        def scene_to_world(scene_x, scene_y):
+            world_x = scene_x / width * 2000 - 1000
+            world_y = 1000 - scene_y / height * 2000
+            return (world_x, world_y)
+        x1, y1 = scene_to_world(point_a.x(), point_a.y())
+        x2, y2 = scene_to_world(point_b.x(), point_b.y())
+        from palworld_aio import zone_manager
+        existing_zones = zone_manager.get_zones()
+        self._zone_count = len(existing_zones) + 1
+        zone_data = {'name': f'Zone {self._zone_count}', 'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'enabled': True}
+        zone_manager.add_zone(zone_data)
+        self._update_zone_items()
+    def _on_zone_drawing_cancelled(self):
+        self._set_zone_drawing_mode(False)
+    def _create_zone_shape_buttons(self):
+        if hasattr(self, '_zone_shape_btn_rect') and self._zone_shape_btn_rect is not None:
+            return
+        self._zone_shape_btn_rect = QPushButton()
+        self._zone_shape_btn_rect.setFixedSize(36, 36)
+        self._zone_shape_btn_rect.setStyleSheet('\n            QPushButton {\n                background-color: rgba(30, 35, 45, 0.9);\n                border: 2px solid rgba(125, 211, 252, 0.5);\n                border-radius: 4px;\n                color: white;\n                font-size: 18px;\n            }\n            QPushButton:hover {\n                background-color: rgba(59, 142, 208, 0.5);\n                border-color: rgba(125, 211, 252, 0.8);\n            }\n            QPushButton:pressed {\n                background-color: rgba(59, 142, 208, 0.7);\n            }\n        ')
+        self._zone_shape_btn_rect.setText('◻')
+        self._zone_shape_btn_rect.setToolTip('Rectangle Zone')
+        self._zone_shape_btn_rect.clicked.connect(lambda: self._on_zone_shape_selected('rect'))
+        self._zone_shape_btn_poly = QPushButton()
+        self._zone_shape_btn_poly.setFixedSize(36, 36)
+        self._zone_shape_btn_poly.setStyleSheet('\n            QPushButton {\n                background-color: rgba(30, 35, 45, 0.9);\n                border: 2px solid rgba(125, 211, 252, 0.5);\n                border-radius: 4px;\n                color: white;\n                font-size: 18px;\n            }\n            QPushButton:hover {\n                background-color: rgba(59, 142, 208, 0.5);\n                border-color: rgba(125, 211, 252, 0.8);\n            }\n            QPushButton:pressed {\n                background-color: rgba(59, 142, 208, 0.7);\n            }\n        ')
+        self._zone_shape_btn_poly.setText('⬡')
+        self._zone_shape_btn_poly.setToolTip('Polygon Zone')
+        self._zone_shape_btn_poly.clicked.connect(lambda: self._on_zone_shape_selected('polygon'))
+        self._zone_shape_buttons_container = QWidget(self.view)
+        self._zone_shape_buttons_container.setFixedSize(44, 80)
+        zone_shape_layout = QVBoxLayout(self._zone_shape_buttons_container)
+        zone_shape_layout.setContentsMargins(4, 4, 4, 4)
+        zone_shape_layout.setSpacing(4)
+        zone_shape_layout.addWidget(self._zone_shape_btn_rect)
+        zone_shape_layout.addWidget(self._zone_shape_btn_poly)
+        self._zone_shape_buttons_container.setStyleSheet('background: transparent;')
+        self._zone_shape_buttons_container.move(10, 40)
+        self._zone_shape_buttons_container.show()
+    def _on_zone_shape_selected(self, shape_type):
+        self._zone_shape_type = shape_type
+        self.view.set_zone_shape_type(shape_type)
+        self._update_zone_shape_buttons()
+        if shape_type == 'rect':
+            self.info_label.setText(t('zone_exclusion.drawing_mode_prompt') if t else 'Zone Drawing Mode: Double-click to set Point A, then double-click Point B to create zone. Right-click to stop.')
+        else:
+            self.info_label.setText(t('zone_exclusion.drawing_mode_polygon') if t else 'Polygon Mode: Double-click to start, single-click to add points, double-click to close.')
+    def _update_zone_shape_buttons(self):
+        if self._zone_shape_type == 'rect':
+            self._zone_shape_btn_rect.setStyleSheet('\n                QPushButton {\n                    background-color: rgba(59, 142, 208, 0.8);\n                    border: 2px solid rgba(125, 211, 252, 1.0);\n                    border-radius: 4px;\n                    color: white;\n                    font-size: 18px;\n                }\n            ')
+            self._zone_shape_btn_poly.setStyleSheet('\n                QPushButton {\n                    background-color: rgba(30, 35, 45, 0.9);\n                    border: 2px solid rgba(125, 211, 252, 0.5);\n                    border-radius: 4px;\n                    color: white;\n                    font-size: 18px;\n                }\n                QPushButton:hover {\n                    background-color: rgba(59, 142, 208, 0.5);\n                    border-color: rgba(125, 211, 252, 0.8);\n                }\n            ')
+        else:
+            self._zone_shape_btn_rect.setStyleSheet('\n                QPushButton {\n                    background-color: rgba(30, 35, 45, 0.9);\n                    border: 2px solid rgba(125, 211, 252, 0.5);\n                    border-radius: 4px;\n                    color: white;\n                    font-size: 18px;\n                }\n                QPushButton:hover {\n                    background-color: rgba(59, 142, 208, 0.5);\n                    border-color: rgba(125, 211, 252, 0.8);\n                }\n            ')
+            self._zone_shape_btn_poly.setStyleSheet('\n                QPushButton {\n                    background-color: rgba(59, 142, 208, 0.8);\n                    border: 2px solid rgba(125, 211, 252, 1.0);\n                    border-radius: 4px;\n                    color: white;\n                    font-size: 18px;\n                }\n            ')
+    def _hide_zone_shape_buttons(self):
+        if hasattr(self, '_zone_shape_buttons_container') and self._zone_shape_buttons_container is not None:
+            self._zone_shape_buttons_container.hide()
+            self._zone_shape_buttons_container.deleteLater()
+            self._zone_shape_buttons_container = None
+            self._zone_shape_btn_rect = None
+            self._zone_shape_btn_poly = None
+    def _on_polygon_point_added(self, point):
+        self.info_label.setText(t('zone_exclusion.polygon_adding_points') if t else f'Polygon: {len(self.view.polygon_points)} points. Single-click to add more, double-click to close.')
+    def _on_polygon_closed(self, points):
+        from palworld_aio import zone_manager
+        width = self.map_width
+        height = self.map_height
+        def scene_to_world(scene_x, scene_y):
+            world_x = scene_x / width * 2000 - 1000
+            world_y = 1000 - scene_y / height * 2000
+            return (world_x, world_y)
+        polygon_points = []
+        for point in points:
+            wx, wy = scene_to_world(point.x(), point.y())
+            polygon_points.append({'x': wx, 'y': wy})
+        existing_zones = zone_manager.get_zones()
+        self._zone_count = len(existing_zones) + 1
+        zone_data = {'name': f'Zone {self._zone_count}', 'type': 'polygon', 'points': polygon_points, 'enabled': True}
+        zone_manager.add_zone(zone_data)
+        self._update_zone_items()
+    def _export_zones(self):
+        from palworld_aio import zone_manager
+        try:
+            default_name = 'protection_zones.json'
+            file_path, _ = QFileDialog.getSaveFileName(self, t('zone_management.export_title') if t else 'Export Protection Zones', default_name, 'JSON Files(*.json)')
+            if file_path:
+                zone_data = zone_manager.export_zones()
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(zone_data, f, indent=2)
+                show_information(self, t('success.title') if t else 'Success', t('zone_management.export_success') if t else 'Protection zones exported successfully')
+        except Exception as e:
+            show_critical(self, t('error.title') if t else 'Error', f"{(t('zone_management.export_failed') if t else 'Failed to export zones')}: {str(e)}")
+    def _import_zones(self):
+        from palworld_aio import zone_manager
+        try:
+            file_path, _ = QFileDialog.getOpenFileName(self, t('zone_management.import_title') if t else 'Import Protection Zones', '', 'JSON Files(*.json)')
+            if file_path:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    zone_data = json.load(f)
+                if zone_manager.import_zones(zone_data):
+                    self._update_zone_items()
+                    show_information(self, t('success.title') if t else 'Success', t('zone_management.import_success') if t else 'Protection zones imported successfully')
+                else:
+                    show_warning(self, t('error.title') if t else 'Error', t('zone_management.import_failed') if t else 'Failed to import zones. Invalid file format.')
+        except Exception as e:
+            show_critical(self, t('error.title') if t else 'Error', f"{(t('zone_management.import_failed') if t else 'Failed to import zones')}: {str(e)}")
+    def _clear_zones(self):
+        from palworld_aio import zone_manager
+        confirmed = show_question(self, t('zone_exclusion.delete_zone') if t else 'Delete Zone', t('zone_exclusion.confirm_delete_all') if t else 'Are you sure you want to delete all zones?')
+        if confirmed:
+            zone_manager.clear_all_zones()
+            self._update_zone_items()

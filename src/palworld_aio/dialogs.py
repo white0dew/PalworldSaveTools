@@ -958,4 +958,43 @@ class GuildSelectionDialog(ThemedDialog):
         if dialog.exec() == QDialog.Accepted:
             return dialog.selected_guild_id
         return None
+class ZoneManagementDialog(ThemedDialog):
+    def __init__(self, zone_count, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(t('zone_management.title') if t else 'Protection Zones')
+        self.setModal(True)
+        self.setMinimumWidth(400)
+        if os.path.exists(constants.ICON_PATH):
+            self.setWindowIcon(QIcon(constants.ICON_PATH))
+        layout = QVBoxLayout(self)
+        label = QLabel(t('zone_management.prompt') if t else f'Found {zone_count} protection zone(s) from previous session.\nWhat would you like to do?')
+        label.setWordWrap(True)
+        layout.addWidget(label)
+        button_layout = QVBoxLayout()
+        self.load_btn = QPushButton(t('zone_management.load') if t else 'Load Previous Zones')
+        self.load_btn.clicked.connect(self._on_load)
+        self.load_btn.setMinimumHeight(40)
+        button_layout.addWidget(self.load_btn)
+        self.clear_btn = QPushButton(t('zone_management.clear') if t else 'Clear Zones')
+        self.clear_btn.clicked.connect(self._on_clear)
+        self.clear_btn.setMinimumHeight(40)
+        button_layout.addWidget(self.clear_btn)
+        cancel_btn = QPushButton(t('button.cancel') if t else 'Cancel')
+        cancel_btn.clicked.connect(self.reject)
+        cancel_btn.setMinimumHeight(40)
+        button_layout.addWidget(cancel_btn)
+        layout.addLayout(button_layout)
+        self.result_action = None
+    def _on_load(self):
+        self.result_action = 'load'
+        self.accept()
+    def _on_clear(self):
+        self.result_action = 'clear'
+        self.accept()
+    @staticmethod
+    def get_action(zone_count, parent=None):
+        dialog = ZoneManagementDialog(zone_count, parent)
+        if dialog.exec() == QDialog.Accepted:
+            return dialog.result_action
+        return None
 from .edit_pals import EditPalsDialog, PalFrame

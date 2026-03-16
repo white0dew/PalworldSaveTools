@@ -46,6 +46,7 @@ def get_icon_path():
     return os.path.join(get_base_path(), 'resources', 'pal.ico')
 ICON_PATH = get_icon_path()
 EXCLUSIONS_FILE = os.path.join(get_src_path(), 'data', 'configs', 'deletion_exclusions.json')
+ZONE_EXCLUSIONS_FILE = os.path.join(get_src_path(), 'data', 'configs', 'zone_exclusions.json')
 current_save_path = None
 loaded_level_json = None
 original_loaded_level_json = None
@@ -59,6 +60,8 @@ PLAYER_PAL_COUNTS = {}
 PLAYER_DETAILS_CACHE = {}
 PLAYER_REMAPS = {}
 exclusions = {}
+death_bag_protected_instance_ids = set()
+death_bag_protected_container_ids = set()
 selected_source_player = None
 dps_executor = None
 dps_futures = []

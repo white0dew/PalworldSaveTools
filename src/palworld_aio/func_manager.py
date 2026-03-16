@@ -12,6 +12,85 @@ from palworld_aio import constants
 from palworld_aio.utils import sav_to_json, json_to_sav, sav_to_gvasfile, gvasfile_to_sav, are_equal_uuids, as_uuid, is_valid_level, extract_value, format_duration, sanitize_filename
 from palworld_aio.data_manager import delete_base_camp
 from palworld_aio.dialogs import GameDaysInputDialog
+def scan_and_protect_death_bags(parent=None):
+    if not constants.loaded_level_json:
+        return {'dropped_pals': 0, 'death_penalty_chests': 0}
+    constants.death_bag_protected_instance_ids.clear()
+    constants.death_bag_protected_container_ids.clear()
+    wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
+    map_objects = wsd.get('MapObjectSaveData', {}).get('value', {}).get('values', [])
+    dropped_pals_count = 0
+    death_penalty_chests_count = 0
+    for obj in map_objects:
+        try:
+            map_object_id = obj.get('MapObjectId', {}).get('value', '')
+            raw_data = obj.get('ConcreteModel', {}).get('value', {}).get('RawData', {}).get('value', {})
+            if map_object_id == 'DroppedCharacter':
+                instance_id = raw_data.get('instance_id', '')
+                stored_param_id = raw_data.get('stored_parameter_id', '')
+                if instance_id:
+                    constants.death_bag_protected_instance_ids.add(str(instance_id).replace('-', '').lower())
+                if stored_param_id:
+                    constants.death_bag_protected_instance_ids.add(str(stored_param_id).replace('-', '').lower())
+                dropped_pals_count += 1
+            elif map_object_id == 'DeathPenaltyChest':
+                instance_id = raw_data.get('instance_id', '')
+                if instance_id:
+                    constants.death_bag_protected_instance_ids.add(str(instance_id).replace('-', '').lower())
+                module_map = obj.get('ConcreteModel', {}).get('value', {}).get('ModuleMap', {}).get('value', [])
+                for module in module_map:
+                    if module.get('key') == 'EPalMapObjectConcreteModelModuleType::ItemContainer':
+                        module_raw = module.get('value', {}).get('RawData', {}).get('value', {})
+                        target_container_id = module_raw.get('target_container_id')
+                        if target_container_id:
+                            constants.death_bag_protected_container_ids.add(str(target_container_id).replace('-', '').lower())
+                        break
+                death_penalty_chests_count += 1
+        except Exception as e:
+            continue
+    return {'dropped_pals': dropped_pals_count, 'death_penalty_chests': death_penalty_chests_count}
+def is_death_bag_protected(instance_id):
+    if not instance_id:
+        return False
+    return str(instance_id).replace('-', '').lower() in constants.death_bag_protected_instance_ids
+def is_death_penalty_container_protected(container_id):
+    if not container_id:
+        return False
+    return str(container_id).replace('-', '').lower() in constants.death_bag_protected_container_ids
+def is_dropped_character(obj):
+    return obj.get('MapObjectId', {}).get('value') == 'DroppedCharacter'
+def is_death_penalty_chest_obj(obj):
+    return obj.get('MapObjectId', {}).get('value') == 'DeathPenaltyChest'
+def is_death_bag(obj):
+    return is_dropped_character(obj) or is_death_penalty_chest_obj(obj)
+def get_entity_location(entity_data):
+    try:
+        if 'Model' in entity_data:
+            raw_data = entity_data['Model'].get('value', {}).get('RawData', {}).get('value', {})
+            translation = None
+            if 'transform' in raw_data:
+                translation = raw_data['transform'].get('translation', {})
+            elif 'initital_transform_cache' in raw_data:
+                translation = raw_data['initital_transform_cache'].get('translation', {})
+            if translation:
+                save_x = float(translation.get('x', 0))
+                save_y = float(translation.get('y', 0))
+                import palworld_coord
+                world_x, world_y = palworld_coord.sav_to_map(save_x, save_y, new=True)
+                return (world_x, world_y)
+    except Exception as e:
+        logging.warning(f'Failed to extract entity location: {e}')
+    return (None, None)
+def is_entity_in_exclusion_zones(entity_data):
+    world_x, world_y = get_entity_location(entity_data)
+    if world_x is None or world_y is None:
+        return False
+    try:
+        from palworld_aio import zone_manager
+        return zone_manager.is_point_in_exclusion(world_x, world_y)
+    except Exception as e:
+        logging.warning(f'Failed to check zone exclusion: {e}')
+        return False
 def build_player_levels():
     if not constants.loaded_level_json:
         return
@@ -403,11 +482,19 @@ def delete_unreferenced_data(parent=None):
     new_map_objects = []
     for obj in map_objects:
         if is_broken_mapobject(obj):
-            instance_id = obj.get('Model', {}).get('value', {}).get('RawData', {}).get('value', {}).get('instance_id')
-            broken_ids.append(instance_id)
+            if is_entity_in_exclusion_zones(obj):
+                new_map_objects.append(obj)
+            else:
+                instance_id = obj.get('Model', {}).get('value', {}).get('RawData', {}).get('value', {}).get('instance_id')
+                broken_ids.append(instance_id)
         elif is_dropped_item(obj):
-            instance_id = obj.get('ConcreteModel', {}).get('value', {}).get('RawData', {}).get('value', {}).get('instance_id')
-            dropped_ids.append(instance_id)
+            if is_entity_in_exclusion_zones(obj):
+                new_map_objects.append(obj)
+            else:
+                instance_id = obj.get('ConcreteModel', {}).get('value', {}).get('RawData', {}).get('value', {}).get('instance_id')
+                dropped_ids.append(instance_id)
+        elif is_death_bag(obj):
+            new_map_objects.append(obj)
         else:
             new_map_objects.append(obj)
     map_objects_wrapper['values'] = new_map_objects
@@ -506,9 +593,9 @@ def delete_non_base_map_objects(parent=None):
     if not constants.loaded_level_json:
         return 0
     wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
-    base_camp_list = wsd['BaseCampSaveData']['value']
+    base_camp_list = wsd.get('BaseCampSaveData', {}).get('value', [])
     active_base_ids = {str(b['key']).replace('-', '').lower() for b in base_camp_list}
-    map_objs = wsd['MapObjectSaveData']['value']['values']
+    map_objs = wsd.get('MapObjectSaveData', {}).get('value', {}).get('values', [])
     initial_count = len(map_objs)
     new_map_objs = []
     deleted_instance_ids = set()
@@ -518,7 +605,11 @@ def delete_non_base_map_objects(parent=None):
         instance_id = raw_data.get('instance_id', 'UNKNOWN_ID')
         object_name = m.get('MapObjectId', {}).get('value', 'UNKNOWN_OBJECT_TYPE')
         should_keep = False
-        if base_camp_id and str(base_camp_id).replace('-', '').lower() in active_base_ids:
+        if is_death_bag(m):
+            should_keep = True
+        elif base_camp_id and str(base_camp_id).replace('-', '').lower() in active_base_ids:
+            should_keep = True
+        elif is_entity_in_exclusion_zones(m):
             should_keep = True
         if should_keep:
             new_map_objs.append(m)
@@ -561,6 +652,10 @@ def delete_invalid_structure_map_objects(parent=None):
         object_id_node = m.get('MapObjectId', {})
         object_name = object_id_node.get('value')
         if isinstance(object_name, str) and object_name.lower() in valid_assets:
+            new_map_objs.append(m)
+        elif is_entity_in_exclusion_zones(m):
+            new_map_objs.append(m)
+        elif is_death_bag(m):
             new_map_objs.append(m)
         else:
             raw_data = m.get('Model', {}).get('value', {}).get('RawData', {}).get('value', {})

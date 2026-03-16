@@ -119,6 +119,8 @@ def run_aio():
             constants.PLAYER_DETAILS_CACHE = {}
             constants.PLAYER_REMAPS = {}
             constants.exclusions = {}
+            constants.death_bag_protected_instance_ids.clear()
+            constants.death_bag_protected_container_ids.clear()
             constants.selected_source_player = None
             constants.dps_executor = None
             constants.dps_futures = []
@@ -147,6 +149,8 @@ def run_aio():
         constants.loaded_level_json = sav_to_gvas_wrapper(p)
         t1 = time.perf_counter()
         print(f'Save loaded in {t1 - t0:.2f} seconds')
+        from palworld_aio.func_manager import scan_and_protect_death_bags
+        scan_and_protect_death_bags()
         save_manager._build_player_levels()
         if not constants.loaded_level_json:
             print('Error: Failed to load save')

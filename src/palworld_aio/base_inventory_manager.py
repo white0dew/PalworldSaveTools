@@ -969,7 +969,7 @@ def get_item_economy_stats(item_id):
         import traceback
         traceback.print_exc()
         return None
-def remove_item_from_guilds(item_id, percentage=None):
+def remove_item_from_guilds(item_id, percentage=None, guild_ids=None):
     if not constants.loaded_level_json:
         return {'removed': 0, 'containers_affected': 0}
     removed_count = 0
@@ -980,6 +980,8 @@ def remove_item_from_guilds(item_id, percentage=None):
             return {'removed': 0, 'containers_affected': 0}
         container_lookup = constants.get_container_lookup()
         for guild_id_normalized, bases in item_locations.items():
+            if guild_ids is not None and guild_id_normalized not in guild_ids:
+                continue
             for base_id, container_ids in bases.items():
                 for container_id in container_ids:
                     container_data = container_lookup.get(container_id)
