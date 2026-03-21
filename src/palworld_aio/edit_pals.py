@@ -1,14 +1,17 @@
 import os
 import json
 import uuid
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QSpinBox, QComboBox, QTextEdit, QFileDialog, QGroupBox, QFormLayout, QCheckBox, QFrame, QTabWidget, QScrollArea, QWidget, QGridLayout, QListWidget, QInputDialog, QTableWidget, QApplication, QProgressBar
+import threading
+from functools import partial
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QSpinBox, QComboBox, QTextEdit, QFileDialog, QGroupBox, QFormLayout, QCheckBox, QFrame, QTabWidget, QScrollArea, QWidget, QGridLayout, QListWidget, QListWidgetItem, QInputDialog, QTableWidget, QApplication, QProgressBar, QAbstractItemView
 from PySide6.QtCore import Qt, QTimer, Signal, QPoint, QEvent, QSize
+from PySide6.QtWidgets import QSizePolicy
 from PySide6.QtGui import QIcon, QFont, QPixmap, QRegion, QCursor, QPainter, QPainterPath, QPen, QBrush, QFontMetrics, QPalette, QColor
 from i18n import t
 from loading_manager import show_information, show_warning, show_question
 import nerdfont as nf
 from palworld_aio import constants
-from palworld_aio.utils import sav_to_json, sav_to_gvasfile, gvasfile_to_sav, extract_value, format_character_key, json_to_sav, calculate_max_hp, get_pal_data
+from palworld_aio.utils import sav_to_json, sav_to_gvasfile, gvasfile_to_sav, extract_value, format_character_key, json_to_sav, calculate_max_hp, get_pal_data, safe_dict_get, safe_nested_get
 class FramelessDialog(QDialog):
     def __init__(self, title_key='edit_pals.title', parent=None):
         super().__init__(parent)
@@ -131,9 +134,52 @@ class StrokedLabel(QLabel):
         painter.fillPath(path, QBrush(self._text_color))
 _ICON_CACHE = {}
 _PIXMAP_CACHE = {}
+_CACHE_LOCK = threading.Lock()
+def _get_pal_icon_path(character_id):
+    base_dir = constants.get_base_path()
+    cid_lower = character_id.lower()
+    cid_for_icon = cid_lower.replace('boss_', '').replace('b_o_s_s_', '')
+    with _CACHE_LOCK:
+        if cid_for_icon in _ICON_CACHE:
+            return _ICON_CACHE[cid_for_icon]
+    icon_path = None
+    try:
+        paldata_path = os.path.join(base_dir, 'resources', 'game_data', 'paldata.json')
+        with open(paldata_path, 'r', encoding='utf-8') as f:
+            paldata = json.load(f)
+        for pal in paldata.get('pals', []):
+            if pal.get('asset', '').lower() == cid_for_icon:
+                icon_rel_path = pal.get('icon', '')
+                if icon_rel_path:
+                    icon_rel_path = icon_rel_path.lstrip('/')
+                    icon_path = os.path.join(base_dir, 'resources', 'game_data', icon_rel_path)
+                    break
+    except Exception:
+        pass
+    if not icon_path:
+        try:
+            npcdata_path = os.path.join(base_dir, 'resources', 'game_data', 'npcdata.json')
+            with open(npcdata_path, 'r', encoding='utf-8') as f:
+                npcdata = json.load(f)
+            for npc in npcdata.get('npcs', []):
+                if npc.get('asset', '').lower() == cid_for_icon:
+                    icon_rel_path = npc.get('icon', '')
+                    if icon_rel_path:
+                        icon_rel_path = icon_rel_path.lstrip('/')
+                        icon_path = os.path.join(base_dir, 'resources', 'game_data', icon_rel_path)
+                        break
+        except Exception:
+            pass
+    if not icon_path or not os.path.exists(icon_path):
+        icon_path = os.path.join(base_dir, 'resources', 'game_data', 'icons', 'pals', f'{cid_for_icon}.webp')
+        if not os.path.exists(icon_path):
+            icon_path = os.path.join(base_dir, 'resources', 'game_data', 'icons', 'pals', 'T_icon_unknown.webp')
+    with _CACHE_LOCK:
+        _ICON_CACHE[cid_for_icon] = icon_path
+    return icon_path
 class PalIcon(QFrame):
     clicked = Signal()
-    rightClicked = Signal(int, str, str)
+    rightClicked = Signal(int, str)
     def __init__(self, pal_data=None, tab=None, slot_index=0, tab_name='', parent=None):
         super().__init__(parent)
         self.pal_data = pal_data
@@ -147,15 +193,13 @@ class PalIcon(QFrame):
         self._setup_ui()
     def _setup_ui(self):
         self._clear_ui()
-        from PySide6.QtWidgets import QApplication
-        QApplication.processEvents()
         if not self.pal_data:
             return
         try:
             if 'data' in self.pal_data:
                 raw = self.pal_data['data']
             elif 'value' in self.pal_data:
-                raw = self.pal_data['value']['RawData']['value']['object']['SaveParameter']['value']
+                raw = safe_nested_get(self.pal_data, ['value', 'RawData', 'value', 'object', 'SaveParameter', 'value'])
             else:
                 raw = self.pal_data
             if not isinstance(raw, dict):
@@ -221,23 +265,29 @@ class PalIcon(QFrame):
                     icon_path = os.path.join(base_dir, 'resources', 'game_data', 'icons', 'pals', f'{cid_for_icon}.webp')
                     if not os.path.exists(icon_path):
                         icon_path = os.path.join(base_dir, 'resources', 'game_data', 'icons', 'pals', 'T_icon_unknown.webp')
-                _ICON_CACHE[cid_for_icon] = icon_path
+                with _CACHE_LOCK:
+                    _ICON_CACHE[cid_for_icon] = icon_path
             else:
-                icon_path = _ICON_CACHE[cid_for_icon]
+                with _CACHE_LOCK:
+                    icon_path = _ICON_CACHE.get(cid_for_icon)
             if icon_path and os.path.exists(icon_path):
                 pixmap_key = f'{icon_path}_64x64'
-                if pixmap_key not in _PIXMAP_CACHE:
+                with _CACHE_LOCK:
+                    cached_pixmap = _PIXMAP_CACHE.get(pixmap_key)
+                if cached_pixmap is None:
                     pixmap = QPixmap(icon_path)
                     if not pixmap.isNull():
                         scaled_pixmap = pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                         if not scaled_pixmap.isNull():
-                            _PIXMAP_CACHE[pixmap_key] = scaled_pixmap
-                if pixmap_key in _PIXMAP_CACHE:
-                    image_label.setPixmap(_PIXMAP_CACHE[pixmap_key])
+                            with _CACHE_LOCK:
+                                _PIXMAP_CACHE[pixmap_key] = scaled_pixmap
+                            cached_pixmap = scaled_pixmap
+                if cached_pixmap:
+                    image_label.setPixmap(cached_pixmap)
                     try:
                         mask = QRegion(0, 0, 64, 64, QRegion.Ellipse)
                         image_label.setMask(mask)
-                    except Exception as e:
+                    except Exception:
                         pass
                     self.update()
                     self.repaint()
@@ -274,11 +324,23 @@ class PalIcon(QFrame):
         self.boss_label = QLabel(self)
         base_dir = constants.get_base_path()
         boss_icon_path = os.path.join(base_dir, 'resources', 'boss_alpha.webp')
-        pixmap = QPixmap(boss_icon_path)
-        if not pixmap.isNull():
-            scaled_pixmap = pixmap.scaled(24, 24, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            self.boss_label.setPixmap(scaled_pixmap)
-        else:
+        try:
+            if os.path.exists(boss_icon_path):
+                pixmap = QPixmap(boss_icon_path)
+                if not pixmap.isNull():
+                    scaled_pixmap = pixmap.scaled(24, 24, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    if not scaled_pixmap.isNull():
+                        self.boss_label.setPixmap(scaled_pixmap)
+                    else:
+                        self.boss_label.setText('α')
+                        self.boss_label.setStyleSheet('\n                    color: #F59E0B;\n                    font-size: 20px;\n                    font-weight: bold;\n                    background-color: rgba(0,0,0,0.8);\n                    border-radius: 10px;\n                ')
+                else:
+                    self.boss_label.setText('α')
+                    self.boss_label.setStyleSheet('\n                    color: #F59E0B;\n                    font-size: 20px;\n                    font-weight: bold;\n                    background-color: rgba(0,0,0,0.8);\n                    border-radius: 10px;\n                ')
+            else:
+                self.boss_label.setText('α')
+                self.boss_label.setStyleSheet('\n                    color: #F59E0B;\n                    font-size: 20px;\n                    font-weight: bold;\n                    background-color: rgba(0,0,0,0.8);\n                    border-radius: 10px;\n                ')
+        except Exception:
             self.boss_label.setText('α')
             self.boss_label.setStyleSheet('\n                color: #F59E0B;\n                font-size: 20px;\n                font-weight: bold;\n                background-color: rgba(0,0,0,0.8);\n                border-radius: 10px;\n            ')
         self.boss_label.setFixedSize(24, 24)
@@ -287,13 +349,25 @@ class PalIcon(QFrame):
         self.boss_label.raise_()
         self.shiny_label = QLabel(self)
         shiny_icon_path = os.path.join(base_dir, 'resources', 'boss_shiny.webp')
-        shiny_pixmap = QPixmap(shiny_icon_path)
-        if not shiny_pixmap.isNull():
-            scaled_shiny_pixmap = shiny_pixmap.scaled(24, 24, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            self.shiny_label.setPixmap(scaled_shiny_pixmap)
-        else:
+        try:
+            if os.path.exists(shiny_icon_path):
+                shiny_pixmap = QPixmap(shiny_icon_path)
+                if not shiny_pixmap.isNull():
+                    scaled_shiny_pixmap = shiny_pixmap.scaled(24, 24, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    if not scaled_shiny_pixmap.isNull():
+                        self.shiny_label.setPixmap(scaled_shiny_pixmap)
+                    else:
+                        self.shiny_label.setText('★')
+                        self.shiny_label.setStyleSheet('\n                    color: #A78BFA;\n                    font-size: 20px;\n                    font-weight: bold;\n                    background-color: rgba(0,0,0,0.8);\n                    border-radius: 10px;\n                ')
+                else:
+                    self.shiny_label.setText('★')
+                    self.shiny_label.setStyleSheet('\n                    color: #A78BFA;\n                    font-size: 20px;\n                    font-weight: bold;\n                    background-color: rgba(0,0,0,0.8);\n                    border-radius: 10px;\n                ')
+            else:
+                self.shiny_label.setText('★')
+                self.shiny_label.setStyleSheet('\n                    color: #A78BFA;\n                    font-size: 20px;\n                    font-weight: bold;\n                    background-color: rgba(0,0,0,0.8);\n                    border-radius: 10px;\n                ')
+        except Exception:
             self.shiny_label.setText('★')
-            self.shiny_label.setStyleSheet('\n                color: #A78BFA;\n                font-size: 20px;\n font-weight: bold;\n                background-color: rgba(0,0,0,0.8);\n                border-radius: 10px;\n            ')
+            self.shiny_label.setStyleSheet('\n                color: #A78BFA;\n                font-size: 20px;\n                font-weight: bold;\n                background-color: rgba(0,0,0,0.8);\n                border-radius: 10px;\n            ')
         self.shiny_label.setFixedSize(24, 24)
         self.shiny_label.setParent(self)
         self.shiny_label.setAttribute(Qt.WA_TransparentForMouseEvents)
@@ -327,9 +401,11 @@ class PalIcon(QFrame):
             if 'data' in self.pal_data:
                 raw = self.pal_data['data']
             elif 'value' in self.pal_data:
-                raw = self.pal_data['value']['RawData']['value']['object']['SaveParameter']['value']
+                raw = safe_nested_get(self.pal_data, ['value', 'RawData', 'value', 'object', 'SaveParameter', 'value'], self.pal_data)
             else:
                 raw = self.pal_data
+            if not isinstance(raw, dict):
+                return
             level = extract_value(raw, 'Level', 1)
             gender_data = extract_value(raw, 'Gender', {})
             if isinstance(gender_data, dict) and 'value' in gender_data:
@@ -349,32 +425,34 @@ class PalIcon(QFrame):
             if hasattr(self, 'gender_label'):
                 self.gender_label.setText(gender_icon)
                 self.gender_label.setStyleSheet(f'\n                    color: {gender_color};\n                    font-size: 16px;\n                    font-weight: bold;\n                    background-color: transparent;\n                    font-family: "Material Design Icons", sans-serif;\n                ')
-            if is_lucky:
-                self.shiny_label.move(1, 3)
-                self.shiny_label.show()
-                self.boss_label.hide()
-            elif is_boss:
-                self.boss_label.move(1, 3)
-                self.boss_label.show()
-                self.shiny_label.hide()
-            else:
-                self.boss_label.hide()
-                self.shiny_label.hide()
+            if hasattr(self, 'shiny_label') and hasattr(self, 'boss_label'):
+                if is_lucky:
+                    self.shiny_label.move(1, 3)
+                    self.shiny_label.show()
+                    self.boss_label.hide()
+                elif is_boss:
+                    self.boss_label.move(1, 3)
+                    self.boss_label.show()
+                    self.shiny_label.hide()
+                else:
+                    self.boss_label.hide()
+                    self.shiny_label.hide()
         except Exception as e:
             pass
     def contextMenuEvent(self, event):
         from PySide6.QtWidgets import QMenu
         menu = QMenu(self)
+        menu.setObjectName('editPalsContextMenu')
         if self.pal_data:
             delete_action = menu.addAction(t('edit_pals.delete'))
             action = menu.exec(event.globalPos())
             if action == delete_action:
-                self.rightClicked.emit(self.slot_index, self.tab_name, 'delete')
+                self.rightClicked.emit(self.slot_index, 'delete')
         else:
             add_action = menu.addAction(t('edit_pals.add_new_pal'))
             action = menu.exec(event.globalPos())
             if action == add_action:
-                self.rightClicked.emit(self.slot_index, self.tab_name, 'add_new')
+                self.rightClicked.emit(self.slot_index, 'add_new')
     def update_boss_status(self, is_boss):
         self.update_display()
     def update_rare_status(self, is_lucky):
@@ -386,7 +464,7 @@ class PalIcon(QFrame):
             if 'data' in self.pal_data:
                 raw = self.pal_data['data']
             elif 'value' in self.pal_data:
-                raw = self.pal_data['value']['RawData']['value']['object']['SaveParameter']['value']
+                raw = safe_nested_get(self.pal_data, ['value', 'RawData', 'value', 'object', 'SaveParameter', 'value'])
             else:
                 raw = self.pal_data
             if not isinstance(raw, dict):
@@ -426,7 +504,7 @@ class PalCardWidget(QFrame):
             if 'data' in self.pal_data:
                 raw = self.pal_data['data']
             elif 'value' in self.pal_data:
-                raw = self.pal_data['value']['RawData']['value']['object']['SaveParameter']['value']
+                raw = safe_nested_get(self.pal_data, ['value', 'RawData', 'value', 'object', 'SaveParameter', 'value'])
             else:
                 raw = self.pal_data
             if not isinstance(raw, dict):
@@ -563,31 +641,46 @@ class PalCardWidget(QFrame):
             self.setStyleSheet('\n                QFrame#palCard {\n                    border: 4px solid #7DD3FC;\n                    background-color: #444;\n                }\n            ')
         else:
             self.setStyleSheet('\n                QFrame#palCard {\n                    border: 2px solid #666;\n                    background-color: #333;\n                }\n                QFrame#palCard:hover {\n                    border: 2px solid #7DD3FC;\n                    background-color: #444;\n                }\n            ')
-class EditPalsDialog(FramelessDialog):
-    def __init__(self, player_uid, player_name, parent=None):
-        super().__init__('edit_pals.title', parent)
-        self.player_uid = player_uid
-        self.player_name = player_name
-        self.set_title_text(f"{t('edit_pals.title')} - {player_name}")
-        self.setModal(True)
-        self.setMinimumSize(1200, 800)
-        if os.path.exists(constants.ICON_PATH):
-            self.setWindowIcon(QIcon(constants.ICON_PATH))
-        self._get_container_ids()
-        PalFrame._load_maps()
-        self.tabs = QTabWidget()
-        self.tabs.setObjectName('editPalsTab')
-        self.party_tab = self._create_tab(t('edit_pals.party'))
-        self.palbox_tab = self._create_tab(t('edit_pals.palbox'))
-        self.tabs.addTab(self.party_tab, t('edit_pals.party'))
-        self.tabs.addTab(self.palbox_tab, t('edit_pals.palbox'))
+class PalEditorWidget(QWidget):
+    _process_lock = threading.Lock()
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.player_uid = None
+        self.player_name = None
+        self.party_container = None
+        self.palbox_container = None
+        self.player_sav_path = None
+        self.dps_file_path = None
+        self.dps_loaded = False
+        self.tabs = None
+        self.party_tab = None
+        self.palbox_tab = None
         self.dps_tab = None
         self.skill_filter_timer = QTimer(self)
         self.skill_filter_timer.setSingleShot(True)
         self.skill_filter_timer.timeout.connect(self._do_filter_skills)
         self.current_filter_combo = None
         self.current_filter_skill_type = None
+        self._pending_lock = threading.Lock()
         self._setup_ui()
+    def _setup_ui(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        self.tabs = QTabWidget()
+        self.tabs.setObjectName('editPalsTab')
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+        self.party_tab = self._create_tab(t('edit_pals.party'))
+        self.palbox_tab = self._create_tab(t('edit_pals.palbox'))
+        self.tabs.addTab(self.party_tab, t('edit_pals.party'))
+        self.tabs.addTab(self.palbox_tab, t('edit_pals.palbox'))
+        self.dps_tab = None
+        main_layout.addWidget(self.tabs)
+    def set_player(self, player_uid, player_name):
+        self.player_uid = player_uid
+        self.player_name = player_name
+        self._get_container_ids()
+        PalFrame._load_maps()
         self._load_pals()
     def _get_container_ids(self):
         self.party_container = None
@@ -605,27 +698,193 @@ class EditPalsDialog(FramelessDialog):
                         self.player_sav_path = os.path.join(players_dir, filename)
                         try:
                             p_gvas = sav_to_gvasfile(self.player_sav_path)
-                            p_prop = p_gvas.properties.get('SaveData', {}).get('value', {})
-                            self.party_container = p_prop.get('OtomoCharacterContainerId', {}).get('value', {}).get('ID', {}).get('value')
-                            self.palbox_container = p_prop.get('PalStorageContainerId', {}).get('value', {}).get('ID', {}).get('value')
-                        except:
-                            pass
+                            p_prop = p_gvas.properties.get('SaveData', {})
+                            save_data = p_prop.get('value', {}) if isinstance(p_prop, dict) else {}
+                            self.party_container = safe_nested_get(save_data, ['OtomoCharacterContainerId', 'value', 'ID', 'value'])
+                            self.palbox_container = safe_nested_get(save_data, ['PalStorageContainerId', 'value', 'ID', 'value'])
+                        except Exception as e:
+                            print(f'Error loading player container IDs: {e}')
+                            self.party_container = None
+                            self.palbox_container = None
                 elif filename.endswith('.sav') and '_dps' in filename:
                     p_uid_raw = filename.replace('_dps.sav', '').lower()
                     if p_uid_raw == target_uid:
                         self.dps_file_path = os.path.join(players_dir, filename)
+    def clear(self):
+        self.player_uid = None
+        self.player_name = None
+        self.party_container = None
+        self.palbox_container = None
+        self.dps_loaded = False
+        if self.party_tab and hasattr(self.party_tab, 'pal_layout'):
+            for i in reversed(range(self.party_tab.pal_layout.count())):
+                widget = self.party_tab.pal_layout.itemAt(i).widget()
+                if widget:
+                    widget.setParent(None)
+        if self.palbox_tab and hasattr(self.palbox_tab, 'pal_layout'):
+            for i in reversed(range(self.palbox_tab.pal_layout.count())):
+                widget = self.palbox_tab.pal_layout.itemAt(i).widget()
+                if widget:
+                    widget.setParent(None)
+        self._update_tab_pal_display(self.party_tab, -1)
+        self._update_tab_pal_display(self.palbox_tab, -1)
+    def refresh(self):
+        self._process_pending_changes()
+        if self.player_uid:
+            self._load_pals()
+    def _process_pending_changes(self):
+        with self._pending_lock:
+            try:
+                if not hasattr(self, '_pending_deletions') or not self._pending_deletions:
+                    if not hasattr(self, '_pending_additions') or not self._pending_additions:
+                        return
+                if not constants.loaded_level_json:
+                    return
+                deletions = getattr(self, '_pending_deletions', [])[:]
+                additions = getattr(self, '_pending_additions', [])[:]
+                wsd = safe_nested_get(constants.loaded_level_json, ['properties', 'worldSaveData', 'value'])
+                if deletions:
+                    cmap = safe_nested_get(constants.loaded_level_json, ['properties', 'worldSaveData', 'value', 'CharacterSaveParameterMap', 'value'], [])
+                    if cmap is not None:
+                        for deletion in deletions:
+                            pal_item = deletion.get('pal_item')
+                            tab_name = deletion.get('tab_name')
+                            if not pal_item or not tab_name:
+                                continue
+                            if tab_name == 'DPS':
+                                dps_json = getattr(self, 'dps_json', None)
+                                if dps_json:
+                                    save_parameter_array = safe_nested_get(dps_json, ['properties', 'SaveParameterArray', 'value', 'values'], [])
+                                    if save_parameter_array:
+                                        idx = pal_item.get('index', -1)
+                                        if 0 <= idx < len(save_parameter_array):
+                                            save_parameter_array.pop(idx)
+                                            for j in range(len(save_parameter_array)):
+                                                if j >= idx:
+                                                    save_parameter_array[j]['index'] = j
+                            else:
+                                if pal_item in cmap:
+                                    cmap.remove(pal_item)
+                                raw = safe_nested_get(pal_item, ['value', 'RawData', 'value', 'object', 'SaveParameter', 'value'])
+                                if raw:
+                                    container_id = safe_nested_get(raw, ['SlotId', 'value', 'ContainerId', 'value', 'ID', 'value'])
+                                    instance_id = safe_nested_get(pal_item, ['key', 'InstanceId', 'value'])
+                                    if wsd and container_id:
+                                        char_container = safe_nested_get(wsd, ['CharacterContainerSaveData', 'value'])
+                                        if char_container:
+                                            for container in char_container:
+                                                cont_id = safe_nested_get(container, ['key', 'ID', 'value'])
+                                                if cont_id == container_id:
+                                                    slots = safe_nested_get(container, ['value', 'Slots', 'value', 'values'], [])
+                                                    if slots:
+                                                        slots[:] = [s for s in slots if safe_nested_get(s, ['RawData', 'value', 'instance_id']) != instance_id]
+                                                    break
+                                    if wsd:
+                                        group_data = safe_nested_get(wsd, ['GroupSaveDataMap', 'value'], [])
+                                        if group_data:
+                                            for group in group_data:
+                                                handle_ids = safe_nested_get(group, ['value', 'RawData', 'value', 'individual_character_handle_ids'], [])
+                                                if handle_ids:
+                                                    handle_ids[:] = [h for h in handle_ids if safe_nested_get(h, ['instance_id']) != instance_id]
+                                                    if 'individual_character_handle_ids' in group.get('value', {}).get('RawData', {}).get('value', {}):
+                                                        group['value']['RawData']['value']['individual_character_handle_ids'] = handle_ids
+                        self._pending_deletions.clear()
+                if additions:
+                    cmap = safe_nested_get(constants.loaded_level_json, ['properties', 'worldSaveData', 'value', 'CharacterSaveParameterMap', 'value'], [])
+                    if cmap is not None:
+                        for addition in additions:
+                            pal_item = addition.get('pal_item')
+                            if not pal_item:
+                                continue
+                            instance_id = safe_nested_get(pal_item, ['key', 'InstanceId', 'value'])
+                            if instance_id:
+                                already_in_cmap = any((safe_nested_get(p, ['key', 'InstanceId', 'value']) == instance_id for p in cmap))
+                                if not already_in_cmap:
+                                    cmap.append(pal_item)
+                            container_id = addition.get('container_id')
+                            group_id = None
+                            raw = safe_nested_get(pal_item, ['value', 'RawData', 'value', 'object', 'SaveParameter', 'value'])
+                            if raw:
+                                group_id = safe_nested_get(pal_item, ['value', 'RawData', 'value', 'group_id'])
+                            if wsd and container_id and raw:
+                                char_container = safe_nested_get(wsd, ['CharacterContainerSaveData', 'value'], [])
+                                if char_container:
+                                    for container in char_container:
+                                        cont_id = safe_nested_get(container, ['key', 'ID', 'value'])
+                                        if cont_id == container_id:
+                                            slots = safe_nested_get(container, ['value', 'Slots', 'value', 'values'], [])
+                                            if slots:
+                                                slot_exists = any((safe_nested_get(s, ['RawData', 'value', 'instance_id']) == instance_id for s in slots))
+                                                if not slot_exists and raw:
+                                                    try:
+                                                        slot_index = safe_nested_get(raw, ['SlotId', 'value', 'SlotIndex', 'value'], 0)
+                                                        slot_data = {'SlotIndex': {'id': None, 'type': 'IntProperty', 'value': slot_index}, 'RawData': {'array_type': 'ByteProperty', 'id': None, 'value': {'player_uid': '00000000-0000-0000-0000-000000000000', 'instance_id': instance_id, 'permission_tribe_id': 0}, 'custom_type': '.worldSaveData.CharacterContainerSaveData.Value.Slots.Slots.RawData', 'type': 'ArrayProperty'}}
+                                                        slots.append(slot_data)
+                                                    except Exception as e:
+                                                        print(f'Error adding slot: {e}')
+                                            break
+                            if wsd and group_id:
+                                group_data = safe_nested_get(wsd, ['GroupSaveDataMap', 'value'], [])
+                                if group_data:
+                                    for group in group_data:
+                                        g_id = safe_nested_get(group, ['value', 'RawData', 'value', 'group_id'])
+                                        if g_id == group_id:
+                                            handle_ids = safe_nested_get(group, ['value', 'RawData', 'value', 'individual_character_handle_ids'], [])
+                                            if handle_ids:
+                                                handle_exists = any((safe_nested_get(h, ['instance_id']) == instance_id for h in handle_ids))
+                                                if not handle_exists:
+                                                    handle_ids.append({'guid': '00000000-0000-0000-0000-000000000000', 'instance_id': instance_id})
+                                                    if 'individual_character_handle_ids' in group.get('value', {}).get('RawData', {}).get('value', {}):
+                                                        group['value']['RawData']['value']['individual_character_handle_ids'] = handle_ids
+                                            break
+                        self._pending_additions.clear()
+            except Exception as e:
+                print(f'Error processing pending changes: {e}')
+                import traceback
+                traceback.print_exc()
+    def refresh_labels(self):
+        if not self.tabs:
+            return
+        with self._pending_lock:
+            tab_count = self.tabs.count()
+            if tab_count > 0:
+                self.tabs.setTabText(0, t('edit_pals.party'))
+            if tab_count > 1:
+                self.tabs.setTabText(1, t('edit_pals.palbox'))
+            player_uid = self.player_uid
+            player_name = self.player_name
+            party_data = getattr(self.party_tab, 'pal_data', []) if self.party_tab else []
+            palbox_data = getattr(self.palbox_tab, 'pal_data', []) if self.palbox_tab else []
+            self.tabs.blockSignals(True)
+            old_party_tab = self.party_tab
+            old_palbox_tab = self.palbox_tab
+            self.party_tab = self._create_tab(t('edit_pals.party'))
+            self.palbox_tab = self._create_tab(t('edit_pals.palbox'))
+            if tab_count > 1:
+                self.tabs.removeTab(1)
+            if tab_count > 0:
+                self.tabs.removeTab(0)
+            self.tabs.insertTab(0, self.party_tab, t('edit_pals.party'))
+            self.tabs.insertTab(1, self.palbox_tab, t('edit_pals.palbox'))
+            self.tabs.blockSignals(False)
+            if old_party_tab:
+                old_party_tab.deleteLater()
+            if old_palbox_tab:
+                old_palbox_tab.deleteLater()
+            self._populate_tab(self.party_tab, party_data, t('edit_pals.party'))
+            self._populate_tab(self.palbox_tab, palbox_data, t('edit_pals.palbox'))
     def _create_tab(self, tab_name):
         tab = QWidget()
         tab.layout = QVBoxLayout(tab)
-        tab.layout.setContentsMargins(10, 10, 10, 10)
-        tab.layout.setSpacing(10)
+        tab.layout.setContentsMargins(5, 5, 5, 5)
+        tab.layout.setSpacing(5)
         tab.pal_scroll = QScrollArea()
         tab.pal_scroll.setObjectName('editPalsScroll')
         tab.pal_scroll.setWidgetResizable(True)
         tab.pal_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         tab.pal_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        tab.pal_scroll.setMinimumHeight(150)
-        tab.pal_scroll.setMaximumHeight(250)
+        tab.pal_scroll.setMinimumHeight(120)
+        tab.pal_scroll.setMaximumHeight(180)
         tab.pal_container = QWidget()
         tab.pal_container.setObjectName('palContainer')
         tab.pal_layout = QGridLayout(tab.pal_container)
@@ -636,115 +895,47 @@ class EditPalsDialog(FramelessDialog):
         max_slots = 5 if tab_name == t('edit_pals.party') else 960 if tab_name == t('edit_pals.palbox') else 9600
         tab.max_slots = max_slots
         main_layout = QHBoxLayout()
-        main_layout.setSpacing(15)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
         left_panel = self._create_tab_left_panel(tab, tab_name)
-        main_layout.addWidget(left_panel, 1)
-        center_panel = self._create_tab_center_panel(tab, tab_name)
-        main_layout.addWidget(center_panel, 1)
+        main_layout.addWidget(left_panel, 2)
         right_panel = self._create_tab_right_panel(tab, tab_name)
-        main_layout.addWidget(right_panel, 3)
-        tab.layout.addLayout(main_layout)
-        tab.slot_label = QLabel(t('edit_pals.slot_count', current=0, max=max_slots))
-        tab.slot_label.setObjectName('slotCountLabel')
-        tab.layout.addWidget(tab.slot_label)
+        main_layout.addWidget(right_panel, 2)
+        main_layout.addStretch(0)
+        panels_container = QWidget()
+        panels_container.setLayout(main_layout)
+        panels_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        tab.layout.addWidget(panels_container)
         tab.pal_data = []
         return tab
-    def _setup_ui(self):
-        self.content_layout.setContentsMargins(8, 8, 8, 8)
-        self.content_layout.setSpacing(8)
-        self.content_layout.addWidget(self.tabs)
-    def _create_left_panel(self):
-        panel = QWidget()
-        panel.setMinimumWidth(300)
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
-        active_skills_label = QLabel(t('edit_pals.active_skills'))
-        active_skills_label.setStyleSheet('font-weight: bold; font-size: 14px;')
-        layout.addWidget(active_skills_label)
-        self.active_skills_list = QVBoxLayout()
-        self.active_skills_list.setSpacing(5)
-        layout.addLayout(self.active_skills_list)
-        passive_skills_label = QLabel(t('edit_pals.passive_skills'))
-        passive_skills_label.setStyleSheet('font-weight: bold; font-size: 14px;')
-        layout.addWidget(passive_skills_label)
-        self.passive_skills_list = QVBoxLayout()
-        self.passive_skills_list.setSpacing(5)
-        layout.addLayout(self.passive_skills_list)
-        layout.addStretch()
-        return panel
-    def _create_center_panel(self):
-        panel = QWidget()
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(10, 10, 10, 10)
-        self.pal_image_label = QLabel('No Image')
-        self.pal_image_label.setAlignment(Qt.AlignCenter)
-        self.pal_image_label.setMinimumSize(200, 200)
-        self.pal_image_label.setStyleSheet('\n            QLabel {\n                border: 2px solid #ccc;\n                background-color: #f0f0f0;\n                border-radius: 10px;\n            }\n        ')
-        layout.addWidget(self.pal_image_label)
-        layout.addStretch()
-        return panel
-    def _create_right_panel(self):
-        panel = QWidget()
-        panel.setMinimumWidth(250)
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
-        stats_label = QLabel('Stats')
-        stats_label.setStyleSheet('font-weight: bold; font-size: 14px;')
-        layout.addWidget(stats_label)
-        ivs_hbox = QHBoxLayout()
-        ivs_label = QLabel('Talents(IVs):')
-        ivs_label.setStyleSheet('font-weight: bold; font-size: 14px;')
-        ivs_hbox.addWidget(ivs_label)
-        max_ivs_btn = QPushButton(t('edit_pals.max_ivs'))
-        max_ivs_btn.clicked.connect(self._max_ivs)
-        ivs_hbox.addWidget(max_ivs_btn)
-        ivs_hbox.addStretch()
-        layout.addLayout(ivs_hbox)
-        ivs_layout = QHBoxLayout()
-        self.ivs_hp_spin = QSpinBox()
-        self.ivs_hp_spin.setRange(0, 100)
-        self.ivs_hp_spin.setValue(50)
-        ivs_layout.addWidget(QLabel(t('edit_pals.hp')))
-        ivs_layout.addWidget(self.ivs_hp_spin)
-        layout.addLayout(ivs_layout)
-        souls_label = QLabel(t('edit_pals.souls'))
-        souls_label.setStyleSheet('font-weight: bold; font-size: 14px;')
-        layout.addWidget(souls_label)
-        souls_layout = QVBoxLayout()
-        souls_layout.setSpacing(5)
-        max_souls_btn = QPushButton(t('edit_pals.max_souls'))
-        max_souls_btn.clicked.connect(self._max_souls)
-        souls_layout.addWidget(max_souls_btn)
-        layout.addLayout(souls_layout)
-        layout.addStretch()
-        return panel
     def _create_tab_left_panel(self, tab, tab_name):
         panel = QWidget()
-        panel.setMinimumWidth(350)
+        panel.setMinimumWidth(280)
+        panel.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(5)
         active_skills_label = QLabel(t('edit_pals.active_skills') + ' (3 max)')
         active_skills_label.setObjectName('sectionLabel')
         layout.addWidget(active_skills_label)
         tab.active_skills_area = QScrollArea()
         tab.active_skills_area.setObjectName('skillsScrollArea')
         tab.active_skills_area.setWidgetResizable(True)
-        tab.active_skills_area.setMaximumHeight(200)
+        tab.active_skills_area.setMaximumHeight(100)
         tab.active_skills_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         tab.active_skills_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        tab.active_skills_area.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         tab.active_skills_widget = QWidget()
         tab.active_skills_grid = QGridLayout(tab.active_skills_widget)
-        tab.active_skills_grid.setSpacing(5)
+        tab.active_skills_grid.setSpacing(3)
         tab.active_skills_area.setWidget(tab.active_skills_widget)
         layout.addWidget(tab.active_skills_area)
         tab.active_skill_search = QComboBox()
         tab.active_skill_search.setObjectName('editPalsCombo')
         tab.active_skill_search.setEditable(True)
-        tab.active_skill_search.setMinimumWidth(200)
-        tab.active_skill_search.setStyleSheet('QComboBox { combobox-popup: 0; } QComboBox QAbstractItemView { min-height: 200px; max-height: 200px; }')
+        tab.active_skill_search.setMinimumWidth(150)
+        tab.active_skill_search.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        tab.active_skill_search.setStyleSheet('QComboBox { combobox-popup: 0; } QComboBox QAbstractItemView { min-height: 100px; max-height: 100px; }')
         tab.active_skill_all_items = sorted(PalFrame._SKILLMAP.values())
         for skill_name in tab.active_skill_all_items:
             tab.active_skill_search.addItem(skill_name)
@@ -755,270 +946,121 @@ class EditPalsDialog(FramelessDialog):
         tab.passive_skills_area = QScrollArea()
         tab.passive_skills_area.setObjectName('skillsScrollArea')
         tab.passive_skills_area.setWidgetResizable(True)
-        tab.passive_skills_area.setMaximumHeight(200)
+        tab.passive_skills_area.setMaximumHeight(120)
         tab.passive_skills_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         tab.passive_skills_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        tab.passive_skills_area.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         tab.passive_skills_widget = QWidget()
         tab.passive_skills_grid = QGridLayout(tab.passive_skills_widget)
-        tab.passive_skills_grid.setSpacing(5)
+        tab.passive_skills_grid.setSpacing(3)
         tab.passive_skills_area.setWidget(tab.passive_skills_widget)
         layout.addWidget(tab.passive_skills_area)
         tab.passive_skill_search = QComboBox()
         tab.passive_skill_search.setObjectName('editPalsCombo')
         tab.passive_skill_search.setEditable(True)
-        tab.passive_skill_search.setMinimumWidth(200)
-        tab.passive_skill_search.setStyleSheet('QComboBox { combobox-popup: 0; } QComboBox QAbstractItemView { min-height: 200px; max-height: 200px; }')
+        tab.passive_skill_search.setMinimumWidth(150)
+        tab.passive_skill_search.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        tab.passive_skill_search.setStyleSheet('QComboBox { combobox-popup: 0; } QComboBox QAbstractItemView { min-height: 100px; max-height: 100px; }')
         tab.passive_skill_all_items = sorted(PalFrame._PASSMAP.values())
         for passive_name in tab.passive_skill_all_items:
             tab.passive_skill_search.addItem(passive_name)
         tab.passive_skill_search.currentTextChanged.connect(lambda text, t=tab: self._filter_passive_skills(text, t))
         return panel
-    def _create_tab_center_panel(self, tab, tab_name):
-        panel = QWidget()
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.addStretch()
-        return panel
     def _create_tab_right_panel(self, tab, tab_name):
         base_dir = constants.get_base_path()
         panel = QWidget()
-        panel.setMinimumWidth(375)
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll_widget = QWidget()
-        layout = QVBoxLayout(scroll_widget)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
+        panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(4)
         name_layout = QHBoxLayout()
-        name_layout.addWidget(QLabel(t('edit_pals.name')))
-        name_container = QWidget()
-        name_container.setMinimumWidth(120)
-        name_layout_container = QVBoxLayout(name_container)
-        name_layout_container.setContentsMargins(0, 0, 0, 0)
-        name_layout_container.setSpacing(2)
+        name_layout.setSpacing(5)
+        name_layout.addWidget(QLabel(t('edit_pals.name') + ':'))
         tab.pal_name_label = QLabel(t('edit_pals.no_pal_selected'))
         tab.pal_name_label.setObjectName('palNameLabel')
-        tab.pal_name_label.setStyleSheet('font-weight: bold; font-size: 13px;')
-        name_layout_container.addWidget(tab.pal_name_label)
+        tab.pal_name_label.setStyleSheet('font-weight: bold; font-size: 12px;')
+        name_layout.addWidget(tab.pal_name_label)
         tab.pal_nickname_label = QLabel('')
         tab.pal_nickname_label.setObjectName('palNicknameLabel')
         tab.pal_nickname_label.setStyleSheet('font-size: 11px; color: #9CA3AF;')
-        name_layout_container.addWidget(tab.pal_nickname_label)
-        name_layout.addWidget(name_container)
+        name_layout.addWidget(tab.pal_nickname_label)
+        name_layout.addStretch()
         rename_btn = QPushButton(t('edit_pals.rename_pal'))
         rename_btn.setObjectName('editPalsActionButton')
         rename_btn.clicked.connect(self._rename_pal)
         name_layout.addWidget(rename_btn)
         boss_toggle_btn = QPushButton()
         boss_toggle_btn.setIcon(QIcon(os.path.join(base_dir, 'resources', 'boss_alpha.webp')))
-        boss_toggle_btn.setIconSize(QSize(28, 28))
+        boss_toggle_btn.setIconSize(QSize(24, 24))
         boss_toggle_btn.setCheckable(True)
-        boss_toggle_btn.setFixedSize(40, 34)
+        boss_toggle_btn.setFixedSize(32, 28)
         boss_toggle_btn.setStyleSheet('QPushButton { background-color: #333; border: 1px solid #666; } QPushButton:checked { background-color: #555; } QPushButton:hover { background-color: #555; }')
         name_layout.addWidget(boss_toggle_btn)
         rare_toggle_btn = QPushButton()
         rare_toggle_btn.setIcon(QIcon(os.path.join(base_dir, 'resources', 'boss_shiny.webp')))
-        rare_toggle_btn.setIconSize(QSize(28, 28))
+        rare_toggle_btn.setIconSize(QSize(24, 24))
         rare_toggle_btn.setCheckable(True)
-        rare_toggle_btn.setFixedSize(40, 34)
+        rare_toggle_btn.setFixedSize(32, 28)
         rare_toggle_btn.setStyleSheet('QPushButton { background-color: #333; border: 1px solid #666; } QPushButton:checked { background-color: #555; } QPushButton:hover { background-color: #555; }')
         name_layout.addWidget(rare_toggle_btn)
         gender_icon_btn = QPushButton(nf.icons['nf-md-gender_female'] if nf else '\U000f0203')
         gender_icon_btn.setCheckable(False)
-        gender_icon_btn.setFixedSize(40, 34)
-        gender_icon_btn.setStyleSheet('QPushButton { background: transparent; border: 1px solid #666; font-size: 20px; color: #FB7185; padding: 0; font-family: "Material Design Icons", sans-serif; } QPushButton:hover { background: transparent; } QPushButton:pressed { background: transparent; }')
+        gender_icon_btn.setFixedSize(32, 28)
+        gender_icon_btn.setStyleSheet('QPushButton { background: transparent; border: 1px solid #666; font-size: 16px; color: #FB7185; padding: 0; font-family: "Material Design Icons", sans-serif; } QPushButton:hover { background: transparent; } QPushButton:pressed { background: transparent; }')
         tab.gender_icon_label = gender_icon_btn
         name_layout.addWidget(gender_icon_btn)
         gender_icon_btn.clicked.connect(lambda: self._toggle_gender_button(tab, gender_icon_btn))
-        name_layout.addStretch()
         layout.addLayout(name_layout)
-        main_stats_layout = QHBoxLayout()
-        stats_layout = QHBoxLayout()
-        stats_layout.addWidget(QLabel(t('edit_pals.stats')))
-        max_stats_btn = QPushButton(t('edit_pals.max_all'))
-        max_stats_btn.setObjectName('editPalsActionButton')
-        max_stats_btn.clicked.connect(self._max_stats)
-        stats_layout.addWidget(max_stats_btn)
-        main_stats_layout.addLayout(stats_layout)
+        level_rank_layout = QHBoxLayout()
+        level_rank_layout.setSpacing(10)
+        level_layout = QHBoxLayout()
+        level_layout.setSpacing(5)
+        level_layout.addWidget(QLabel(t('edit_pals.level') + ':'))
+        tab.level_spin = QSpinBox()
+        tab.level_spin.setObjectName('editPalsSpin')
+        tab.level_spin.setRange(1, 65)
+        tab.level_spin.setValue(1)
+        tab.level_spin.setFixedWidth(60)
+        level_layout.addWidget(tab.level_spin)
+        level_rank_layout.addLayout(level_layout)
         rank_layout = QHBoxLayout()
-        rank_layout.addWidget(QLabel(t('edit_pals.rank')))
+        rank_layout.setSpacing(5)
+        rank_layout.addWidget(QLabel(t('edit_pals.rank') + ':'))
         tab.rank_star_buttons = []
         from functools import partial
         for i in range(4):
             btn = StarButton('☆')
             btn.setObjectName('starButton')
-            btn.setStyleSheet('QPushButton{font-size:20px;color:#FFFFFF;border:none;background:transparent;padding:2px 4px;min-width:28px;max-width:28px;}QPushButton:hover{color:#CCCCCC;background:rgba(255,255,255,0.1);border-radius:4px;}')
+            btn.setStyleSheet('QPushButton{font-size:16px;color:#FFFFFF;border:none;background:transparent;padding:0px;min-width:16px;max-width:16px;}QPushButton:hover{color:#CCCCCC;background:rgba(255,255,255,0.1);}')
             btn.clicked.connect(partial(self._set_rank_from_star, tab, i + 2))
             btn.setContextMenuPolicy(Qt.CustomContextMenu)
             btn.customContextMenuRequested.connect(partial(self._reset_rank_to_zero, tab))
             rank_layout.addWidget(btn)
             tab.rank_star_buttons.append(btn)
-        main_stats_layout.addLayout(rank_layout)
-        main_stats_layout.addStretch()
-        layout.addLayout(main_stats_layout)
-        level_layout = QHBoxLayout()
-        level_layout.addWidget(QLabel(t('edit_pals.level')))
-        tab.level_spin = QSpinBox()
-        tab.level_spin.setObjectName('editPalsSpin')
-        tab.level_spin.setRange(1, 65)
-        tab.level_spin.setValue(1)
-        level_layout.addWidget(tab.level_spin)
-        level_layout.addStretch()
-        layout.addLayout(level_layout)
-        talents_group = QGroupBox(t('edit_pals.talents'))
-        talents_group.setObjectName('editPalsGroup')
-        talents_layout_outer = QVBoxLayout(talents_group)
-        talents_layout_outer.setContentsMargins(10, 10, 10, 10)
-        talents_layout_outer.setSpacing(5)
-        ivs_hbox = QHBoxLayout()
-        max_ivs_btn = QPushButton(t('edit_pals.max_ivs'))
-        max_ivs_btn.setObjectName('editPalsActionButton')
-        max_ivs_btn.clicked.connect(self._max_ivs)
-        ivs_hbox.addWidget(max_ivs_btn)
-        ivs_hbox.addStretch()
-        talents_layout_outer.addLayout(ivs_hbox)
-        talents_layout = QVBoxLayout()
-        talents_layout.setSpacing(5)
-        hp_layout = QHBoxLayout()
-        hp_layout.addWidget(QLabel(t('edit_pals.hp')))
-        tab.talent_hp_spin = QSpinBox()
-        tab.talent_hp_spin.setObjectName('editPalsSpin')
-        tab.talent_hp_spin.setRange(0, 100)
-        tab.talent_hp_spin.setValue(50)
-        hp_layout.addWidget(tab.talent_hp_spin)
-        talents_layout.addLayout(hp_layout)
-        shot_layout = QHBoxLayout()
-        shot_layout.addWidget(QLabel(t('edit_pals.attack')))
-        tab.talent_shot_spin = QSpinBox()
-        tab.talent_shot_spin.setObjectName('editPalsSpin')
-        tab.talent_shot_spin.setRange(0, 100)
-        tab.talent_shot_spin.setValue(50)
-        shot_layout.addWidget(tab.talent_shot_spin)
-        talents_layout.addLayout(shot_layout)
-        defense_layout = QHBoxLayout()
-        defense_layout.addWidget(QLabel(t('edit_pals.defense')))
-        tab.talent_defense_spin = QSpinBox()
-        tab.talent_defense_spin.setObjectName('editPalsSpin')
-        tab.talent_defense_spin.setRange(0, 100)
-        tab.talent_defense_spin.setValue(50)
-        defense_layout.addWidget(tab.talent_defense_spin)
-        talents_layout.addLayout(defense_layout)
-        talents_layout_outer.addLayout(talents_layout)
-        layout.addWidget(talents_group)
-        souls_group = QGroupBox(t('edit_pals.souls'))
-        souls_group.setObjectName('editPalsGroup')
-        souls_layout_outer = QVBoxLayout(souls_group)
-        souls_layout_outer.setContentsMargins(10, 10, 10, 10)
-        souls_layout_outer.setSpacing(5)
-        souls_hbox = QHBoxLayout()
-        max_souls_btn = QPushButton(t('edit_pals.max_souls'))
-        max_souls_btn.setObjectName('editPalsActionButton')
-        max_souls_btn.clicked.connect(self._max_souls)
-        souls_hbox.addWidget(max_souls_btn)
-        souls_hbox.addStretch()
-        souls_layout_outer.addLayout(souls_hbox)
-        souls_layout = QVBoxLayout()
-        souls_layout.setSpacing(5)
-        hp_soul_layout = QHBoxLayout()
-        hp_soul_layout.addWidget(QLabel(t('edit_pals.hp')))
-        tab.rank_hp_spin = QSpinBox()
-        tab.rank_hp_spin.setObjectName('editPalsSpin')
-        tab.rank_hp_spin.setRange(0, 20)
-        tab.rank_hp_spin.setValue(0)
-        hp_soul_layout.addWidget(tab.rank_hp_spin)
-        souls_layout.addLayout(hp_soul_layout)
-        attack_soul_layout = QHBoxLayout()
-        attack_soul_layout.addWidget(QLabel(t('edit_pals.attack')))
-        tab.rank_attack_spin = QSpinBox()
-        tab.rank_attack_spin.setObjectName('editPalsSpin')
-        tab.rank_attack_spin.setRange(0, 20)
-        tab.rank_attack_spin.setValue(0)
-        attack_soul_layout.addWidget(tab.rank_attack_spin)
-        souls_layout.addLayout(attack_soul_layout)
-        defense_soul_layout = QHBoxLayout()
-        defense_soul_layout.addWidget(QLabel(t('edit_pals.defense')))
-        tab.rank_defense_spin = QSpinBox()
-        tab.rank_defense_spin.setObjectName('editPalsSpin')
-        tab.rank_defense_spin.setRange(0, 20)
-        tab.rank_defense_spin.setValue(0)
-        defense_soul_layout.addWidget(tab.rank_defense_spin)
-        souls_layout.addLayout(defense_soul_layout)
-        work_soul_layout = QHBoxLayout()
-        work_soul_layout.addWidget(QLabel(t('edit_pals.craft_speed')))
-        tab.rank_craftspeed_spin = QSpinBox()
-        tab.rank_craftspeed_spin.setObjectName('editPalsSpin')
-        tab.rank_craftspeed_spin.setRange(0, 20)
-        tab.rank_craftspeed_spin.setValue(0)
-        work_soul_layout.addWidget(tab.rank_craftspeed_spin)
-        souls_layout.addLayout(work_soul_layout)
-        souls_layout_outer.addLayout(souls_layout)
-        layout.addWidget(souls_group)
-        trust_group = QGroupBox(t('edit_pals.trust'))
-        trust_group.setObjectName('editPalsGroup')
-        trust_layout_outer = QVBoxLayout(trust_group)
-        trust_layout_outer.setContentsMargins(10, 10, 10, 10)
-        trust_layout_outer.setSpacing(5)
-        trust_info_layout = QHBoxLayout()
-        trust_icon_label = QLabel('❤️')
-        trust_icon_label.setStyleSheet('font-size: 18px;')
-        trust_info_layout.addWidget(trust_icon_label)
-        tab.trust_level_label = QLabel('Lv. 0')
-        tab.trust_level_label.setStyleSheet('font-weight: bold; font-size: 14px; color: #db7c90;')
-        trust_info_layout.addWidget(tab.trust_level_label)
-        trust_info_layout.addStretch()
-        tab.trust_points_label = QLabel('0 pts')
-        tab.trust_points_label.setStyleSheet('font-size: 11px; color: #9CA3AF;')
-        trust_info_layout.addWidget(tab.trust_points_label)
-        trust_layout_outer.addLayout(trust_info_layout)
-        trust_progress = QProgressBar()
-        trust_progress.setRange(0, 10)
-        trust_progress.setValue(0)
-        trust_progress.setFixedHeight(12)
-        trust_progress.setTextVisible(False)
-        trust_progress.setStyleSheet('\n            QProgressBar {\n                background-color: #374151;\n                border: none;\n                border-radius: 6px;\n            }\n            QProgressBar::chunk {\n                background: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0,\n                            stop:0 #db7c90, stop:1 #f0a0b0);\n                border-radius: 6px;\n            }\n        ')
-        tab.trust_progress_bar = trust_progress
-        trust_layout_outer.addWidget(trust_progress)
-        trust_controls = QHBoxLayout()
-        trust_controls.setSpacing(5)
-        trust_down_btn = QPushButton('−')
-        trust_down_btn.setObjectName('editPalsActionButton')
-        trust_down_btn.setFixedSize(40, 28)
-        trust_down_btn.setStyleSheet('QPushButton { font-size: 18px; font-weight: bold; }')
-        trust_controls.addWidget(trust_down_btn)
-        tab.trust_spin = QSpinBox()
-        tab.trust_spin.setObjectName('editPalsSpin')
-        tab.trust_spin.setRange(0, 10)
-        tab.trust_spin.setValue(0)
-        tab.trust_spin.setSingleStep(1)
-        tab.trust_spin.setMinimumWidth(100)
-        trust_controls.addWidget(tab.trust_spin)
-        trust_up_btn = QPushButton('+')
-        trust_up_btn.setObjectName('editPalsActionButton')
-        trust_up_btn.setFixedSize(40, 28)
-        trust_up_btn.setStyleSheet('QPushButton { font-size: 18px; font-weight: bold; }')
-        trust_controls.addWidget(trust_up_btn)
-        max_trust_btn = QPushButton(t('edit_pals.max_trust'))
-        max_trust_btn.setObjectName('editPalsActionButton')
-        trust_controls.addWidget(max_trust_btn)
-        trust_controls.addStretch()
-        trust_layout_outer.addLayout(trust_controls)
-        layout.addWidget(trust_group)
+        level_rank_layout.addLayout(rank_layout)
+        level_rank_layout.addStretch()
+        max_stats_btn = QPushButton(t('edit_pals.max_all'))
+        max_stats_btn.setObjectName('editPalsActionButton')
+        max_stats_btn.clicked.connect(self._max_stats)
+        level_rank_layout.addWidget(max_stats_btn)
+        layout.addLayout(level_rank_layout)
+        stats_container = QWidget()
+        stats_layout = QHBoxLayout(stats_container)
+        stats_layout.setContentsMargins(0, 0, 0, 0)
+        stats_layout.setSpacing(8)
+        talents_frame = self._create_compact_frame(tab, 'talents', t('edit_pals.talents'), [('hp', '❤️', 0, 100, 50), ('shot', '⚔️', 0, 100, 50), ('defense', '🛡️', 0, 100, 50)], self._max_ivs, 'talent')
+        stats_layout.addWidget(talents_frame)
+        souls_frame = self._create_compact_frame(tab, 'souls', t('edit_pals.souls'), [('hp', '❤️', 0, 20, 0), ('attack', '⚔️', 0, 20, 0), ('defense', '🛡️', 0, 20, 0), ('craftspeed', '🔧', 0, 20, 0)], self._max_souls, 'rank')
+        stats_layout.addWidget(souls_frame)
+        trust_frame = self._create_trust_frame(tab)
+        stats_layout.addWidget(trust_frame)
+        layout.addWidget(stats_container)
         layout.addStretch()
         tab.boss_toggle_btn = boss_toggle_btn
-        tab.trust_down_btn = trust_down_btn
-        tab.trust_up_btn = trust_up_btn
-        tab.max_trust_btn = max_trust_btn
-        trust_down_btn.clicked.connect(lambda: self._adjust_trust_level(tab, -1))
-        trust_up_btn.clicked.connect(lambda: self._adjust_trust_level(tab, 1))
-        max_trust_btn.clicked.connect(lambda: self._max_trust(tab))
+        tab.max_trust_btn = None
         boss_toggle_btn.clicked.connect(lambda: self._toggle_boss(tab))
         tab.rare_toggle_btn = rare_toggle_btn
         rare_toggle_btn.clicked.connect(lambda: self._toggle_rare(tab))
-        scroll_area.setWidget(scroll_widget)
-        panel_layout = QVBoxLayout(panel)
-        panel_layout.addWidget(scroll_area)
         tab.level_spin.valueChanged.connect(lambda v: self._update_level(tab, v))
         tab.talent_hp_spin.valueChanged.connect(lambda v: self._update_talent(tab, 'hp', v))
         tab.talent_shot_spin.valueChanged.connect(lambda v: self._update_talent(tab, 'shot', v))
@@ -1029,32 +1071,115 @@ class EditPalsDialog(FramelessDialog):
         tab.rank_craftspeed_spin.valueChanged.connect(lambda v: self._update_soul(tab, 'craftspeed', v))
         tab.trust_spin.valueChanged.connect(lambda v: self._update_trust_level(tab, v))
         return panel
+    def _create_compact_frame(self, tab, prefix, title, fields, max_func, value_prefix):
+        frame = QFrame()
+        frame.setObjectName('editPalsFrame')
+        frame.setFrameShape(QFrame.NoFrame)
+        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        outer_layout = QVBoxLayout(frame)
+        outer_layout.setContentsMargins(4, 4, 4, 4)
+        outer_layout.setSpacing(2)
+        title_layout = QHBoxLayout()
+        title_layout.setSpacing(4)
+        title_label = QLabel(title)
+        title_label.setStyleSheet('color: #7DD3FC; font-weight: 600; font-size: 11px;')
+        title_layout.addWidget(title_label)
+        title_layout.addStretch()
+        max_btn = QPushButton(t('edit_pals.max_ivs') if prefix == 'talents' else t('edit_pals.max_souls'))
+        max_btn.setObjectName('editPalsActionButton')
+        max_btn.setStyleSheet('QPushButton { padding: 2px 6px; font-size: 10px; }')
+        max_btn.clicked.connect(max_func)
+        title_layout.addWidget(max_btn)
+        outer_layout.addLayout(title_layout)
+        for field_key, icon, min_val, max_val, default in fields:
+            row_layout = QHBoxLayout()
+            row_layout.setSpacing(4)
+            icon_label = QLabel(icon)
+            icon_label.setStyleSheet('font-size: 12px; min-width: 16px;')
+            row_layout.addWidget(icon_label)
+            spin = QSpinBox()
+            spin.setObjectName('editPalsSpin')
+            spin.setRange(min_val, max_val)
+            spin.setValue(default)
+            spin.setFixedWidth(50)
+            row_layout.addWidget(spin)
+            setattr(tab, f'{value_prefix}_{field_key}_spin', spin)
+            outer_layout.addLayout(row_layout)
+        return frame
+    def _create_trust_frame(self, tab):
+        frame = QFrame()
+        frame.setObjectName('editPalsFrame')
+        frame.setFrameShape(QFrame.NoFrame)
+        frame.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
+        outer_layout = QVBoxLayout(frame)
+        outer_layout.setContentsMargins(4, 4, 4, 4)
+        outer_layout.setSpacing(2)
+        title_layout = QHBoxLayout()
+        title_layout.setSpacing(4)
+        title_label = QLabel(t('edit_pals.trust'))
+        title_label.setStyleSheet('color: #7DD3FC; font-weight: 600; font-size: 11px;')
+        title_layout.addWidget(title_label)
+        title_layout.addStretch()
+        max_btn = QPushButton(t('edit_pals.max_trust'))
+        max_btn.setObjectName('editPalsActionButton')
+        max_btn.setStyleSheet('QPushButton { padding: 2px 6px; font-size: 10px; }')
+        max_btn.clicked.connect(lambda: self._max_trust(tab))
+        title_layout.addWidget(max_btn)
+        outer_layout.addLayout(title_layout)
+        row_layout = QHBoxLayout()
+        row_layout.setSpacing(4)
+        icon_label = QLabel('❤️')
+        icon_label.setStyleSheet('font-size: 12px; min-width: 16px;')
+        row_layout.addWidget(icon_label)
+        tab.trust_spin = QSpinBox()
+        tab.trust_spin.setObjectName('editPalsSpin')
+        tab.trust_spin.setRange(0, 10)
+        tab.trust_spin.setValue(0)
+        tab.trust_spin.setSingleStep(1)
+        tab.trust_spin.setFixedWidth(50)
+        row_layout.addWidget(tab.trust_spin)
+        outer_layout.addLayout(row_layout)
+        return frame
     def _load_pals(self):
         if not constants.loaded_level_json:
             return
         PalFrame._load_maps()
-        cmap = constants.loaded_level_json['properties']['worldSaveData']['value']['CharacterSaveParameterMap']['value']
+        try:
+            cmap = constants.loaded_level_json['properties']['worldSaveData']['value']['CharacterSaveParameterMap']['value']
+        except (KeyError, TypeError) as e:
+            print(f'Error accessing CharacterSaveParameterMap: {e}')
+            return
+        if not cmap:
+            return
         party_pals = []
         palbox_pals = []
+        target_uid = self.player_uid.replace('-', '').lower() if self.player_uid else ''
+        target_party = str(self.party_container).lower() if self.party_container else ''
+        target_palbox = str(self.palbox_container).lower() if self.palbox_container else ''
         for item in cmap:
-            rawf = item.get('value', {}).get('RawData', {}).get('value', {})
-            raw = rawf.get('object', {}).get('SaveParameter', {}).get('value', {})
-            if 'IsPlayer' in raw:
+            try:
+                raw = item.get('value', {}).get('RawData', {}).get('value', {})
+                if not raw:
+                    continue
+                raw = raw.get('object', {}).get('SaveParameter', {}).get('value', {})
+                if not raw:
+                    continue
+                if 'IsPlayer' in raw:
+                    continue
+                owner_uid = raw.get('OwnerPlayerUId', {}).get('value')
+                owner_uid_str = str(owner_uid).replace('-', '').lower() if owner_uid else ''
+                if not owner_uid_str or owner_uid_str != target_uid:
+                    continue
+                slot_id = raw.get('SlotId', {}).get('value', {}).get('ContainerId', {}).get('value', {}).get('ID', {}).get('value')
+                slot_id_str = str(slot_id).lower() if slot_id else ''
+                if slot_id_str == target_party:
+                    party_pals.append(item)
+                elif slot_id_str == target_palbox:
+                    palbox_pals.append(item)
+            except (KeyError, TypeError, AttributeError):
                 continue
-            owner_uid = raw.get('OwnerPlayerUId', {}).get('value')
-            if not owner_uid or str(owner_uid).replace('-', '').lower() != self.player_uid.replace('-', '').lower():
-                continue
-            slot_id = raw.get('SlotId', {}).get('value', {}).get('ContainerId', {}).get('value', {}).get('ID', {}).get('value')
-            if slot_id and str(slot_id).lower() == str(self.party_container).lower():
-                party_pals.append(item)
-            elif slot_id and str(slot_id).lower() == str(self.palbox_container).lower():
-                palbox_pals.append(item)
         self._populate_tab(self.party_tab, party_pals, t('edit_pals.party'))
         self._populate_tab(self.palbox_tab, palbox_pals, t('edit_pals.palbox'))
-        total_slots = len(party_pals) + len(palbox_pals)
-        if total_slots >= 960:
-            self.party_tab.slot_label.setStyleSheet('color: red; font-weight: bold;')
-            self.palbox_tab.slot_label.setStyleSheet('color: red; font-weight: bold;')
     def _on_tab_changed(self, index):
         if self.dps_tab and self.tabs.widget(index) == self.dps_tab and (not self.dps_loaded):
             self._load_dps_pals()
@@ -1088,48 +1213,54 @@ class EditPalsDialog(FramelessDialog):
             pal_dict = {}
             for pal_item in pals:
                 try:
-                    slot_index = pal_item['index']
+                    slot_index = pal_item.get('index', 0)
                     pal_dict[slot_index] = pal_item
-                except:
+                except Exception:
                     pass
             for i in range(max_slots):
                 pal_item = pal_dict.get(i, None)
-                widget = tab.widget_list[i]
-                widget.pal_data = pal_item
-                widget._setup_ui()
+                if hasattr(tab, 'widget_list') and i < len(tab.widget_list):
+                    widget = tab.widget_list[i]
+                    widget.pal_data = pal_item
+                    widget._setup_ui()
         else:
             pal_dict = {}
             for pal_item in pals:
                 try:
-                    raw = pal_item['value']['RawData']['value']['object']['SaveParameter']['value']
-                    slot_index = raw.get('SlotId', {}).get('value', {}).get('SlotIndex', {}).get('value', 0)
-                    pal_dict[slot_index] = pal_item
-                except:
+                    raw = pal_item.get('value', {}).get('RawData', {}).get('value', {}).get('object', {}).get('SaveParameter', {}).get('value', {})
+                    if raw:
+                        slot_index = raw.get('SlotId', {}).get('value', {}).get('SlotIndex', {}).get('value', 0)
+                        pal_dict[slot_index] = pal_item
+                except Exception:
                     pass
-            if hasattr(tab.pal_layout, 'count'):
+            if hasattr(tab, 'pal_layout') and hasattr(tab.pal_layout, 'count'):
                 for i in reversed(range(tab.pal_layout.count())):
                     widget = tab.pal_layout.itemAt(i).widget()
                     if widget:
+                        try:
+                            widget.clicked.disconnect()
+                            widget.rightClicked.disconnect()
+                        except Exception:
+                            pass
                         widget.setParent(None)
             pal_dict = {}
             for pal_item in pals:
                 try:
-                    raw = pal_item['value']['RawData']['value']['object']['SaveParameter']['value']
-                    slot_index = raw.get('SlotId', {}).get('value', {}).get('SlotIndex', {}).get('value', 0)
-                    pal_dict[slot_index] = pal_item
-                except:
+                    raw = pal_item.get('value', {}).get('RawData', {}).get('value', {}).get('object', {}).get('SaveParameter', {}).get('value', {})
+                    if raw:
+                        slot_index = raw.get('SlotId', {}).get('value', {}).get('SlotIndex', {}).get('value', 0)
+                        pal_dict[slot_index] = pal_item
+                except Exception:
                     pass
             for i in range(max_slots):
                 pal_item = pal_dict.get(i, None)
                 pal_widget = PalIcon(pal_item, tab=tab, slot_index=i, tab_name=tab_name)
-                slot_idx = i
-                pal_widget.clicked.connect(lambda idx=slot_idx, t=tab, tn=tab_name: self._on_pal_widget_selected(idx, t, tn))
-                pal_widget.rightClicked.connect(self._on_pal_right_click)
+                pal_widget.clicked.connect(partial(self._on_pal_widget_selected, i, tab, tab_name))
+                pal_widget.rightClicked.connect(partial(self._on_pal_right_click_slot, tab_name))
                 row = i // 6
                 col = i % 6
                 tab.pal_layout.addWidget(pal_widget, row, col)
         self._update_tab_pal_display(tab, -1)
-        tab.slot_label.setText(t('edit_pals.slot_count', current=len(pals), max=max_slots))
     def _on_party_table_selection(self, tab):
         selected_items = tab.pal_layout.selectedItems()
         if selected_items:
@@ -1173,6 +1304,8 @@ class EditPalsDialog(FramelessDialog):
             tab.pal_name_label.setText(t('edit_pals.no_pal_selected'))
             tab.pal_nickname_label.setText('')
             tab.pal_nickname_label.setText('')
+    def _on_pal_right_click_slot(self, tab_name, slot_index, action):
+        self._on_pal_right_click(slot_index, tab_name, action)
     def _on_pal_right_click(self, slot_index, tab_name, action):
         if tab_name == t('edit_pals.party'):
             tab = self.party_tab
@@ -1182,16 +1315,21 @@ class EditPalsDialog(FramelessDialog):
             tab = self.dps_tab
         else:
             return
+        if not tab or not hasattr(tab, 'pal_data'):
+            return
         pal_dict = {}
         for pal_item in tab.pal_data:
             try:
                 if tab_name == 'DPS':
-                    slot_idx = pal_item['index']
+                    slot_idx = pal_item.get('index', 0)
                 else:
-                    raw = pal_item['value']['RawData']['value']['object']['SaveParameter']['value']
-                    slot_idx = raw.get('SlotId', {}).get('value', {}).get('SlotIndex', {}).get('value', 0)
+                    raw = pal_item.get('value', {}).get('RawData', {}).get('value', {}).get('object', {}).get('SaveParameter', {}).get('value', {})
+                    if raw:
+                        slot_idx = raw.get('SlotId', {}).get('value', {}).get('SlotIndex', {}).get('value', 0)
+                    else:
+                        slot_idx = 0
                 pal_dict[slot_idx] = pal_item
-            except:
+            except Exception:
                 pass
         has_pal = slot_index in pal_dict
         if has_pal:
@@ -1208,6 +1346,7 @@ class EditPalsDialog(FramelessDialog):
                     if not hasattr(self, '_pending_deletions'):
                         self._pending_deletions = []
                     self._pending_deletions.append({'pal_item': pal_item, 'tab': tab, 'tab_name': tab_name, 'slot_index': slot_index})
+                    self._process_pending_changes()
                     tab.pal_data.remove(pal_item)
                     self._populate_tab(tab, tab.pal_data, tab_name)
                     tab.selected_pal_index = -1
@@ -1222,6 +1361,7 @@ class EditPalsDialog(FramelessDialog):
                 self._pending_additions.append(pal_data)
                 cmap = constants.loaded_level_json['properties']['worldSaveData']['value']['CharacterSaveParameterMap']['value']
                 cmap.append(pal_data['pal_item'])
+                self._process_pending_changes()
                 if tab_name == 'DPS':
                     self._add_dps_pal(tab, slot_index, pal_data['character_id'], pal_data['nickname'])
                 else:
@@ -1259,11 +1399,6 @@ class EditPalsDialog(FramelessDialog):
                 tab.rank_craftspeed_spin.setValue(0)
             if hasattr(tab, 'trust_spin'):
                 tab.trust_spin.setValue(0)
-            if hasattr(tab, 'trust_level_label'):
-                tab.trust_level_label.setText('Lv. 0')
-                tab.trust_points_label.setText('0 pts')
-            if hasattr(tab, 'trust_progress_bar'):
-                tab.trust_progress_bar.setValue(0)
             tab.pal_name_label.setText(t('edit_pals.no_pal_selected'))
             tab.pal_nickname_label.setText('')
             if hasattr(tab, 'rank_star_buttons'):
@@ -1634,6 +1769,7 @@ class EditPalsDialog(FramelessDialog):
         dialog.setWindowTitle(t('edit_pals.select_skill'))
         dialog.setModal(True)
         dialog.setMinimumSize(400, 500)
+        dialog.setStyleSheet('\n            QDialog {\n                background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                            stop:0 rgba(12,14,18,0.98), stop:0.5 rgba(10,16,22,0.98), stop:1 rgba(8,12,18,0.98));\n                color: #e2e8f0;\n            }\n            QLabel { color: #e2e8f0; }\n            QLineEdit {\n                background: rgba(255,255,255,0.06);\n                color: #e2e8f0;\n                border: 1px solid rgba(125,211,252,0.2);\n                border-radius: 6px;\n                padding: 6px 10px;\n            }\n            QLineEdit:focus { border-color: rgba(125,211,252,0.4); }\n            QComboBox {\n                background: rgba(255,255,255,0.06);\n                color: #e2e8f0;\n                border: 1px solid rgba(125,211,252,0.2);\n                border-radius: 6px;\n                padding: 6px 10px;\n            }\n            QComboBox QAbstractItemView {\n                background-color: rgba(18,20,24,0.98);\n                color: #e2e8f0;\n                border: 1px solid rgba(125,211,252,0.2);\n                selection-background-color: rgba(59,142,208,0.3);\n            }\n            QPushButton {\n                background: rgba(125,211,252,0.12);\n                color: #7DD3FC;\n                border: 1px solid rgba(125,211,252,0.2);\n                border-radius: 6px;\n                padding: 8px 16px;\n                font-weight: 600;\n            }\n            QPushButton:hover {\n                background: rgba(125,211,252,0.2);\n                border-color: rgba(125,211,252,0.4);\n                color: #FFFFFF;\n            }\n            QListWidget {\n                background: rgba(255,255,255,0.03);\n                color: #e2e8f0;\n                border: 1px solid rgba(125,211,252,0.15);\n                border-radius: 6px;\n            }\n            QListWidget::item:selected { background: rgba(59,142,208,0.3); }\n        ')
         layout = QVBoxLayout(dialog)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(10)
@@ -1982,12 +2118,7 @@ class EditPalsDialog(FramelessDialog):
                 raw = pal_item['value']['RawData']['value']['object']['SaveParameter']['value']
             trust_points = extract_value(raw, 'FriendshipPoint', 0)
             current_level = self._get_trust_level(trust_points)
-            tab.trust_level_label.setText(f'Lv.{current_level}')
-            if current_level >= 10:
-                tab.trust_points_label.setText(f'{trust_points} pts (MAX)')
-            else:
-                tab.trust_points_label.setText(f'{trust_points} pts')
-            tab.trust_progress_bar.setValue(current_level)
+            tab.trust_spin.setValue(current_level)
         except Exception as e:
             print(f'Error updating trust display: {e}')
     def _get_points_for_level(self, level):
@@ -2008,8 +2139,6 @@ class EditPalsDialog(FramelessDialog):
                 raw = pal_item['value']['RawData']['value']['object']['SaveParameter']['value']
             points = self._get_points_for_level(level)
             raw['FriendshipPoint'] = {'id': None, 'type': 'IntProperty', 'value': points}
-            tab.trust_level_label.setText(f'Lv.{level}')
-            tab.trust_points_label.setText(f'{points} pts')
             self._update_tab_pal_display(tab, pal_index)
         except Exception as e:
             print(f'Error updating trust level: {e}')
@@ -2366,65 +2495,56 @@ class EditPalsDialog(FramelessDialog):
         dialog.setWindowTitle('Create New Pal')
         dialog.setModal(True)
         dialog.setMinimumSize(400, 500)
+        dialog.setStyleSheet('\n            QDialog {\n                background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                            stop:0 rgba(12,14,18,0.98), stop:0.5 rgba(10,16,22,0.98), stop:1 rgba(8,12,18,0.98));\n                color: #e2e8f0;\n            }\n            QLabel { color: #e2e8f0; }\n            QLineEdit {\n                background: rgba(255,255,255,0.06);\n                color: #e2e8f0;\n                border: 1px solid rgba(125,211,252,0.2);\n                border-radius: 6px;\n                padding: 6px 10px;\n            }\n            QLineEdit:focus { border-color: rgba(125,211,252,0.4); }\n            QComboBox {\n                background: rgba(255,255,255,0.06);\n                color: #e2e8f0;\n                border: 1px solid rgba(125,211,252,0.2);\n                border-radius: 6px;\n                padding: 6px 10px;\n            }\n            QComboBox QAbstractItemView {\n                background-color: rgba(18,20,24,0.98);\n                color: #e2e8f0;\n                border: 1px solid rgba(125,211,252,0.2);\n                selection-background-color: rgba(59,142,208,0.3);\n            }\n            QPushButton {\n                background: rgba(125,211,252,0.12);\n                color: #7DD3FC;\n                border: 1px solid rgba(125,211,252,0.2);\n                border-radius: 6px;\n                padding: 8px 16px;\n                font-weight: 600;\n            }\n            QPushButton:hover {\n                background: rgba(125,211,252,0.2);\n                border-color: rgba(125,211,252,0.4);\n                color: #FFFFFF;\n            }\n            QListWidget {\n                background: rgba(255,255,255,0.03);\n                color: #e2e8f0;\n                border: 1px solid rgba(125,211,252,0.15);\n                border-radius: 6px;\n            }\n            QListWidget::item:selected { background: rgba(59,142,208,0.3); }\n        ')
         layout = QVBoxLayout(dialog)
         pal_layout = QHBoxLayout()
-        pal_layout.addWidget(QLabel(t('edit_pals.pal_type')))
-        pal_select_btn = QPushButton(t('edit_pals.select_pal_btn'))
-        pal_select_btn.setMinimumWidth(200)
-        pal_select_btn.setStyleSheet('\n            QPushButton {\n                text-align: left;\n                padding: 5px;\n                border: 1px solid #666;\n                border-radius: 3px;\n                background-color: #333;\n                color: #fff;\n                font-weight: normal;\n            }\n            QPushButton:hover {\n                background-color: #555;\n                border: 1px solid #888;\n            }\n            QPushButton:pressed {\n                background-color: #222;\n            }\n        ')
-        pal_layout.addWidget(pal_select_btn)
-        layout.addLayout(pal_layout)
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(QLabel('Search:'))
+        search_edit = QLineEdit()
+        search_edit.setPlaceholderText('Type to filter pals...')
+        layout.addWidget(search_edit)
+        layout.addWidget(QLabel('Available Pals:'))
+        pal_list = QListWidget()
+        pal_list.setViewMode(QListWidget.IconMode)
+        pal_list.setIconSize(QSize(48, 48))
+        pal_list.setSpacing(4)
+        pal_list.setResizeMode(QListWidget.Adjust)
+        pal_list.setDragEnabled(False)
+        pal_list.setAcceptDrops(False)
+        pal_list.setDragDropMode(QAbstractItemView.NoDragDrop)
+        pal_list.setMinimumHeight(350)
         selected_pal = {'asset': None, 'name': None}
-        def select_pal():
-            pal_dialog = QDialog(dialog)
-            pal_dialog.setWindowTitle('Select Pal Type')
-            pal_dialog.setModal(True)
-            pal_dialog.setMinimumSize(400, 500)
-            pal_layout = QVBoxLayout(pal_dialog)
-            search_label = QLabel('Search:')
-            pal_layout.addWidget(search_label)
-            search_edit = QLineEdit()
-            search_edit.setPlaceholderText('Type to filter pals...')
-            pal_layout.addWidget(search_edit)
-            list_label = QLabel('Available Pals:')
-            pal_layout.addWidget(list_label)
-            pal_list = QListWidget()
-            pal_list.setMinimumHeight(300)
-            pal_layout.addWidget(pal_list)
-            button_layout = QHBoxLayout()
-            button_layout.addStretch()
-            ok_btn = QPushButton('OK')
-            ok_btn.clicked.connect(pal_dialog.accept)
-            button_layout.addWidget(ok_btn)
-            cancel_btn = QPushButton(t('edit_pals.cancel'))
-            cancel_btn.clicked.connect(pal_dialog.reject)
-            button_layout.addWidget(cancel_btn)
-            pal_layout.addLayout(button_layout)
-            all_pals = sorted(PalFrame._NAMEMAP.items())
-            for asset, name in all_pals:
-                pal_list.addItem(f'{name}({asset})')
-            def filter_pals():
-                text = search_edit.text().lower()
-                for i in range(pal_list.count()):
-                    item = pal_list.item(i)
-                    item.setHidden(text not in item.text().lower())
-            search_edit.textChanged.connect(filter_pals)
-            if pal_dialog.exec() == QDialog.Accepted:
-                current_item = pal_list.currentItem()
-                if current_item:
-                    pal_text = current_item.text()
-                    asset_start = pal_text.rfind('(') + 1
-                    asset_end = pal_text.rfind(')')
-                    selected_pal['asset'] = pal_text[asset_start:asset_end]
-                    selected_pal['name'] = pal_text[:asset_start - 2]
-                    pal_select_btn.setText(pal_text)
-        pal_select_btn.clicked.connect(select_pal)
-        nick_layout = QHBoxLayout()
-        nick_layout.addWidget(QLabel(t('edit_pals.nickname')))
+        def set_current_pal(item):
+            if item:
+                selected_pal['asset'] = item.data(Qt.UserRole)
+                selected_pal['name'] = item.text()
+        pal_list.itemClicked.connect(set_current_pal)
+        pal_list.itemDoubleClicked.connect(lambda item: (set_current_pal(item), dialog.accept()))
+        layout.addWidget(pal_list)
+        all_pals_list = sorted(PalFrame._NAMEMAP.items())
+        for asset, name in all_pals_list:
+            list_item = QListWidgetItem(name)
+            list_item.setData(Qt.UserRole, asset)
+            icon_path = _get_pal_icon_path(asset)
+            if icon_path and os.path.exists(icon_path):
+                pixmap = QPixmap(icon_path)
+                if not pixmap.isNull():
+                    scaled = pixmap.scaled(48, 48, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    list_item.setIcon(QIcon(scaled))
+            tooltip = f'<b>{name}</b><br>ID: {asset}'
+            list_item.setToolTip(tooltip)
+            pal_list.addItem(list_item)
+        def filter_pals():
+            text = search_edit.text().lower()
+            for i in range(pal_list.count()):
+                item = pal_list.item(i)
+                item_name = item.text().lower()
+                item.setHidden(text not in item_name)
+        search_edit.textChanged.connect(filter_pals)
+        layout.addWidget(QLabel('Nickname:'))
         nick_edit = QLineEdit()
         nick_edit.setPlaceholderText('Optional')
-        nick_layout.addWidget(nick_edit)
-        layout.addLayout(nick_layout)
+        layout.addWidget(nick_edit)
         container_layout = QHBoxLayout()
         container_layout.addWidget(QLabel(t('edit_pals.container')))
         container_combo = QComboBox()
@@ -2699,16 +2819,36 @@ class EditPalsDialog(FramelessDialog):
             else:
                 raw = pal_item['value']['RawData']['value']['object']['SaveParameter']['value']
             current_nick = extract_value(raw, 'NickName', '')
-            new_nick, ok = QInputDialog.getText(self, t('edit_pals.rename_pal'), 'Enter new nickname:', text=current_nick)
-            if ok and new_nick != current_nick:
-                raw['NickName'] = {'id': None, 'type': 'StrProperty', 'value': new_nick}
-                self._update_tab_pal_display(tab, pal_index)
-                cid = extract_value(raw, 'CharacterID', '')
-                nick = extract_value(raw, 'NickName', '')
-                pal_name = PalFrame._NAMEMAP.get(cid.lower(), cid)
-                tab.pal_name_label.setText(pal_name)
-                tab.pal_nickname_label.setText(nick if nick else '')
-                tab.pal_name_label.repaint()
+            dialog = QDialog(self)
+            dialog.setWindowTitle(t('edit_pals.rename_pal'))
+            dialog.setModal(True)
+            dialog.setMinimumSize(300, 120)
+            dialog.setStyleSheet('\n                QDialog {\n                    background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                                stop:0 rgba(12,14,18,0.98), stop:0.5 rgba(10,16,22,0.98), stop:1 rgba(8,12,18,0.98));\n                    color: #e2e8f0;\n                }\n                QLabel { color: #e2e8f0; }\n                QLineEdit {\n                    background: rgba(255,255,255,0.06);\n                    color: #e2e8f0;\n                    border: 1px solid rgba(125,211,252,0.2);\n                    border-radius: 6px;\n                    padding: 6px 10px;\n                }\n                QLineEdit:focus { border-color: rgba(125,211,252,0.4); }\n                QPushButton {\n                    background: rgba(125,211,252,0.12);\n                    color: #7DD3FC;\n                    border: 1px solid rgba(125,211,252,0.2);\n                    border-radius: 6px;\n                    padding: 8px 16px;\n                    font-weight: 600;\n                }\n                QPushButton:hover {\n                    background: rgba(125,211,252,0.2);\n                    border-color: rgba(125,211,252,0.4);\n                    color: #FFFFFF;\n                }\n            ')
+            layout = QVBoxLayout(dialog)
+            layout.addWidget(QLabel('Enter new nickname:'))
+            nick_edit = QLineEdit()
+            nick_edit.setText(current_nick)
+            layout.addWidget(nick_edit)
+            button_layout = QHBoxLayout()
+            button_layout.addStretch()
+            ok_btn = QPushButton('OK')
+            ok_btn.clicked.connect(dialog.accept)
+            button_layout.addWidget(ok_btn)
+            cancel_btn = QPushButton(t('edit_pals.cancel'))
+            cancel_btn.clicked.connect(dialog.reject)
+            button_layout.addWidget(cancel_btn)
+            layout.addLayout(button_layout)
+            if dialog.exec() == QDialog.Accepted:
+                new_nick = nick_edit.text()
+                if new_nick != current_nick:
+                    raw['NickName'] = {'id': None, 'type': 'StrProperty', 'value': new_nick}
+                    self._update_tab_pal_display(tab, pal_index)
+                    cid = extract_value(raw, 'CharacterID', '')
+                    nick = extract_value(raw, 'NickName', '')
+                    pal_name = PalFrame._NAMEMAP.get(cid.lower(), cid)
+                    tab.pal_name_label.setText(pal_name)
+                    tab.pal_nickname_label.setText(nick if nick else '')
+                    tab.pal_name_label.repaint()
         except Exception as e:
             print(f'Error renaming pal: {e}')
     def _show_create_pal_dialog(self, slot_index, tab_name):
@@ -2720,65 +2860,54 @@ class EditPalsDialog(FramelessDialog):
                 dialog.setWindowTitle(f'Create New Pal in DPS Slot {slot_index}')
                 dialog.setModal(True)
                 dialog.setMinimumSize(400, 300)
+                dialog.setStyleSheet('\n                    QDialog {\n                        background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                                    stop:0 rgba(12,14,18,0.98), stop:0.5 rgba(10,16,22,0.98), stop:1 rgba(8,12,18,0.98));\n                        color: #e2e8f0;\n                    }\n                    QLabel { color: #e2e8f0; }\n                    QLineEdit {\n                        background: rgba(255,255,255,0.06);\n                        color: #e2e8f0;\n                        border: 1px solid rgba(125,211,252,0.2);\n                        border-radius: 6px;\n                        padding: 6px 10px;\n                    }\n                    QLineEdit:focus { border-color: rgba(125,211,252,0.4); }\n                    QComboBox {\n                        background: rgba(255,255,255,0.06);\n                        color: #e2e8f0;\n                        border: 1px solid rgba(125,211,252,0.2);\n                        border-radius: 6px;\n                        padding: 6px 10px;\n                    }\n                    QComboBox QAbstractItemView {\n                        background-color: rgba(18,20,24,0.98);\n                        color: #e2e8f0;\n                        border: 1px solid rgba(125,211,252,0.2);\n                        selection-background-color: rgba(59,142,208,0.3);\n                    }\n                    QPushButton {\n                        background: rgba(125,211,252,0.12);\n                        color: #7DD3FC;\n                        border: 1px solid rgba(125,211,252,0.2);\n                        border-radius: 6px;\n                        padding: 8px 16px;\n                        font-weight: 600;\n                    }\n                    QPushButton:hover {\n                        background: rgba(125,211,252,0.2);\n                        border-color: rgba(125,211,252,0.4);\n                        color: #FFFFFF;\n                    }\n                    QListWidget {\n                        background: rgba(255,255,255,0.03);\n                        color: #e2e8f0;\n                        border: 1px solid rgba(125,211,252,0.15);\n                        border-radius: 6px;\n                    }\n                    QListWidget::item:selected { background: rgba(59,142,208,0.3); }\n                ')
                 layout = QVBoxLayout(dialog)
-                pal_layout = QHBoxLayout()
-                pal_layout.addWidget(QLabel(t('edit_pals.pal_type')))
-                pal_select_btn = QPushButton(t('edit_pals.select_pal_btn'))
-                pal_select_btn.setMinimumWidth(200)
-                pal_select_btn.setStyleSheet('\n                    QPushButton {\n                        text-align: left;\n                        padding: 5px;\n                        border: 1px solid #666;\n                        border-radius: 3px;\n                        background-color: #333;\n                        color: #fff;\n                        font-weight: normal;\n                    }\n                    QPushButton:hover {\n                        background-color: #555;\n                        border: 1px solid #888;\n                    }\n                    QPushButton:pressed {\n                        background-color: #222;\n                    }\n                ')
-                pal_layout.addWidget(pal_select_btn)
-                layout.addLayout(pal_layout)
+                layout.addWidget(QLabel('Search:'))
+                search_edit = QLineEdit()
+                search_edit.setPlaceholderText('Type to filter pals...')
+                layout.addWidget(search_edit)
+                layout.addWidget(QLabel('Available Pals:'))
+                pal_list = QListWidget()
+                pal_list.setViewMode(QListWidget.IconMode)
+                pal_list.setIconSize(QSize(48, 48))
+                pal_list.setSpacing(4)
+                pal_list.setResizeMode(QListWidget.Adjust)
+                pal_list.setDragEnabled(False)
+                pal_list.setAcceptDrops(False)
+                pal_list.setDragDropMode(QAbstractItemView.NoDragDrop)
+                pal_list.setMinimumHeight(350)
                 selected_pal = {'asset': None, 'name': None}
-                def select_pal():
-                    pal_dialog = QDialog(dialog)
-                    pal_dialog.setWindowTitle('Select Pal Type')
-                    pal_dialog.setModal(True)
-                    pal_dialog.setMinimumSize(400, 500)
-                    pal_layout = QVBoxLayout(pal_dialog)
-                    search_label = QLabel('Search:')
-                    pal_layout.addWidget(search_label)
-                    search_edit = QLineEdit()
-                    search_edit.setPlaceholderText('Type to filter pals...')
-                    pal_layout.addWidget(search_edit)
-                    list_label = QLabel('Available Pals:')
-                    pal_layout.addWidget(list_label)
-                    pal_list = QListWidget()
-                    pal_list.setMinimumHeight(300)
-                    pal_layout.addWidget(pal_list)
-                    button_layout = QHBoxLayout()
-                    button_layout.addStretch()
-                    ok_btn = QPushButton('OK')
-                    ok_btn.clicked.connect(pal_dialog.accept)
-                    button_layout.addWidget(ok_btn)
-                    cancel_btn = QPushButton(t('edit_pals.cancel'))
-                    cancel_btn.clicked.connect(pal_dialog.reject)
-                    button_layout.addWidget(cancel_btn)
-                    pal_layout.addLayout(button_layout)
-                    all_pals = sorted(PalFrame._NAMEMAP.items())
-                    for asset, name in all_pals:
-                        pal_list.addItem(f'{name}({asset})')
-                    def filter_pals():
-                        text = search_edit.text().lower()
-                        for i in range(pal_list.count()):
-                            item = pal_list.item(i)
-                            item.setHidden(text not in item.text().lower())
-                    search_edit.textChanged.connect(filter_pals)
-                    if pal_dialog.exec() == QDialog.Accepted:
-                        current_item = pal_list.currentItem()
-                        if current_item:
-                            pal_text = current_item.text()
-                            asset_start = pal_text.rfind('(') + 1
-                            asset_end = pal_text.rfind(')')
-                            selected_pal['asset'] = pal_text[asset_start:asset_end]
-                            selected_pal['name'] = pal_text[:asset_start - 2]
-                            pal_select_btn.setText(pal_text)
-                pal_select_btn.clicked.connect(select_pal)
-                nick_layout = QHBoxLayout()
-                nick_layout.addWidget(QLabel(t('edit_pals.nickname')))
+                def set_current_pal(item):
+                    if item:
+                        selected_pal['asset'] = item.data(Qt.UserRole)
+                        selected_pal['name'] = item.text()
+                pal_list.itemClicked.connect(set_current_pal)
+                pal_list.itemDoubleClicked.connect(lambda item: (set_current_pal(item), dialog.accept()))
+                layout.addWidget(pal_list)
+                all_pals_list = sorted(PalFrame._NAMEMAP.items())
+                for asset, name in all_pals_list:
+                    list_item = QListWidgetItem(name)
+                    list_item.setData(Qt.UserRole, asset)
+                    icon_path = _get_pal_icon_path(asset)
+                    if icon_path and os.path.exists(icon_path):
+                        pixmap = QPixmap(icon_path)
+                        if not pixmap.isNull():
+                            scaled = pixmap.scaled(48, 48, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                            list_item.setIcon(QIcon(scaled))
+                    tooltip = f'<b>{name}</b><br>ID: {asset}'
+                    list_item.setToolTip(tooltip)
+                    pal_list.addItem(list_item)
+                def filter_pals():
+                    text = search_edit.text().lower()
+                    for i in range(pal_list.count()):
+                        item = pal_list.item(i)
+                        item_name = item.text().lower()
+                        item.setHidden(text not in item_name)
+                search_edit.textChanged.connect(filter_pals)
+                layout.addWidget(QLabel('Nickname:'))
                 nick_edit = QLineEdit()
                 nick_edit.setPlaceholderText('Optional')
-                nick_layout.addWidget(nick_edit)
-                layout.addLayout(nick_layout)
+                layout.addWidget(nick_edit)
                 button_layout = QHBoxLayout()
                 button_layout.addStretch()
                 ok_btn = QPushButton('Create')
@@ -2813,65 +2942,54 @@ class EditPalsDialog(FramelessDialog):
             dialog.setWindowTitle(f'Create New Pal in {container_name} Slot {slot_index}')
             dialog.setModal(True)
             dialog.setMinimumSize(400, 300)
+            dialog.setStyleSheet('\n                QDialog {\n                    background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                                stop:0 rgba(12,14,18,0.98), stop:0.5 rgba(10,16,22,0.98), stop:1 rgba(8,12,18,0.98));\n                    color: #e2e8f0;\n                }\n                QLabel { color: #e2e8f0; }\n                QLineEdit {\n                    background: rgba(255,255,255,0.06);\n                    color: #e2e8f0;\n                    border: 1px solid rgba(125,211,252,0.2);\n                    border-radius: 6px;\n                    padding: 6px 10px;\n                }\n                QLineEdit:focus { border-color: rgba(125,211,252,0.4); }\n                QComboBox {\n                    background: rgba(255,255,255,0.06);\n                    color: #e2e8f0;\n                    border: 1px solid rgba(125,211,252,0.2);\n                    border-radius: 6px;\n                    padding: 6px 10px;\n                }\n                QComboBox QAbstractItemView {\n                    background-color: rgba(18,20,24,0.98);\n                    color: #e2e8f0;\n                    border: 1px solid rgba(125,211,252,0.2);\n                    selection-background-color: rgba(59,142,208,0.3);\n                }\n                QPushButton {\n                    background: rgba(125,211,252,0.12);\n                    color: #7DD3FC;\n                    border: 1px solid rgba(125,211,252,0.2);\n                    border-radius: 6px;\n                    padding: 8px 16px;\n                    font-weight: 600;\n                }\n                QPushButton:hover {\n                    background: rgba(125,211,252,0.2);\n                    border-color: rgba(125,211,252,0.4);\n                    color: #FFFFFF;\n                }\n                QListWidget {\n                    background: rgba(255,255,255,0.03);\n                    color: #e2e8f0;\n                    border: 1px solid rgba(125,211,252,0.15);\n                    border-radius: 6px;\n                }\n                QListWidget::item:selected { background: rgba(59,142,208,0.3); }\n            ')
             layout = QVBoxLayout(dialog)
-            pal_layout = QHBoxLayout()
-            pal_layout.addWidget(QLabel(t('edit_pals.pal_type')))
-            pal_select_btn = QPushButton(t('edit_pals.select_pal_btn'))
-            pal_select_btn.setMinimumWidth(200)
-            pal_select_btn.setStyleSheet('\n                QPushButton {\n                    text-align: left;\n                    padding: 5px;\n                    border: 1px solid #666;\n                    border-radius: 3px;\n                    background-color: #333;\n                    color: #fff;\n                    font-weight: normal;\n                }\n                QPushButton:hover {\n                    background-color: #555;\n                    border: 1px solid #888;\n                }\n                QPushButton:pressed {\n                    background-color: #222;\n                }\n            ')
-            pal_layout.addWidget(pal_select_btn)
-            layout.addLayout(pal_layout)
+            layout.addWidget(QLabel('Search:'))
+            search_edit = QLineEdit()
+            search_edit.setPlaceholderText('Type to filter pals...')
+            layout.addWidget(search_edit)
+            layout.addWidget(QLabel('Available Pals:'))
+            pal_list = QListWidget()
+            pal_list.setViewMode(QListWidget.IconMode)
+            pal_list.setIconSize(QSize(48, 48))
+            pal_list.setSpacing(4)
+            pal_list.setResizeMode(QListWidget.Adjust)
+            pal_list.setDragEnabled(False)
+            pal_list.setAcceptDrops(False)
+            pal_list.setDragDropMode(QAbstractItemView.NoDragDrop)
+            pal_list.setMinimumHeight(350)
             selected_pal = {'asset': None, 'name': None}
-            def select_pal():
-                pal_dialog = QDialog(dialog)
-                pal_dialog.setWindowTitle('Select Pal Type')
-                pal_dialog.setModal(True)
-                pal_dialog.setMinimumSize(400, 500)
-                pal_layout = QVBoxLayout(pal_dialog)
-                search_label = QLabel('Search:')
-                pal_layout.addWidget(search_label)
-                search_edit = QLineEdit()
-                search_edit.setPlaceholderText('Type to filter pals...')
-                pal_layout.addWidget(search_edit)
-                list_label = QLabel('Available Pals:')
-                pal_layout.addWidget(list_label)
-                pal_list = QListWidget()
-                pal_list.setMinimumHeight(300)
-                pal_layout.addWidget(pal_list)
-                button_layout = QHBoxLayout()
-                button_layout.addStretch()
-                ok_btn = QPushButton('OK')
-                ok_btn.clicked.connect(pal_dialog.accept)
-                button_layout.addWidget(ok_btn)
-                cancel_btn = QPushButton(t('edit_pals.cancel'))
-                cancel_btn.clicked.connect(pal_dialog.reject)
-                button_layout.addWidget(cancel_btn)
-                pal_layout.addLayout(button_layout)
-                all_pals = sorted(PalFrame._NAMEMAP.items())
-                for asset, name in all_pals:
-                    pal_list.addItem(f'{name}({asset})')
-                def filter_pals():
-                    text = search_edit.text().lower()
-                    for i in range(pal_list.count()):
-                        item = pal_list.item(i)
-                        item.setHidden(text not in item.text().lower())
-                search_edit.textChanged.connect(filter_pals)
-                if pal_dialog.exec() == QDialog.Accepted:
-                    current_item = pal_list.currentItem()
-                    if current_item:
-                        pal_text = current_item.text()
-                        asset_start = pal_text.rfind('(') + 1
-                        asset_end = pal_text.rfind(')')
-                        selected_pal['asset'] = pal_text[asset_start:asset_end]
-                        selected_pal['name'] = pal_text[:asset_start - 2]
-                        pal_select_btn.setText(pal_text)
-            pal_select_btn.clicked.connect(select_pal)
-            nick_layout = QHBoxLayout()
-            nick_layout.addWidget(QLabel(t('edit_pals.nickname')))
+            def set_current_pal(item):
+                if item:
+                    selected_pal['asset'] = item.data(Qt.UserRole)
+                    selected_pal['name'] = item.text()
+            pal_list.itemClicked.connect(set_current_pal)
+            pal_list.itemDoubleClicked.connect(lambda item: (set_current_pal(item), dialog.accept()))
+            layout.addWidget(pal_list)
+            all_pals_list = sorted(PalFrame._NAMEMAP.items())
+            for asset, name in all_pals_list:
+                list_item = QListWidgetItem(name)
+                list_item.setData(Qt.UserRole, asset)
+                icon_path = _get_pal_icon_path(asset)
+                if icon_path and os.path.exists(icon_path):
+                    pixmap = QPixmap(icon_path)
+                    if not pixmap.isNull():
+                        scaled = pixmap.scaled(48, 48, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                        list_item.setIcon(QIcon(scaled))
+                tooltip = f'<b>{name}</b><br>ID: {asset}'
+                list_item.setToolTip(tooltip)
+                pal_list.addItem(list_item)
+            def filter_pals():
+                text = search_edit.text().lower()
+                for i in range(pal_list.count()):
+                    item = pal_list.item(i)
+                    item_name = item.text().lower()
+                    item.setHidden(text not in item_name)
+            search_edit.textChanged.connect(filter_pals)
+            layout.addWidget(QLabel('Nickname:'))
             nick_edit = QLineEdit()
             nick_edit.setPlaceholderText('Optional')
-            nick_layout.addWidget(nick_edit)
-            layout.addLayout(nick_layout)
+            layout.addWidget(nick_edit)
             button_layout = QHBoxLayout()
             button_layout.addStretch()
             ok_btn = QPushButton('Create')
@@ -2948,65 +3066,54 @@ class EditPalsDialog(FramelessDialog):
             dialog.setWindowTitle(f'Create New Pal in {container_name} Slot {slot_index}')
             dialog.setModal(True)
             dialog.setMinimumSize(400, 300)
+            dialog.setStyleSheet('\n                QDialog {\n                    background: qlineargradient(spread:pad, x1:0.0, y1:0.0, x2:1.0, y2:1.0,\n                                stop:0 rgba(12,14,18,0.98), stop:0.5 rgba(10,16,22,0.98), stop:1 rgba(8,12,18,0.98));\n                    color: #e2e8f0;\n                }\n                QLabel { color: #e2e8f0; }\n                QLineEdit {\n                    background: rgba(255,255,255,0.06);\n                    color: #e2e8f0;\n                    border: 1px solid rgba(125,211,252,0.2);\n                    border-radius: 6px;\n                    padding: 6px 10px;\n                }\n                QLineEdit:focus { border-color: rgba(125,211,252,0.4); }\n                QComboBox {\n                    background: rgba(255,255,255,0.06);\n                    color: #e2e8f0;\n                    border: 1px solid rgba(125,211,252,0.2);\n                    border-radius: 6px;\n                    padding: 6px 10px;\n                }\n                QComboBox QAbstractItemView {\n                    background-color: rgba(18,20,24,0.98);\n                    color: #e2e8f0;\n                    border: 1px solid rgba(125,211,252,0.2);\n                    selection-background-color: rgba(59,142,208,0.3);\n                }\n                QPushButton {\n                    background: rgba(125,211,252,0.12);\n                    color: #7DD3FC;\n                    border: 1px solid rgba(125,211,252,0.2);\n                    border-radius: 6px;\n                    padding: 8px 16px;\n                    font-weight: 600;\n                }\n                QPushButton:hover {\n                    background: rgba(125,211,252,0.2);\n                    border-color: rgba(125,211,252,0.4);\n                    color: #FFFFFF;\n                }\n                QListWidget {\n                    background: rgba(255,255,255,0.03);\n                    color: #e2e8f0;\n                    border: 1px solid rgba(125,211,252,0.15);\n                    border-radius: 6px;\n                }\n                QListWidget::item:selected { background: rgba(59,142,208,0.3); }\n            ')
             layout = QVBoxLayout(dialog)
-            pal_layout = QHBoxLayout()
-            pal_layout.addWidget(QLabel(t('edit_pals.pal_type')))
-            pal_select_btn = QPushButton(t('edit_pals.select_pal_btn'))
-            pal_select_btn.setMinimumWidth(200)
-            pal_select_btn.setStyleSheet('\n                QPushButton {\n                    text-align: left;\n                    padding: 5px;\n                    border: 1px solid #666;\n                    border-radius: 3px;\n                    background-color: #333;\n                    color: #fff;\n                    font-weight: normal;\n                }\n                QPushButton:hover {\n                    background-color: #555;\n                    border: 1px solid #888;\n                }\n                QPushButton:pressed {\n                    background-color: #222;\n                }\n            ')
-            pal_layout.addWidget(pal_select_btn)
-            layout.addLayout(pal_layout)
+            layout.addWidget(QLabel('Search:'))
+            search_edit = QLineEdit()
+            search_edit.setPlaceholderText('Type to filter pals...')
+            layout.addWidget(search_edit)
+            layout.addWidget(QLabel('Available Pals:'))
+            pal_list = QListWidget()
+            pal_list.setViewMode(QListWidget.IconMode)
+            pal_list.setIconSize(QSize(48, 48))
+            pal_list.setSpacing(4)
+            pal_list.setResizeMode(QListWidget.Adjust)
+            pal_list.setDragEnabled(False)
+            pal_list.setAcceptDrops(False)
+            pal_list.setDragDropMode(QAbstractItemView.NoDragDrop)
+            pal_list.setMinimumHeight(350)
             selected_pal = {'asset': None, 'name': None}
-            def select_pal():
-                pal_dialog = QDialog(dialog)
-                pal_dialog.setWindowTitle('Select Pal Type')
-                pal_dialog.setModal(True)
-                pal_dialog.setMinimumSize(400, 500)
-                pal_layout = QVBoxLayout(pal_dialog)
-                search_label = QLabel('Search:')
-                pal_layout.addWidget(search_label)
-                search_edit = QLineEdit()
-                search_edit.setPlaceholderText('Type to filter pals...')
-                pal_layout.addWidget(search_edit)
-                list_label = QLabel('Available Pals:')
-                pal_layout.addWidget(list_label)
-                pal_list = QListWidget()
-                pal_list.setMinimumHeight(300)
-                pal_layout.addWidget(pal_list)
-                button_layout = QHBoxLayout()
-                button_layout.addStretch()
-                ok_btn = QPushButton('OK')
-                ok_btn.clicked.connect(pal_dialog.accept)
-                button_layout.addWidget(ok_btn)
-                cancel_btn = QPushButton(t('edit_pals.cancel'))
-                cancel_btn.clicked.connect(pal_dialog.reject)
-                button_layout.addWidget(cancel_btn)
-                pal_layout.addLayout(button_layout)
-                all_pals = sorted(PalFrame._NAMEMAP.items())
-                for asset, name in all_pals:
-                    pal_list.addItem(f'{name}({asset})')
-                def filter_pals():
-                    text = search_edit.text().lower()
-                    for i in range(pal_list.count()):
-                        item = pal_list.item(i)
-                        item.setHidden(text not in item.text().lower())
-                search_edit.textChanged.connect(filter_pals)
-                if pal_dialog.exec() == QDialog.Accepted:
-                    current_item = pal_list.currentItem()
-                    if current_item:
-                        pal_text = current_item.text()
-                        asset_start = pal_text.rfind('(') + 1
-                        asset_end = pal_text.rfind(')')
-                        selected_pal['asset'] = pal_text[asset_start:asset_end]
-                        selected_pal['name'] = pal_text[:asset_start - 2]
-                        pal_select_btn.setText(pal_text)
-            pal_select_btn.clicked.connect(select_pal)
-            nick_layout = QHBoxLayout()
-            nick_layout.addWidget(QLabel(t('edit_pals.nickname')))
+            def set_current_pal(item):
+                if item:
+                    selected_pal['asset'] = item.data(Qt.UserRole)
+                    selected_pal['name'] = item.text()
+            pal_list.itemClicked.connect(set_current_pal)
+            pal_list.itemDoubleClicked.connect(lambda item: (set_current_pal(item), dialog.accept()))
+            layout.addWidget(pal_list)
+            all_pals_list = sorted(PalFrame._NAMEMAP.items())
+            for asset, name in all_pals_list:
+                list_item = QListWidgetItem(name)
+                list_item.setData(Qt.UserRole, asset)
+                icon_path = _get_pal_icon_path(asset)
+                if icon_path and os.path.exists(icon_path):
+                    pixmap = QPixmap(icon_path)
+                    if not pixmap.isNull():
+                        scaled = pixmap.scaled(48, 48, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                        list_item.setIcon(QIcon(scaled))
+                tooltip = f'<b>{name}</b><br>ID: {asset}'
+                list_item.setToolTip(tooltip)
+                pal_list.addItem(list_item)
+            def filter_pals():
+                text = search_edit.text().lower()
+                for i in range(pal_list.count()):
+                    item = pal_list.item(i)
+                    item_name = item.text().lower()
+                    item.setHidden(text not in item_name)
+            search_edit.textChanged.connect(filter_pals)
+            layout.addWidget(QLabel('Nickname:'))
             nick_edit = QLineEdit()
             nick_edit.setPlaceholderText('Optional')
-            nick_layout.addWidget(nick_edit)
-            layout.addLayout(nick_layout)
+            layout.addWidget(nick_edit)
             button_layout = QHBoxLayout()
             button_layout.addStretch()
             ok_btn = QPushButton('Create')
@@ -3019,7 +3126,7 @@ class EditPalsDialog(FramelessDialog):
             if dialog.exec() == QDialog.Accepted:
                 if not selected_pal['asset']:
                     show_warning(self, 'Error', t('edit_pals.error_select_pal_type'))
-                    return
+                    return None
                 character_id = selected_pal['asset']
                 nickname = nick_edit.text().strip() or f"🆕{selected_pal['name']}"
                 cmap = constants.loaded_level_json['properties']['worldSaveData']['value']['CharacterSaveParameterMap']['value']
@@ -3231,6 +3338,19 @@ class EditPalsDialog(FramelessDialog):
                 center_on_parent(self)
             self.activateWindow()
             self.raise_()
+class EditPalsDialog(FramelessDialog):
+    def __init__(self, player_uid, player_name, parent=None):
+        super().__init__('edit_pals.title', parent)
+        self.player_uid = player_uid
+        self.player_name = player_name
+        self.set_title_text(f"{t('edit_pals.title')} - {player_name}")
+        self.setModal(True)
+        self.setMinimumSize(1200, 800)
+        if os.path.exists(constants.ICON_PATH):
+            self.setWindowIcon(QIcon(constants.ICON_PATH))
+        self.pal_editor_widget = PalEditorWidget()
+        self.content_layout.addWidget(self.pal_editor_widget)
+        self.pal_editor_widget.set_player(player_uid, player_name)
 class PalFrame(QFrame):
     _maps_loaded = False
     _NAMEMAP = {}

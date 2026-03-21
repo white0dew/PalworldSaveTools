@@ -1209,5 +1209,13 @@
   "zone_management.import": "インポートゾーン",
   "zone_management.import_title": "輸入保護ゾーン",
   "zone_management.import_success": "保護ゾーンは正常にインポートされました",
-  "zone_management.import_failed": "ゾーンのインポートに失敗しました。無効なファイル形式です。"
+  "zone_management.import_failed": "ゾーンのインポートに失敗しました。無効なファイル形式です。",
+  "pal_editor.tab": "パル編集者",
+  "pal_editor.title": "パル編集者",
+  "pal_editor.select_player": "プレーヤーの選択",
+  "pal_editor.search_players": "プレイヤーを検索...",
+  "pal_editor.select_player_hint": "サイドバーからプレイヤーを選択して仲間を編集します",
+  "pal_editor.editor": "エディタ",
+  "pal_editor.open_editor": "Palエディタを開く",
+  "inventory.search_players": "プレイヤーを検索..."
 }

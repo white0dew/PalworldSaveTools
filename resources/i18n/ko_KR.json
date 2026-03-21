@@ -1208,5 +1208,13 @@
   "zone_management.import": "수입 지역",
   "zone_management.import_title": "수입 보호 구역",
   "zone_management.import_success": "보호 영역을 성공적으로 가져왔습니다.",
-  "zone_management.import_failed": "영역을 가져오지 못했습니다. 파일 형식이 잘못되었습니다."
+  "zone_management.import_failed": "영역을 가져오지 못했습니다. 파일 형식이 잘못되었습니다.",
+  "pal_editor.tab": "Pal 편집자",
+  "pal_editor.title": "Pal 편집자",
+  "pal_editor.select_player": "플레이어 선택",
+  "pal_editor.search_players": "플레이어 검색...",
+  "pal_editor.select_player_hint": "친구를 편집하려면 사이드바에서 플레이어를 선택하세요.",
+  "pal_editor.editor": "편집자",
+  "pal_editor.open_editor": "Pal 편집기 열기",
+  "inventory.search_players": "플레이어 검색..."
 }

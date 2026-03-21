@@ -301,6 +301,7 @@ class MainWindow(QMainWindow):
         self._setup_tools_tab()
         self._setup_base_inventory_tab()
         self._setup_inventory_tab()
+        self._setup_pal_editor_tab()
         self._setup_players_tab()
         self._setup_guilds_tab()
         self._setup_bases_tab()
@@ -383,6 +384,11 @@ class MainWindow(QMainWindow):
         self.inventory_tab = PlayerInventoryTab(self)
         self.tab_bar.addTab(t('inventory.tab') if t else 'Player Inventory')
         self.stacked_widget.addWidget(self.inventory_tab)
+    def _setup_pal_editor_tab(self):
+        from .pal_editor_tab import PalEditorTab
+        self.pal_editor_tab = PalEditorTab(self)
+        self.tab_bar.addTab(t('pal_editor.tab') if t else 'Pal Editor')
+        self.stacked_widget.addWidget(self.pal_editor_tab)
     def _setup_exclusions_tab(self):
         exclusions_tab = QWidget()
         layout = QHBoxLayout(exclusions_tab)
@@ -708,6 +714,8 @@ class MainWindow(QMainWindow):
         self._refresh_exclusions()
         self._refresh_inventory()
         self._refresh_base_inventory()
+        if hasattr(self, 'pal_editor_tab'):
+            self.pal_editor_tab.refresh()
         self.results_widget.refresh_stats_after()
     def _refresh_inventory(self):
         if hasattr(self, 'inventory_tab'):
@@ -838,8 +846,6 @@ class MainWindow(QMainWindow):
         menu.add_action(self._create_action(t('player.rename.menu'), lambda: self._rename_player(item.text(4), item.text(0))))
         menu.add_action(self._create_action(t('player.viewing_cage.menu'), lambda: self._unlock_viewing_cage(item.text(4))))
         menu.add_action(self._create_action(t('player.reset_timestamp.menu') if t else 'Reset Timestamp', lambda: self._reset_player_timestamp(item.text(4))))
-        menu.add_action(self._create_action(t('player.edit_pals.menu') if t else 'Edit Pals', lambda: self._edit_player_pals(item.text(4), item.text(0))))
-        menu.add_action(self._create_action(t('player.inventory.menu') if t else 'Edit Inventory', lambda: self._edit_player_inventory(item.text(4), item.text(0))))
         menu.add_action(self._create_action(t('player.update_container_ids.menu'), lambda: self._update_container_ids(item.text(4))))
         menu.add_action(self._create_action(t('player.unlock_technologies.menu') if t else 'Unlock All Technologies', lambda: self._unlock_all_technologies_for_player(item.text(4))))
         menu.add_action(self._create_action(t('player.edit_tech_points') if t else 'Edit Tech Points', lambda: self._edit_player_tech_points()))
@@ -886,7 +892,6 @@ class MainWindow(QMainWindow):
         menu.addAction(self._create_action(t('deletion.ctx.delete_player'), lambda: self._delete_player(item.text(4))))
         menu.addAction(self._create_action(t('player.rename.menu'), lambda: self._rename_player(item.text(4), item.text(0).replace('[L]', ''))))
         menu.addAction(self._create_action(t('player.reset_timestamp.menu') if t else 'Reset Timestamp', lambda: self._reset_player_timestamp(item.text(4))))
-        menu.addAction(self._create_action(t('player.edit_pals.menu') if t else 'Edit Pals', lambda: self._edit_player_pals(item.text(4), item.text(0).replace('[L]', ''))))
         menu.addSeparator()
         menu.addAction(self._create_action('Set Player Level' if not t else t('player.set_level'), lambda: self._set_player_level(item.text(4))))
         menu.exec(self.guild_members_panel.tree.viewport().mapToGlobal(pos))
@@ -1282,15 +1287,18 @@ class MainWindow(QMainWindow):
                 self.inventory_tab.refresh_labels()
             if hasattr(self, 'base_inventory_tab') and self.base_inventory_tab:
                 self.base_inventory_tab.refresh_labels()
+            if hasattr(self, 'pal_editor_tab') and self.pal_editor_tab:
+                self.pal_editor_tab.refresh_labels()
     def _update_tab_texts(self):
         self.tab_bar.setTabText(0, t('tools_tab') if t else 'Tools')
         self.tab_bar.setTabText(1, t('base_inventory.tab') if t else 'Base Inventory')
         self.tab_bar.setTabText(2, t('inventory.tab') if t else 'Player Inventory')
-        self.tab_bar.setTabText(3, t('deletion.search_players') if t else 'Players')
-        self.tab_bar.setTabText(4, t('deletion.search_guilds') if t else 'Guilds')
-        self.tab_bar.setTabText(5, t('deletion.search_bases') if t else 'Bases')
-        self.tab_bar.setTabText(6, t('map.viewer') if t else 'Map')
-        self.tab_bar.setTabText(7, t('deletion.menu.exclusions') if t else 'Exclusions')
+        self.tab_bar.setTabText(3, t('pal_editor.tab') if t else 'Pal Editor')
+        self.tab_bar.setTabText(4, t('deletion.search_players') if t else 'Players')
+        self.tab_bar.setTabText(5, t('deletion.search_guilds') if t else 'Guilds')
+        self.tab_bar.setTabText(6, t('deletion.search_bases') if t else 'Bases')
+        self.tab_bar.setTabText(7, t('map.viewer') if t else 'Map')
+        self.tab_bar.setTabText(8, t('deletion.menu.exclusions') if t else 'Exclusions')
     def _refresh_texts(self):
         tools_version, _ = get_versions()
         self.setWindowTitle(t('app.title', version=tools_version) + ' - ' + t('tool.deletion'))

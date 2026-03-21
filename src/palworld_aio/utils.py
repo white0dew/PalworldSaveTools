@@ -229,3 +229,23 @@ def format_character_key(character_id: str) -> str:
         return character_id_lower[:-7]
     else:
         return character_id_lower
+def safe_dict_get(data, *keys, default=None):
+    result = data
+    for key in keys:
+        if not isinstance(result, (dict, list)):
+            return default
+        if isinstance(result, dict):
+            result = result.get(key, default)
+            if result is default:
+                return default
+        elif isinstance(result, list) and isinstance(key, int):
+            try:
+                result = result[key]
+            except (IndexError, TypeError):
+                return default
+        else:
+            return default
+    return result
+def safe_nested_get(data, path, default=None):
+    keys = path if isinstance(path, (list, tuple)) else path.split('.')
+    return safe_dict_get(data, *keys, default=default)

@@ -1211,5 +1211,13 @@
   "zone_management.import": "进口区",
   "zone_management.import_title": "进口保护区",
   "zone_management.import_success": "保护区导入成功",
-  "zone_management.import_failed": "导入区域失败。文件格式无效。"
+  "zone_management.import_failed": "导入区域失败。文件格式无效。",
+  "pal_editor.tab": "朋友编辑",
+  "pal_editor.title": "朋友编辑",
+  "pal_editor.select_player": "选择玩家",
+  "pal_editor.search_players": "搜索玩家...",
+  "pal_editor.select_player_hint": "从侧边栏中选择一个玩家来编辑他们的好友",
+  "pal_editor.editor": "编辑",
+  "pal_editor.open_editor": "打开好友编辑器",
+  "inventory.search_players": "搜索玩家..."
 }

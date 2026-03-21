@@ -1191,5 +1191,13 @@
   "zone_management.import": "Zones d'importation",
   "zone_management.import_title": "Zones de protection des importations",
   "zone_management.import_success": "Zones de protection importées avec succès",
-  "zone_management.import_failed": "Échec de l'importation des zones. Format de fichier invalide."
+  "zone_management.import_failed": "Échec de l'importation des zones. Format de fichier invalide.",
+  "pal_editor.tab": "Éditeur copain",
+  "pal_editor.title": "Éditeur copain",
+  "pal_editor.select_player": "Sélectionner un joueur",
+  "pal_editor.search_players": "Rechercher des joueurs...",
+  "pal_editor.select_player_hint": "Sélectionnez un joueur dans la barre latérale pour modifier ses amis",
+  "pal_editor.editor": "Éditeur",
+  "pal_editor.open_editor": "Éditeur Open Pal",
+  "inventory.search_players": "Rechercher des joueurs..."
 }

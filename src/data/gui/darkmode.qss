@@ -1116,6 +1116,14 @@ QGroupBox#editPalsGroup::title {
     font-weight: 600;
 }
 
+/* Frame containers for talents/souls sections */
+QFrame#editPalsFrame {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 8px;
+}
+
 /* Scroll areas */
 QScrollArea#editPalsScroll {
     background: transparent;
