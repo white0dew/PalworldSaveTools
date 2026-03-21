@@ -92,6 +92,19 @@ def discover_data_dirs(project_root: Path) -> list:
             data_dirs.append(f'--include-data-dir={dir_path}=src/{dir_name}/')
             print(f'  Found data directory: {dir_name}/ (placing under src/)')
     return data_dirs
+def sync_branch_version(project_root: Path) -> None:
+    print('Syncing BRANCH_VERSION to main...')
+    common_file = project_root / 'src' / 'common.py'
+    if not common_file.exists():
+        print(f'Warning: {common_file} not found')
+        return
+    import re
+    with open(common_file, 'r', encoding='utf-8') as f:
+        content = f.read()
+    content = re.sub('BRANCH_VERSION\\s*=\\s*[\'\\"].*?[\'\\"]', "BRANCH_VERSION = 'main'", content)
+    with open(common_file, 'w', encoding='utf-8') as f:
+        f.write(content)
+    print('BRANCH_VERSION set to main')
 def build_with_nuitka(project_root: Path, python_exe: Path, main_script: str='src/palworld_aio/main.py', icon_file: str='resources/pal.ico', output_dir: str='.build', debug: bool=False) -> None:
     print(f'Building with Nuitka...')
     print(f'Python: {python_exe}')
@@ -149,6 +162,7 @@ def main():
         sys.exit(1)
     if not args.no_clean:
         clean_build_dirs(project_root)
+    sync_branch_version(project_root)
     try:
         build_with_nuitka(project_root=project_root, python_exe=python_exe, main_script=args.main_script, icon_file=args.icon, output_dir=args.output_dir, debug=args.debug)
     except Exception as e:
