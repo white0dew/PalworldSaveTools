@@ -22,17 +22,15 @@ class PalEditorTab(QWidget):
         header.addWidget(self.title_label)
         header.addStretch()
         player_selector_layout = QHBoxLayout()
-        player_selector_layout.setSpacing(4)
-        self.player_selector_label = QLabel(t('inventory.select_player', default='Select Player:'))
-        self.player_selector_label.setStyleSheet('font-size: 12px; color: #aaa;')
-        player_selector_layout.addWidget(self.player_selector_label)
+        player_selector_layout.setContentsMargins(0, 0, 0, 0)
+        player_selector_layout.setSpacing(0)
         self.player_search = QLineEdit()
         self.player_search.setPlaceholderText(t('inventory.search_players'))
         self.player_search.setFixedWidth(120)
         self.player_search.textChanged.connect(self._filter_player_list)
         player_selector_layout.addWidget(self.player_search)
         self.player_combo = StyledCombo()
-        self.player_combo.setMinimumWidth(180)
+        self.player_combo.setFixedWidth(180)
         self.player_combo.currentIndexChanged.connect(self._on_player_selected)
         player_selector_layout.addWidget(self.player_combo)
         header.addLayout(player_selector_layout)
@@ -121,8 +119,6 @@ class PalEditorTab(QWidget):
     def refresh_labels(self):
         if hasattr(self, 'title_label'):
             self.title_label.setText(t('pal_editor.title'))
-        if hasattr(self, 'player_selector_label'):
-            self.player_selector_label.setText(t('inventory.select_player', default='Select Player:'))
         if hasattr(self, 'player_search'):
             self.player_search.setPlaceholderText(t('inventory.search_players', default='Search players...'))
         if hasattr(self, 'placeholder_label'):

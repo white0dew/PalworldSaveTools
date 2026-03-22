@@ -1207,8 +1207,9 @@
   "pal_editor.title": "Amigo editor",
   "pal_editor.select_player": "Seleccionar jugador",
   "pal_editor.search_players": "Buscar jugadores...",
-  "pal_editor.select_player_hint": "Selecciona un jugador de la barra lateral para editar a sus amigos.",
+  "pal_editor.select_player_hint": "Selecciona un jugador para editar a sus amigos.",
   "pal_editor.editor": "Editor",
   "pal_editor.open_editor": "Abrir editor Pal",
-  "inventory.search_players": "Buscar jugadores..."
+  "inventory.search_players": "Buscar jugadores...",
+  "inventory.select_player_hint": "Selecciona un jugador para editar su inventario."
 }

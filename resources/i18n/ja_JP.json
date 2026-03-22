@@ -1214,8 +1214,9 @@
   "pal_editor.title": "パル編集者",
   "pal_editor.select_player": "プレーヤーの選択",
   "pal_editor.search_players": "プレイヤーを検索...",
-  "pal_editor.select_player_hint": "サイドバーからプレイヤーを選択して仲間を編集します",
+  "pal_editor.select_player_hint": "フレンドを編集するプレイヤーを選択してください",
   "pal_editor.editor": "エディタ",
   "pal_editor.open_editor": "Palエディタを開く",
-  "inventory.search_players": "プレイヤーを検索..."
+  "inventory.search_players": "プレイヤーを検索...",
+  "inventory.select_player_hint": "インベントリを編集するプレーヤーを選択してください"
 }

@@ -1216,8 +1216,9 @@
   "pal_editor.title": "朋友编辑",
   "pal_editor.select_player": "选择玩家",
   "pal_editor.search_players": "搜索玩家...",
-  "pal_editor.select_player_hint": "从侧边栏中选择一个玩家来编辑他们的好友",
+  "pal_editor.select_player_hint": "选择一个玩家来编辑他们的好友",
   "pal_editor.editor": "编辑",
   "pal_editor.open_editor": "打开好友编辑器",
-  "inventory.search_players": "搜索玩家..."
+  "inventory.search_players": "搜索玩家...",
+  "inventory.select_player_hint": "选择一名玩家来编辑其库存"
 }

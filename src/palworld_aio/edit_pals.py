@@ -302,7 +302,17 @@ class PalIcon(QFrame):
     def _clear_ui(self):
         for child in self.findChildren(QLabel):
             child.deleteLater()
+        QApplication.processEvents()
         self.update()
+    def hide_badges(self):
+        if hasattr(self, 'level_label'):
+            self.level_label.hide()
+        if hasattr(self, 'gender_label'):
+            self.gender_label.hide()
+        if hasattr(self, 'boss_label'):
+            self.boss_label.hide()
+        if hasattr(self, 'shiny_label'):
+            self.shiny_label.hide()
     def _add_overlays(self, level, gender, is_boss, is_predator, is_lucky, image_label, pal_name):
         level_label = StrokedLabel(f'Lvl {level}')
         level_label.setStyleSheet('font-size: 9px; font-weight: bold; background-color: transparent;')
@@ -717,15 +727,18 @@ class PalEditorWidget(QWidget):
         self.palbox_container = None
         self.dps_loaded = False
         if self.party_tab and hasattr(self.party_tab, 'pal_layout'):
-            for i in reversed(range(self.party_tab.pal_layout.count())):
-                widget = self.party_tab.pal_layout.itemAt(i).widget()
-                if widget:
-                    widget.setParent(None)
+            while self.party_tab.pal_layout.count():
+                item = self.party_tab.pal_layout.takeAt(0)
+                if item.widget():
+                    item.widget().hide_badges()
+                    item.widget().deleteLater()
         if self.palbox_tab and hasattr(self.palbox_tab, 'pal_layout'):
-            for i in reversed(range(self.palbox_tab.pal_layout.count())):
-                widget = self.palbox_tab.pal_layout.itemAt(i).widget()
-                if widget:
-                    widget.setParent(None)
+            while self.palbox_tab.pal_layout.count():
+                item = self.palbox_tab.pal_layout.takeAt(0)
+                if item.widget():
+                    item.widget().hide_badges()
+                    item.widget().deleteLater()
+        QApplication.processEvents()
         self._update_tab_pal_display(self.party_tab, -1)
         self._update_tab_pal_display(self.palbox_tab, -1)
     def refresh(self):
@@ -1224,25 +1237,25 @@ class PalEditorWidget(QWidget):
                     widget.pal_data = pal_item
                     widget._setup_ui()
         else:
-            pal_dict = {}
-            for pal_item in pals:
-                try:
-                    raw = pal_item.get('value', {}).get('RawData', {}).get('value', {}).get('object', {}).get('SaveParameter', {}).get('value', {})
-                    if raw:
-                        slot_index = raw.get('SlotId', {}).get('value', {}).get('SlotIndex', {}).get('value', 0)
-                        pal_dict[slot_index] = pal_item
-                except Exception:
-                    pass
-            if hasattr(tab, 'pal_layout') and hasattr(tab.pal_layout, 'count'):
-                for i in reversed(range(tab.pal_layout.count())):
-                    widget = tab.pal_layout.itemAt(i).widget()
+            if hasattr(tab, 'pal_layout') and hasattr(tab, 'pal_data'):
+                widgets_to_delete = []
+                while tab.pal_layout.count():
+                    item = tab.pal_layout.takeAt(0)
+                    widget = item.widget()
                     if widget:
-                        try:
-                            widget.clicked.disconnect()
-                            widget.rightClicked.disconnect()
-                        except Exception:
-                            pass
-                        widget.setParent(None)
+                        widgets_to_delete.append(widget)
+                for widget in widgets_to_delete:
+                    try:
+                        widget.clicked.disconnect()
+                        widget.rightClicked.disconnect()
+                    except Exception:
+                        pass
+                    try:
+                        widget.hide_badges()
+                        widget.deleteLater()
+                    except Exception:
+                        pass
+                QApplication.processEvents()
             pal_dict = {}
             for pal_item in pals:
                 try:
@@ -1513,14 +1526,15 @@ class PalEditorWidget(QWidget):
         except Exception as e:
             print(f'Error updating display: {e}')
     def _update_tab_skills_display(self, tab, moves, passives):
-        for i in reversed(range(tab.active_skills_grid.count())):
-            item = tab.active_skills_grid.itemAt(i)
+        while tab.active_skills_grid.count():
+            item = tab.active_skills_grid.takeAt(0)
             if item.widget():
-                item.widget().setParent(None)
-        for i in reversed(range(tab.passive_skills_grid.count())):
-            item = tab.passive_skills_grid.itemAt(i)
+                item.widget().deleteLater()
+        while tab.passive_skills_grid.count():
+            item = tab.passive_skills_grid.takeAt(0)
             if item.widget():
-                item.widget().setParent(None)
+                item.widget().deleteLater()
+        QApplication.processEvents()
         for i in range(3):
             if i == 0:
                 row, col = (0, 0)
@@ -1951,14 +1965,15 @@ class PalEditorWidget(QWidget):
         except Exception as e:
             print(f'Error updating display: {e}')
     def _update_skills_display(self, moves, passives):
-        for i in reversed(range(self.active_skills_list.count())):
-            widget = self.active_skills_list.itemAt(i).widget()
+        while self.active_skills_list.count():
+            widget = self.active_skills_list.takeAt(0).widget()
             if widget:
-                widget.setParent(None)
-        for i in reversed(range(self.passive_skills_list.count())):
-            widget = self.passive_skills_list.itemAt(i).widget()
+                widget.deleteLater()
+        while self.passive_skills_list.count():
+            widget = self.passive_skills_list.takeAt(0).widget()
             if widget:
-                widget.setParent(None)
+                widget.deleteLater()
+        QApplication.processEvents()
         for move in moves[:3]:
             label = QLabel(move)
             label.setStyleSheet('font-size: 12px; padding: 2px; border: 1px solid #ccc; border-radius: 3px;')
@@ -3356,11 +3371,15 @@ class PalFrame(QFrame):
     _NAMEMAP = {}
     _PASSMAP = {}
     _SKILLMAP = {}
+    _maps_loaded_lock = threading.Lock()
     @classmethod
     def _load_maps(cls):
         if cls._maps_loaded:
             return
-        base_dir = constants.get_base_path()
+        with cls._maps_loaded_lock:
+            if cls._maps_loaded:
+                return
+            base_dir = constants.get_base_path()
         def load_map(fname, key):
             try:
                 fp = os.path.join(base_dir, 'resources', 'game_data', fname)

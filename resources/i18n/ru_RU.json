@@ -1212,8 +1212,9 @@
   "pal_editor.title": "приятель редактор",
   "pal_editor.select_player": "Выберите игрока",
   "pal_editor.search_players": "Поиск игроков...",
-  "pal_editor.select_player_hint": "Выберите игрока на боковой панели, чтобы редактировать его друзей.",
+  "pal_editor.select_player_hint": "Выберите игрока, чтобы редактировать его друзей",
   "pal_editor.editor": "Редактор",
   "pal_editor.open_editor": "Открыть редактор приятеля",
-  "inventory.search_players": "Поиск игроков..."
+  "inventory.search_players": "Поиск игроков...",
+  "inventory.select_player_hint": "Выберите игрока, чтобы редактировать его инвентарь"
 }

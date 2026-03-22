@@ -1522,7 +1522,8 @@
   "pal_editor.title": "Pal Editor",
   "pal_editor.select_player": "Select Player",
   "pal_editor.search_players": "Search players...",
-  "pal_editor.select_player_hint": "Select a player from the sidebar to edit their pals",
+  "pal_editor.select_player_hint": "Select a player to edit their pals",
   "pal_editor.editor": "Editor",
-  "pal_editor.open_editor": "Open Pal Editor"
+  "pal_editor.open_editor": "Open Pal Editor",
+  "inventory.select_player_hint": "Select a player to edit their inventory"
 }

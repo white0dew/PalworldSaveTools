@@ -1196,8 +1196,9 @@
   "pal_editor.title": "Éditeur copain",
   "pal_editor.select_player": "Sélectionner un joueur",
   "pal_editor.search_players": "Rechercher des joueurs...",
-  "pal_editor.select_player_hint": "Sélectionnez un joueur dans la barre latérale pour modifier ses amis",
+  "pal_editor.select_player_hint": "Sélectionnez un joueur pour modifier ses amis",
   "pal_editor.editor": "Éditeur",
   "pal_editor.open_editor": "Éditeur Open Pal",
-  "inventory.search_players": "Rechercher des joueurs..."
+  "inventory.search_players": "Rechercher des joueurs...",
+  "inventory.select_player_hint": "Sélectionnez un joueur pour modifier son inventaire"
 }

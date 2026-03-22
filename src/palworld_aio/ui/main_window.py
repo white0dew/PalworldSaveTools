@@ -240,6 +240,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.is_dark_mode = True
+        self._is_refreshing = False
         self.user_settings = {}
         self.lang_map = {'English': 'en_US', '中文': 'zh_CN', 'Русский': 'ru_RU', 'Français': 'fr_FR', 'Español': 'es_ES', 'Deutsch': 'de_DE', '日本語': 'ja_JP', '한국어': 'ko_KR'}
         load_exclusions()
@@ -707,16 +708,22 @@ class MainWindow(QMainWindow):
         msg_box.addButton(t('button.ok'), QMessageBox.AcceptRole)
         msg_box.exec()
     def refresh_all(self):
-        self._refresh_players()
-        self._refresh_guilds()
-        self._refresh_bases()
-        self._refresh_map()
-        self._refresh_exclusions()
-        self._refresh_inventory()
-        self._refresh_base_inventory()
-        if hasattr(self, 'pal_editor_tab'):
-            self.pal_editor_tab.refresh()
-        self.results_widget.refresh_stats_after()
+        if self._is_refreshing:
+            return
+        self._is_refreshing = True
+        try:
+            self._refresh_players()
+            self._refresh_guilds()
+            self._refresh_bases()
+            self._refresh_map()
+            self._refresh_exclusions()
+            self._refresh_inventory()
+            self._refresh_base_inventory()
+            if hasattr(self, 'pal_editor_tab'):
+                self.pal_editor_tab.refresh()
+            self.results_widget.refresh_stats_after()
+        finally:
+            self._is_refreshing = False
     def _refresh_inventory(self):
         if hasattr(self, 'inventory_tab'):
             self.inventory_tab.refresh()

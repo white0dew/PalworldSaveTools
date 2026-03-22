@@ -1238,8 +1238,9 @@
   "pal_editor.title": "Kumpel-Herausgeber",
   "pal_editor.select_player": "Wählen Sie Spieler aus",
   "pal_editor.search_players": "Spieler suchen...",
-  "pal_editor.select_player_hint": "Wählen Sie in der Seitenleiste einen Spieler aus, um seine Freunde zu bearbeiten",
+  "pal_editor.select_player_hint": "Wählen Sie einen Spieler aus, um seine Freunde zu bearbeiten",
   "pal_editor.editor": "Editor",
   "pal_editor.open_editor": "Öffnen Sie den Pal-Editor",
-  "inventory.search_players": "Spieler suchen..."
+  "inventory.search_players": "Spieler suchen...",
+  "inventory.select_player_hint": "Wählen Sie einen Spieler aus, um sein Inventar zu bearbeiten"
 }

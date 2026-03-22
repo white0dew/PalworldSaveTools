@@ -394,6 +394,15 @@ class StatsPanelWidget(QFrame):
         for key, label_name in stat_names.items():
             if key in self._stat_name_labels:
                 self._stat_name_labels[key].setText(label_name)
+    def clear(self):
+        self._current_level = 1
+        self._current_exp = 0
+        self._update_level_display()
+        for key in self._stat_inputs:
+            self._stat_values[key] = 0
+            self._stat_inputs[key].blockSignals(True)
+            self._stat_inputs[key].setText('0')
+            self._stat_inputs[key].blockSignals(False)
 class InventoryGridWidget(QWidget):
     item_added = Signal(int, str, int)
     item_removed = Signal(int, int)
@@ -599,30 +608,37 @@ class PlayerInventoryTab(QWidget):
         header.addWidget(self.title_label)
         header.addStretch()
         player_selector_layout = QHBoxLayout()
-        player_selector_layout.setSpacing(4)
-        self.player_selector_label = QLabel(t('inventory.select_player', default='Select Player:'))
-        self.player_selector_label.setStyleSheet('font-size: 12px; color: #aaa;')
-        player_selector_layout.addWidget(self.player_selector_label)
+        player_selector_layout.setContentsMargins(0, 0, 0, 0)
+        player_selector_layout.setSpacing(0)
         self.player_search = QLineEdit()
         self.player_search.setPlaceholderText(t('inventory.search_players', default='Search players...'))
         self.player_search.setFixedWidth(120)
         self.player_search.textChanged.connect(self._filter_player_list)
         player_selector_layout.addWidget(self.player_search)
         self.player_combo = StyledCombo()
-        self.player_combo.setMinimumWidth(180)
+        self.player_combo.setFixedWidth(180)
         self.player_combo.currentIndexChanged.connect(self._on_player_selected)
         player_selector_layout.addWidget(self.player_combo)
         header.addLayout(player_selector_layout)
-        self.modified_label = QLabel()
-        self.modified_label.setStyleSheet('color: #ffaa00;')
-        self.modified_label.setFixedWidth(80)
-        header.addWidget(self.modified_label)
         main_layout.addLayout(header)
-        content = QHBoxLayout()
-        content.setSpacing(10)
-        left_panel = QFrame()
-        left_panel.setStyleSheet('QFrame { background-color: rgba(20, 20, 30, 200); border-radius: 8px; }')
-        left_layout = QVBoxLayout(left_panel)
+        self.content_area = QFrame()
+        self.content_area.setObjectName('inventoryContent')
+        self.content_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.content_area.setStyleSheet('\n            QFrame#inventoryContent {\n                background-color: rgba(20, 20, 30, 200);\n                border: 1px solid rgba(125, 211, 252, 0.2);\n                border-radius: 8px;\n            }\n        ')
+        content_layout = QVBoxLayout(self.content_area)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+        self.placeholder_label = QLabel(t('inventory.select_player_hint', default='Select a player to edit their inventory'))
+        self.placeholder_label.setAlignment(Qt.AlignCenter)
+        self.placeholder_label.setMinimumHeight(400)
+        self.placeholder_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.placeholder_label.setStyleSheet('\n            QLabel {\n                color: #888;\n                font-size: 14px;\n                background: transparent;\n            }\n        ')
+        content_layout.addWidget(self.placeholder_label)
+        inner_content = QHBoxLayout()
+        inner_content.setSpacing(10)
+        self.left_panel = QFrame()
+        self.left_panel.setStyleSheet('QFrame { background-color: rgba(20, 20, 30, 200); border-radius: 8px; }')
+        left_layout = QVBoxLayout(self.left_panel)
         left_layout.setContentsMargins(8, 8, 8, 8)
         self.inv_tabs = QTabWidget()
         self.inv_tabs.setStyleSheet('QTabWidget::pane { border: 1px solid #444; background: transparent; } QTabBar::tab { background: #333; padding: 8px 16px; margin-right: 2px; } QTabBar::tab:selected { background: #444; }')
@@ -645,11 +661,11 @@ class PlayerInventoryTab(QWidget):
         stats_tab_layout.addWidget(self.stats_panel, alignment=Qt.AlignTop)
         self.inv_tabs.addTab(self.stats_tab, t('inventory.stats', default='Stats'))
         left_layout.addWidget(self.inv_tabs)
-        content.addWidget(left_panel, 2)
-        center_outer = QFrame()
-        center_outer.setMinimumWidth(320)
-        center_outer.setStyleSheet('QFrame { background-color: rgba(20, 20, 30, 200); border-radius: 8px; }')
-        center_outer_layout = QVBoxLayout(center_outer)
+        inner_content.addWidget(self.left_panel, 2)
+        self.center_outer = QFrame()
+        self.center_outer.setMinimumWidth(320)
+        self.center_outer.setStyleSheet('QFrame { background-color: rgba(20, 20, 30, 200); border-radius: 8px; }')
+        center_outer_layout = QVBoxLayout(self.center_outer)
         center_outer_layout.setContentsMargins(6, 6, 6, 6)
         center_outer_layout.setSpacing(0)
         self.equip_title = QLabel(t('inventory.equipment', default='Equipment'))
@@ -763,19 +779,23 @@ class PlayerInventoryTab(QWidget):
         center_layout.addLayout(equip_main_layout)
         equip_scroll.setWidget(equip_content)
         center_outer_layout.addWidget(equip_scroll)
-        content.addWidget(center_outer, 1)
-        main_layout.addLayout(content, 1)
+        inner_content.addWidget(self.center_outer, 1)
+        content_layout.addLayout(inner_content)
+        main_layout.addWidget(self.content_area)
+        self.left_panel.hide()
+        self.center_outer.hide()
     def _on_stats_changed(self):
         if not self.current_player_uid:
             return
         self._save_stats_to_raw_data()
-        self._set_modified(True)
         self._update_player_dropdown_level()
     def refresh_players(self):
         self.player_combo.blockSignals(True)
         self.player_combo.clear()
         self.player_combo.addItem(t('inventory.select_player', default='Select Player...'), None)
         self._player_list = []
+        self.current_player_uid = None
+        self.current_player_name = None
         if constants.loaded_level_json:
             from palworld_aio.save_manager import save_manager
             players = save_manager.get_players()
@@ -802,14 +822,32 @@ class PlayerInventoryTab(QWidget):
                 self.player_combo.addItem(player['display'], player['uid'])
         self.player_combo.blockSignals(False)
     def _on_player_selected(self, index):
+        if index <= 0:
+            self.current_player_uid = None
+            self.current_player_name = None
+            self._clear_display()
+            return
         uid = self.player_combo.currentData()
         if uid:
             self.current_player_uid = uid
             self.current_player_name = self.player_combo.currentText()
             self.modified = False
-            self._update_modified_label()
+            self._show_inventory()
             self.inventory = get_player_inventory(self.current_player_uid)
             self._refresh_display()
+    def _show_inventory(self):
+        self.placeholder_label.hide()
+        self.left_panel.show()
+        self.center_outer.show()
+    def _clear_display(self):
+        self.placeholder_label.show()
+        self.left_panel.hide()
+        self.center_outer.hide()
+        self.main_grid.load_items([])
+        self.key_grid.load_items([])
+        self.stats_panel.clear()
+        for slot_widget in self.equip_slots.values():
+            slot_widget.clear_item()
     def _refresh_display(self):
         if not self.inventory:
             return
@@ -875,7 +913,6 @@ class PlayerInventoryTab(QWidget):
                 key_container = self.inventory.get_container('key')
                 if key_container:
                     self._update_raw_save_data('key', key_container)
-                self._set_modified(True)
                 self._refresh_display()
     def _update_stats(self):
         if not self.current_player_uid or not constants.loaded_level_json:
@@ -965,7 +1002,6 @@ class PlayerInventoryTab(QWidget):
             container.update_slots([s for s in container.slots if s.get('slot_index') != slot_index])
             self._update_raw_save_data_with_recursive_clean(container_type, container, slot_index)
             self.inventory.save()
-            self._set_modified(True)
             self._refresh_display()
     def _themed_message_box(self, icon, title, message, buttons=QMessageBox.Ok):
         msg_box = QMessageBox(self)
@@ -1008,7 +1044,6 @@ class PlayerInventoryTab(QWidget):
         container.update_slots([s for s in container.slots if s.get('slot_index') != slot_index] + [new_slot])
         self._update_raw_save_data(container_type, container)
         self.inventory.save()
-        self._set_modified(True)
         self._refresh_display()
     def _edit_equip_item(self, slot_name: str, current_item: dict):
         current_qty = current_item.get('stack_count', 1)
@@ -1024,7 +1059,6 @@ class PlayerInventoryTab(QWidget):
                 if container.set_item_count(slot_index, new_qty):
                     self._update_raw_save_data(container_type, container)
                     self.inventory.save()
-                    self._set_modified(True)
                     self._refresh_display()
     def _clear_equip_slot(self, slot_name: str, slot_widget):
         current_item = slot_widget.current_item
@@ -1040,7 +1074,6 @@ class PlayerInventoryTab(QWidget):
                 container.update_slots([s for s in container.slots if s.get('slot_index') != slot_index])
                 self._update_raw_save_data_with_recursive_clean(container_type, container, slot_index)
                 self.inventory.save()
-                self._set_modified(True)
                 self._refresh_display()
     def _get_equip_container_type(self, slot_name: str) -> str:
         for binding in UI_SLOT_BINDINGS:
@@ -1089,7 +1122,6 @@ class PlayerInventoryTab(QWidget):
         container.update_slots(container.slots + [new_slot])
         self._update_raw_save_data(container_type, container)
         self.inventory.save()
-        self._set_modified(True)
         self._refresh_display()
     def _update_raw_save_data(self, container_type: str, container):
         if not self.inventory or not container:
@@ -1168,7 +1200,6 @@ class PlayerInventoryTab(QWidget):
                 container.update_slots([s for s in container.slots if s.get('slot_index') != slot_index])
                 self._update_raw_save_data(container_type, container)
                 self.inventory.save()
-                self._set_modified(True)
                 self.selected_item = None
                 self._refresh_display()
     def _edit_quantity(self):
@@ -1186,16 +1217,7 @@ class PlayerInventoryTab(QWidget):
             container_type = slot_data.get('container_type', 'main')
             slot_index = slot_data.get('slot_index', 0)
             if self.inventory.update_quantity(container_type, slot_index, new_qty):
-                self._set_modified(True)
                 self._refresh_display()
-    def _set_modified(self, modified: bool):
-        self.modified = modified
-        self._update_modified_label()
-    def _update_modified_label(self):
-        if self.modified:
-            self.modified_label.setText(t('inventory.modified', default='* Modified'))
-        else:
-            self.modified_label.clear()
     def _update_player_dropdown_level(self):
         if not self.current_player_uid:
             return
@@ -1303,7 +1325,6 @@ class PlayerInventoryTab(QWidget):
             return
         self._save_stats_to_raw_data()
         self.inventory.save()
-        self._set_modified(False)
         self.saved.emit()
         QMessageBox.information(self, t('success.title', default='Success'), t('inventory.save_success', default='Inventory saved to memory. Use "Save Changes" in the File menu to write to disk.'))
     def load_player(self, uid: str, name: str=None):
@@ -1315,7 +1336,6 @@ class PlayerInventoryTab(QWidget):
         self.current_player_uid = uid
         self.current_player_name = name or uid
         self.modified = False
-        self._update_modified_label()
         self.inventory = get_player_inventory(self.current_player_uid)
         self._refresh_display()
     def refresh_labels(self):
@@ -1326,15 +1346,16 @@ class PlayerInventoryTab(QWidget):
         self.inv_tabs.setTabText(0, t('inventory.main', default='Inventory'))
         self.inv_tabs.setTabText(1, t('inventory.key_items', default='Key Items'))
         self.inv_tabs.setTabText(2, t('inventory.stats', default='Stats'))
-        self.player_selector_label.setText(t('inventory.select_player', default='Select Player:'))
         self.player_search.setPlaceholderText(t('inventory.search_players', default='Search players...'))
         self.equip_title.setText(t('inventory.equipment', default='Equipment'))
         equip_label_keys = ['weapon', 'accessory', 'food', 'head', 'body', 'shield', 'glider', 'module']
         for key in equip_label_keys:
             if key in self.equip_headers:
                 self.equip_headers[key].setText(t(f'inventory.{key}', default=key.title()))
-        self._update_modified_label()
+        if hasattr(self, 'placeholder_label'):
+            self.placeholder_label.setText(t('inventory.select_player_hint', default='Select a player to edit their inventory'))
     def refresh(self):
+        self._clear_display()
         self.refresh_players()
 class QuantityDialog(QDialog):
     def __init__(self, current_qty: int=1, parent=None):
