@@ -463,6 +463,7 @@
   "guild.leader_updated.msg": "길드 리더가 {old}에서 {new}로 변경되었습니다",
   "guild.leader_updated.title": "리더 업데이트됨",
   "guild.level.maxed": "길드 거점 레벨이 성공적으로 30으로 설정되었습니다.",
+  "guild.level.set": "길드 거점 레벨이 성공적으로 {level}로 설정되었습니다.",
   "guild.marked_for_deletion": "길드 {gid}와 {count}명의 플레이어가 삭제 예정으로 표시되었습니다 (저장 시 삭제됩니다)",
   "guild.menu.max_level": "길드 레벨 최대화",
   "guild.menu.move_selected_player_to_selected_guild": "선택한 플레이어를 선택한 길드로 이동",
@@ -1048,7 +1049,7 @@
   "base.radius.adjust": "반경 조정",
   "base.radius.range": "반경 범위: 50% - 1000%",
   "base.radius.actual": "실제 값:",
-  "button.confirm": "Confirm",
+  "button.confirm": "확인하다",
   "base.radius.preview.ready": "적용 준비 완료",
   "base.import.search_placeholder": "기지 검색...",
   "base.import.search_label": "검색:",
@@ -1217,5 +1218,6 @@
   "pal_editor.editor": "편집자",
   "pal_editor.open_editor": "Pal 편집기 열기",
   "inventory.search_players": "플레이어 검색...",
-  "inventory.select_player_hint": "인벤토리를 편집할 플레이어를 선택하세요."
+  "inventory.select_player_hint": "인벤토리를 편집할 플레이어를 선택하세요.",
+  "guild.menu.set_level": "길드 레벨 설정"
 }

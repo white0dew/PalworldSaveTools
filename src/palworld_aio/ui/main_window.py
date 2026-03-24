@@ -7,7 +7,7 @@ import io
 import sys
 from functools import partial
 import logging
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QMenuBar, QMenu, QStatusBar, QSplitter, QMessageBox, QFileDialog, QInputDialog, QDialog, QCheckBox, QComboBox, QApplication, QStackedWidget, QTextEdit
+from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QMenuBar, QMenu, QStatusBar, QSplitter, QMessageBox, QFileDialog, QInputDialog, QDialog, QCheckBox, QComboBox, QApplication, QStackedWidget, QTextEdit, QLineEdit
 from PySide6.QtCore import Qt, QTimer, Signal, QObject, QPoint, QPropertyAnimation, QEasingCurve, QByteArray, QThread
 from PySide6.QtGui import QIcon, QFont, QAction, QPixmap, QCloseEvent, QTextCursor
 from i18n import t, set_language, load_resources
@@ -22,7 +22,7 @@ from palworld_aio.utils import check_for_update, as_uuid
 from palworld_aio.save_manager import save_manager
 from palworld_aio.data_manager import get_guilds, get_guild_members, get_bases, delete_guild, delete_player, load_exclusions, save_exclusions, delete_base_camp
 from palworld_aio.func_manager import delete_empty_guilds, delete_inactive_players, delete_inactive_bases, delete_duplicated_players, delete_unreferenced_data, delete_non_base_map_objects, delete_invalid_structure_map_objects, delete_all_skins, unlock_all_private_chests, remove_invalid_items_from_save, remove_invalid_pals_from_save, remove_invalid_passives_from_save, fix_missions, reset_anti_air_turrets, reset_dungeons, reset_oilrig, reset_invader, reset_supply, unlock_viewing_cage_for_player, fix_all_negative_timestamps, reset_selected_player_timestamp, detect_and_trim_overfilled_inventories, unlock_all_technologies_for_player, unlock_all_lab_research_for_guild, modify_container_slots, fix_illegal_pals_in_save, repair_structures, edit_game_days
-from palworld_aio.guild_manager import move_player_to_guild, rebuild_all_guilds, make_member_leader, rename_guild, max_guild_level
+from palworld_aio.guild_manager import move_player_to_guild, rebuild_all_guilds, make_member_leader, rename_guild, set_guild_level
 from palworld_aio.base_manager import export_base_json, import_base_json, clone_base_complete, update_base_area_range
 from palworld_aio.player_manager import rename_player
 from palworld_aio.map_generator import generate_world_map
@@ -864,7 +864,7 @@ class MainWindow(QMainWindow):
         menu.add_action(self._create_action(t('deletion.ctx.delete_guild'), lambda: self._delete_guild(item.text(6))))
         menu.add_action(self._create_action(t('guild.rename.menu'), lambda: self._rename_guild_action(item.text(6), item.text(5))))
         menu.add_action(self._create_action(t('guild.unlock_lab_research.menu') if t else 'Unlock All Lab Research', lambda: self._unlock_all_lab_research_for_guild(item.text(6))))
-        menu.add_action(self._create_action(t('guild.menu.max_level'), lambda: self._max_guild_level(item.text(6))))
+        menu.add_action(self._create_action(t('guild.menu.set_level'), lambda: self._set_guild_level(item.text(6))))
         menu.add_action(self._create_action(t('button.import'), lambda: self._import_base_to_guild(item.text(6))))
         menu.exec(self.players_panel.tree.viewport().mapToGlobal(pos))
     def _show_guild_context_menu(self, pos):
@@ -876,7 +876,7 @@ class MainWindow(QMainWindow):
         menu.addAction(self._create_action(t('deletion.ctx.remove_exclusion'), lambda: self._remove_exclusion('guilds', item.text(1))))
         menu.addAction(self._create_action(t('deletion.ctx.delete_guild'), lambda: self._delete_guild(item.text(1))))
         menu.addAction(self._create_action(t('guild.rename.menu'), lambda: self._rename_guild_action(item.text(1), item.text(0))))
-        menu.addAction(self._create_action(t('guild.menu.max_level'), lambda: self._max_guild_level(item.text(1))))
+        menu.addAction(self._create_action(t('guild.menu.set_level'), lambda: self._set_guild_level(item.text(1))))
         menu.addAction(self._create_action(t('guild.unlock_lab_research.menu') if t else 'Unlock All Lab Research', lambda: self._unlock_all_lab_research_for_guild(item.text(1))))
         menu.addSeparator()
         menu.addAction(self._create_action(t('base.export_guild'), lambda: self._export_bases_for_guild(item.text(1))))
@@ -911,7 +911,7 @@ class MainWindow(QMainWindow):
         menu.addAction(self._create_action(t('deletion.ctx.remove_exclusion'), lambda: self._remove_exclusion('bases', item.text(0))))
         menu.addAction(self._create_action(t('deletion.ctx.delete_base'), lambda: self._delete_base(item.text(0), item.text(1))))
         menu.addAction(self._create_action(t('guild.rename.menu'), lambda: self._rename_guild_action(item.text(1), item.text(2))))
-        menu.addAction(self._create_action(t('guild.menu.max_level'), lambda: self._max_guild_level(item.text(1))))
+        menu.addAction(self._create_action(t('guild.menu.set_level'), lambda: self._set_guild_level(item.text(1))))
         menu.addAction(self._create_action(t('export.base'), lambda: self._export_base(item.text(0))))
         menu.addAction(self._create_action(t('base.radius.menu') if t else 'Adjust Radius', lambda: self._adjust_base_radius(item.text(0))))
         menu.addAction(self._create_action(t('import.base'), lambda: self._import_base(item.text(1))))
@@ -1390,10 +1390,61 @@ class MainWindow(QMainWindow):
             rename_guild(gid, new_name)
             self.refresh_all()
             self._show_info(t('guild.rename.done_title'), t('guild.rename.done_msg', old=old_name, new=new_name))
-    def _max_guild_level(self, gid):
-        max_guild_level(gid)
-        self.refresh_all()
-        self._show_info(t('success.title'), t('guild.level.maxed'))
+    def _set_guild_level(self, gid):
+        dialog = QDialog(self)
+        dialog.setWindowTitle(t('guild.menu.set_level'))
+        dialog.setMinimumWidth(250)
+        main_layout = QVBoxLayout(dialog)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        level_layout = QHBoxLayout()
+        level_layout.setSpacing(8)
+        minus_btn = QPushButton('-')
+        minus_btn.setFixedSize(28, 28)
+        minus_btn.setStyleSheet('QPushButton { background-color: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 14px; } QPushButton:hover { background-color: #444; }')
+        level_label = QLabel(t('guild.menu.set_level'))
+        level_label.setStyleSheet('font-size: 13px; font-weight: bold; color: #ddd;')
+        level_input = QLineEdit('1')
+        level_input.setFixedWidth(40)
+        level_input.setAlignment(Qt.AlignCenter)
+        level_input.setStyleSheet('QLineEdit { background-color: #2a2a2a; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 4px; font-size: 13px; font-weight: bold; } QLineEdit:focus { border-color: #7DD3FC; }')
+        plus_btn = QPushButton('+')
+        plus_btn.setFixedSize(28, 28)
+        plus_btn.setStyleSheet('QPushButton { background-color: #333; color: #fff; border: 1px solid #555; border-radius: 4px; font-weight: bold; font-size: 14px; } QPushButton:hover { background-color: #444; }')
+        level_layout.addWidget(minus_btn)
+        level_layout.addWidget(level_label)
+        level_layout.addWidget(level_input)
+        level_layout.addWidget(plus_btn)
+        main_layout.addLayout(level_layout)
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        cancel_btn = QPushButton(t('button.cancel'))
+        cancel_btn.setStyleSheet('QPushButton { background-color: #444; color: #ddd; border: 1px solid #555; border-radius: 4px; padding: 6px 16px; } QPushButton:hover { background-color: #555; }')
+        confirm_btn = QPushButton(t('button.confirm'))
+        confirm_btn.setStyleSheet('QPushButton { background-color: #256aa0; color: #fff; border: none; border-radius: 4px; padding: 6px 16px; } QPushButton:hover { background-color: #2a7fc0; }')
+        btn_layout.addWidget(cancel_btn)
+        btn_layout.addWidget(confirm_btn)
+        main_layout.addLayout(btn_layout)
+        def update_level(delta):
+            current = int(level_input.text())
+            new_val = max(1, min(30, current + delta))
+            level_input.setText(str(new_val))
+        minus_btn.clicked.connect(lambda: update_level(-1))
+        plus_btn.clicked.connect(lambda: update_level(1))
+        def update_from_input():
+            val = int(level_input.text())
+            level_input.setText(str(max(1, min(30, val))))
+        level_input.returnPressed.connect(update_from_input)
+        level_input.editingFinished.connect(update_from_input)
+        cancel_btn.clicked.connect(dialog.reject)
+        def on_confirm():
+            level = int(level_input.text())
+            if 1 <= level <= 30:
+                set_guild_level(gid, level)
+                self.refresh_all()
+                self._show_info(t('success.title'), t('guild.level.set', level=level))
+            dialog.accept()
+        confirm_btn.clicked.connect(on_confirm)
+        dialog.exec()
     def _make_leader(self, gid, uid):
         make_member_leader(gid, uid)
         self.refresh_all()

@@ -1047,7 +1047,7 @@
   "base.radius.adjust": "Настроить радиус",
   "base.radius.range": "Диапазон радиуса: 50% - 1000%",
   "base.radius.actual": "Фактическое значение:",
-  "button.confirm": "Confirm",
+  "button.confirm": "Подтверждать",
   "base.radius.preview.ready": "Готово к применению",
   "base.import.search_placeholder": "Поиск баз...",
   "base.import.search_label": "Поиск:",
@@ -1216,5 +1216,7 @@
   "pal_editor.editor": "Редактор",
   "pal_editor.open_editor": "Открыть редактор приятеля",
   "inventory.search_players": "Поиск игроков...",
-  "inventory.select_player_hint": "Выберите игрока, чтобы редактировать его инвентарь"
+  "inventory.select_player_hint": "Выберите игрока, чтобы редактировать его инвентарь",
+  "guild.menu.set_level": "Установить уровень гильдии",
+  "guild.level.set": "Уровень базового лагеря гильдии успешно установлен на {level}."
 }

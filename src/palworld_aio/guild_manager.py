@@ -345,13 +345,14 @@ def rename_guild(guild_id, new_name):
                     constants.base_guild_lookup[base_id]['GuildName'] = new_name
             return True
     return False
-def max_guild_level(guild_id):
+def set_guild_level(guild_id, level):
     if not constants.loaded_level_json:
         return False
+    level = max(1, min(30, level))
     wsd = constants.loaded_level_json['properties']['worldSaveData']['value']
     for g in wsd['GroupSaveDataMap']['value']:
         if are_equal_uuids(g['key'], guild_id):
-            g['value']['RawData']['value']['base_camp_level'] = 30
+            g['value']['RawData']['value']['base_camp_level'] = level
             return True
     return False
 def debug_check_duplicate_handles():

@@ -1049,7 +1049,7 @@
   "base.radius.adjust": "半径を調整",
   "base.radius.range": "半径範囲: 50% - 1000%",
   "base.radius.actual": "実際の値:",
-  "button.confirm": "Confirm",
+  "button.confirm": "確認する",
   "base.radius.preview.ready": "適用準備完了",
   "base.import.search_placeholder": "拠点を検索...",
   "base.import.search_label": "検索:",
@@ -1218,5 +1218,7 @@
   "pal_editor.editor": "エディタ",
   "pal_editor.open_editor": "Palエディタを開く",
   "inventory.search_players": "プレイヤーを検索...",
-  "inventory.select_player_hint": "インベントリを編集するプレーヤーを選択してください"
+  "inventory.select_player_hint": "インベントリを編集するプレーヤーを選択してください",
+  "guild.menu.set_level": "ギルドレベルの設定",
+  "guild.level.set": "ギルドベースキャンプのレベルが {level} に設定されました。"
 }

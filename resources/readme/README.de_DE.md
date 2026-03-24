@@ -41,7 +41,7 @@
 
 | Funktion | Beschreibung |
 |---------|-------------|
-| **Schnelles Speichern-Parsen** | Einer der schnellsten verfügbaren Lesegeräte für gespeicherte Dateien |
+| **Schnelles Speichern-Parsing** | Einer der schnellsten verfügbaren Lesegeräte für gespeicherte Dateien |
 | **Spielerverwaltung** | Anzeigen, Bearbeiten, Umbenennen, Level ändern, Technologien freischalten und Spieler verwalten |
 | **Gildenverwaltung** | Spieler erstellen, umbenennen, verschieben, Laborforschung freischalten und Gilden verwalten |
 | **Pal Editor** | Vollständiger Editor für Statistiken, Fähigkeiten, IVs, Rang, Seelen, Geschlecht, Boss/Glücksschalter |
@@ -184,7 +184,16 @@ chmod +x start_linux.sh
 
 ### All-in-One-Tools (AIO)
 
-Die Hauptoberfläche für eine umfassende Speicherverwaltung mit drei Registerkarten:
+Die Hauptoberfläche für eine umfassende Speicherverwaltung mit fünf Registerkarten:
+
+**Registerkarte „Spielerinventar“** – Hier können Sie die Inventare aller Spieler auf dem Server anzeigen und verwalten
+- Bearbeiten Sie Spielerstatistiken, Inventar und ausgerüstete Ausrüstung.
+- Möglichkeit, die Qualität zu bearbeiten, alles aus dem Inventar und der ausgerüsteten Ausrüstung hinzuzufügen oder daraus zu entfernen.
+
+**Registerkarte „Basisinventar“** – Hier können Sie die Inventare aller Basen auf dem Server anzeigen und verwalten.
+- Basisinventar bearbeiten.
+- Möglichkeit, Container zu leeren, die Qualität zu bearbeiten und alles aus den Basisbeständen hinzuzufügen oder daraus zu entfernen.
+- Filterung für etwaige Betrugsmöglichkeiten enthalten.
 
 **Registerkarte „Spieler“** – Alle Spieler auf dem Server anzeigen und verwalten
 - Bearbeiten Sie Spielernamen, Level und pal-Zählungen
@@ -375,6 +384,7 @@ scripts\build.cmd
 ```
 
 Dadurch wird `PST_standalone_v{version}.7z` im Projektstamm erstellt.
+
 ---
 
 ## Mitwirken

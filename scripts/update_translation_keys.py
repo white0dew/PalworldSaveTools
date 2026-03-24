@@ -12,7 +12,7 @@ except ImportError:
     from deep_translator import GoogleTranslator
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 LANGUAGES = {'zh_CN': {'name': 'Simplified Chinese', 'code': 'zh-CN'}, 'de_DE': {'name': 'German', 'code': 'de'}, 'es_ES': {'name': 'Spanish', 'code': 'es'}, 'fr_FR': {'name': 'French', 'code': 'fr'}, 'ru_RU': {'name': 'Russian', 'code': 'ru'}, 'ja_JP': {'name': 'Japanese', 'code': 'ja'}, 'ko_KR': {'name': 'Korean', 'code': 'ko'}}
-UPDATED_TRANSLATIONS = {'pal_editor.select_player_hint': 'Select a player to edit their pals'}
+UPDATED_TRANSLATIONS = {'guild.menu.set_level': 'Set Guild Level'}
 def translate_text(text: str, target_lang: str) -> str:
     translator = GoogleTranslator(source='en', target=target_lang)
     return translator.translate(text)

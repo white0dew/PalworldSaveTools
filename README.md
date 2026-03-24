@@ -184,7 +184,16 @@ chmod +x start_linux.sh
 
 ### All-in-One Tools (AIO)
 
-The main interface for comprehensive save management with three tabs:
+The main interface for comprehensive save management with five tabs:
+
+**Player Inventory Tab** - View and manage all players' inventories on the server
+- Edit player stats, inventory, equipped gear.
+- Ability to edit quality, add, remove anything from inventory and equipped gear.
+
+**Base Inventory Tab** - View and manage all bases' inventories on the server.
+- Edit base inventory.
+- Ability to clear containers, edit quality, add, remove anything from base inventories.
+- Filtering included for any possiblities of cheating.
 
 **Players Tab** - View and manage all players on the server
 - Edit player names, levels, and pal counts

@@ -733,6 +733,7 @@
   "guild.leader_updated.msg": "Guild leader changed from {old} to {new}",
   "guild.leader_updated.title": "Leader Updated",
   "guild.level.maxed": "Guild base camp level has been set to 30 successfully.",
+  "guild.level.set": "Guild base camp level has been set to {level} successfully.",
   "guild.marked_for_deletion": "Guild {gid} and {count} players marked for deletion (files will be removed on Save Changes)",
   "guild.menu.max_level": "Max Guild Level",
   "guild.menu.move_selected_player_to_selected_guild": "Move Selected Player to Selected Guild",
@@ -1525,5 +1526,6 @@
   "pal_editor.select_player_hint": "Select a player to edit their pals",
   "pal_editor.editor": "Editor",
   "pal_editor.open_editor": "Open Pal Editor",
-  "inventory.select_player_hint": "Select a player to edit their inventory"
+  "inventory.select_player_hint": "Select a player to edit their inventory",
+  "guild.menu.set_level": "Set Guild Level"
 }

@@ -1031,7 +1031,7 @@
   "base.radius.adjust": "Ajuster le rayon",
   "base.radius.range": "Plage de rayon: 50% - 1000%",
   "base.radius.actual": "Valeur réelle:",
-  "button.confirm": "Confirm",
+  "button.confirm": "Confirmer",
   "base.radius.preview.ready": "Prêt à appliquer",
   "base.import.search_placeholder": "Rechercher les bases...",
   "base.import.search_label": "Rechercher:",
@@ -1200,5 +1200,7 @@
   "pal_editor.editor": "Éditeur",
   "pal_editor.open_editor": "Éditeur Open Pal",
   "inventory.search_players": "Rechercher des joueurs...",
-  "inventory.select_player_hint": "Sélectionnez un joueur pour modifier son inventaire"
+  "inventory.select_player_hint": "Sélectionnez un joueur pour modifier son inventaire",
+  "guild.menu.set_level": "Définir le niveau de guilde",
+  "guild.level.set": "Le niveau du camp de base de la guilde a été réglé sur {level} avec succès."
 }

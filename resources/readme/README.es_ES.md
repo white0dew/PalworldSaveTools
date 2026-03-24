@@ -184,7 +184,16 @@ chmod +x start_linux.sh
 
 ### Herramientas todo en uno (AIO)
 
-La interfaz principal para una gestión integral de guardados con tres pestañas:
+La interfaz principal para una gestión integral de guardados con cinco pestañas:
+
+**Pestaña Inventario de jugadores**: vea y administre todos los inventarios de jugadores en el servidor
+- Editar estadísticas de jugadores, inventario y equipo equipado.
+- Posibilidad de editar la calidad, agregar y eliminar cualquier cosa del inventario y del equipo equipado.
+
+**Pestaña Inventario de base**: vea y administre los inventarios de todas las bases en el servidor.
+- Editar inventario base.
+- Posibilidad de borrar contenedores, editar la calidad, agregar y eliminar cualquier cosa de los inventarios base.
+- Filtrado incluido para cualquier posibilidad de trampa.
 
 **Pestaña Jugadores** - Ver y administrar todos los jugadores en el servidor
 - Editar nombres de jugadores, niveles y recuentos de pal
@@ -375,6 +384,7 @@ scripts\build.cmd
 ```
 
 Esto crea `PST_standalone_v{version}.7z` en la raíz del proyecto.
+
 ---
 
 ## Contribuyendo

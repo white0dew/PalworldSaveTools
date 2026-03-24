@@ -1073,7 +1073,7 @@
   "base.radius.adjust": "Radius anpassen",
   "base.radius.range": "Radiusbereich: 50% - 1000%",
   "base.radius.actual": "Tatsächlicher Wert:",
-  "button.confirm": "Confirm",
+  "button.confirm": "Bestätigen",
   "base.radius.preview.ready": "Bereit zur Anwendung",
   "base.import.search_placeholder": "Basen durchsuchen...",
   "base.import.search_label": "Suche:",
@@ -1242,5 +1242,7 @@
   "pal_editor.editor": "Editor",
   "pal_editor.open_editor": "Öffnen Sie den Pal-Editor",
   "inventory.search_players": "Spieler suchen...",
-  "inventory.select_player_hint": "Wählen Sie einen Spieler aus, um sein Inventar zu bearbeiten"
+  "inventory.select_player_hint": "Wählen Sie einen Spieler aus, um sein Inventar zu bearbeiten",
+  "guild.menu.set_level": "Gildenstufe festlegen",
+  "guild.level.set": "Die Stufe des Gilden-Basislagers wurde erfolgreich auf {level} gesetzt."
 }

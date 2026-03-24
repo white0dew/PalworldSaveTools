@@ -1042,7 +1042,7 @@
   "base.radius.adjust": "Ajustar radio",
   "base.radius.range": "Rango de radio: 50% - 1000%",
   "base.radius.actual": "Valor real:",
-  "button.confirm": "Confirm",
+  "button.confirm": "Confirmar",
   "base.radius.preview.ready": "Listo para aplicar",
   "base.import.search_placeholder": "Buscar bases...",
   "base.import.search_label": "Buscar:",
@@ -1211,5 +1211,7 @@
   "pal_editor.editor": "Editor",
   "pal_editor.open_editor": "Abrir editor Pal",
   "inventory.search_players": "Buscar jugadores...",
-  "inventory.select_player_hint": "Selecciona un jugador para editar su inventario."
+  "inventory.select_player_hint": "Selecciona un jugador para editar su inventario.",
+  "guild.menu.set_level": "Establecer nivel de gremio",
+  "guild.level.set": "El nivel del campamento base del gremio se ha establecido en {level} con éxito."
 }

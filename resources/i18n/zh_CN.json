@@ -1051,7 +1051,7 @@
   "base.radius.adjust": "调整半径",
   "base.radius.range": "半径范围: 50% - 1000%",
   "base.radius.actual": "实际值:",
-  "button.confirm": "Confirm",
+  "button.confirm": "确认",
   "base.radius.preview.ready": "准备应用",
   "base.import.search_placeholder": "搜索基地...",
   "base.import.search_label": "搜索:",
@@ -1220,5 +1220,7 @@
   "pal_editor.editor": "编辑",
   "pal_editor.open_editor": "打开好友编辑器",
   "inventory.search_players": "搜索玩家...",
-  "inventory.select_player_hint": "选择一名玩家来编辑其库存"
+  "inventory.select_player_hint": "选择一名玩家来编辑其库存",
+  "guild.menu.set_level": "设置公会等级",
+  "guild.level.set": "公会大本营等级已成功设置为{level}。"
 }

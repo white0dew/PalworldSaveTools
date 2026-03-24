@@ -264,18 +264,11 @@ class SlotNumUpdaterApp(QDialog):
         self.table = QTableWidget()
         self.table.setColumnCount(7)
         self.table.setHorizontalHeaderLabels([t('slotinjector.col_select'), t('slotinjector.col_player'), t('slotinjector.col_uid'), t('slotinjector.col_guild'), t('slotinjector.col_current'), t('slotinjector.col_used'), t('slotinjector.col_new_value')])
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
-        self.table.horizontalHeader().setStretchLastSection(False)
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setStretchLastSection(True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setAlternatingRowColors(True)
         self.table.setSortingEnabled(True)
-        self.table.setColumnWidth(0, 60)
-        self.table.setColumnWidth(1, 200)
-        self.table.setColumnWidth(2, 250)
-        self.table.setColumnWidth(3, 180)
-        self.table.setColumnWidth(4, 120)
-        self.table.setColumnWidth(5, 100)
-        self.table.setColumnWidth(6, 120)
         table_layout.addLayout(selection_layout)
         table_layout.addWidget(self.table)
         self.status_bar = QStatusBar()
@@ -470,24 +463,78 @@ class SlotNumUpdaterApp(QDialog):
             for container in containers:
                 old_slot_num = container['slot_num']
                 container['entry']['value']['SlotNum']['value'] = new_value
+                slots_data = container['entry']['value']['Slots']['value']
+                slots_values = slots_data.get('values', [])
+                if slots_values:
+                    filtered_slots = []
+                    for slot in slots_values:
+                        slot_idx = slot.get('SlotIndex', {}).get('value', 0)
+                        if slot_idx < new_value:
+                            filtered_slots.append(slot)
+                    slots_data['values'] = filtered_slots
                 if old_slot_num > new_value:
-                    self._cleanup_excess_slots(container, new_value)
+                    logger.info(f'Starting cleanup: old={old_slot_num}, new={new_value}')
+                    container_id = container['container_id']
+                    logger.info(f'Container ID: {container_id}')
+                    char_map = self.gvas_file.properties['worldSaveData']['value']['CharacterSaveParameterMap']['value']
+                    removed_pals = []
+                    filtered_char_map = []
+                    for entry in char_map:
+                        try:
+                            raw = entry['value']['RawData']['value']['object']['SaveParameter']['value']
+                            slot_id = raw.get('SlotId', {})
+                            if slot_id:
+                                cont_ref = slot_id.get('value', {}).get('ContainerId', {}).get('value', {}).get('ID', {}).get('value')
+                                slot_idx = slot_id.get('value', {}).get('SlotIndex', {}).get('value')
+                                if cont_ref and str(cont_ref).lower() == container_id and (slot_idx is not None) and (slot_idx >= new_value):
+                                    removed_pals.append(str(entry['key']['InstanceId']['value']))
+                                    continue
+                            filtered_char_map.append(entry)
+                        except Exception:
+                            filtered_char_map.append(entry)
+                    self.gvas_file.properties['worldSaveData']['value']['CharacterSaveParameterMap']['value'] = filtered_char_map
+                    logger.info(f'Removed {len(removed_pals)} pals with slot index >= {new_value} from container {container_id}')
+                    group_map = self.gvas_file.properties['worldSaveData']['value'].get('GroupSaveDataMap', {}).get('value', [])
+                    removed_handles = 0
+                    for group_entry in group_map:
+                        try:
+                            value = group_entry.get('value', {})
+                            raw = value.get('RawData', {}).get('value', {})
+                            handle_ids = raw.get('individual_character_handle_ids', [])
+                            if handle_ids and isinstance(handle_ids, list):
+                                filtered_handles = []
+                                for handle in handle_ids:
+                                    handle_iid = handle.get('instance_id', '')
+                                    if handle_iid:
+                                        handle_iid_str = str(handle_iid).lower() if not isinstance(handle_iid, str) else handle_iid.lower()
+                                        if handle_iid_str not in [p.lower() for p in removed_pals]:
+                                            filtered_handles.append(handle)
+                                        else:
+                                            removed_handles += 1
+                                if len(filtered_handles) != len(handle_ids):
+                                    raw['individual_character_handle_ids'] = filtered_handles
+                        except Exception:
+                            pass
+                    if removed_handles > 0:
+                        logger.info(f'Removed {removed_handles} handle IDs from GroupSaveDataMap')
                 container['slot_num'] = new_value
                 container['max_slots'] = new_value
             return True
         def on_finished(result):
             self.has_changes = True
             self.pending_new_value = new_value
+            modified_container_ids = {c['container_id'] for c in containers}
             for row, container in enumerate(self.player_containers):
-                new_item = QTableWidgetItem(str(new_value))
-                new_item.setFlags(new_item.flags() & ~Qt.ItemIsEditable)
-                self.table.setItem(row, 6, new_item)
-                current_item = QTableWidgetItem(str(new_value))
-                current_item.setFlags(current_item.flags() & ~Qt.ItemIsEditable)
-                self.table.setItem(row, 4, current_item)
-                used_item = QTableWidgetItem(f"{container['used_slots']}/{new_value}")
-                used_item.setFlags(used_item.flags() & ~Qt.ItemIsEditable)
-                self.table.setItem(row, 5, used_item)
+                if container['container_id'] in modified_container_ids:
+                    new_item = QTableWidgetItem(str(new_value))
+                    new_item.setFlags(new_item.flags() & ~Qt.ItemIsEditable)
+                    self.table.setItem(row, 6, new_item)
+                    current_item = QTableWidgetItem(str(new_value))
+                    current_item.setFlags(current_item.flags() & ~Qt.ItemIsEditable)
+                    self.table.setItem(row, 4, current_item)
+                    used_item = QTableWidgetItem(f"{container['used_slots']}/{new_value}")
+                    used_item.setFlags(used_item.flags() & ~Qt.ItemIsEditable)
+                    self.table.setItem(row, 5, used_item)
             self.set_loading_state(False)
             show_information(self, t('success.title'), t('slotinjector.applied_in_memory', count=len(containers), new=new_value))
         def on_error(error_msg):
@@ -499,6 +546,7 @@ class SlotNumUpdaterApp(QDialog):
         self.loading_thread.start()
     def _cleanup_excess_slots(self, container, new_slot_count):
         try:
+            import copy
             removed_slots = []
             removed_instance_ids = set()
             slots_data = container['entry']['value']['Slots']['value']
@@ -506,11 +554,24 @@ class SlotNumUpdaterApp(QDialog):
             container_id = container['container_id']
             if len(slots_values) > new_slot_count:
                 removed_slots = slots_values[new_slot_count:]
-                slots_data['values'] = slots_values[:new_slot_count]
                 for slot in removed_slots:
                     instance_id = slot.get('RawData', {}).get('value', {}).get('instance_id')
                     if instance_id:
                         removed_instance_ids.add(str(instance_id))
+                new_slots = []
+                if slots_values:
+                    for i in range(new_slot_count):
+                        if i < len(slots_values):
+                            new_slots.append(slots_values[i])
+                        else:
+                            template = copy.deepcopy(slots_values[0])
+                            raw_data = template.get('RawData', {}).get('value', {})
+                            if 'instance_id' in raw_data:
+                                raw_data['instance_id'] = '00000000-0000-0000-0000-000000000000'
+                            if 'player_uid' in raw_data:
+                                raw_data['player_uid'] = '00000000-0000-0000-0000-000000000000'
+                            new_slots.append(template)
+                slots_data['values'] = new_slots
                 logger.info(f'Removed {len(removed_slots)} excess slots from container {container_id}')
             container['used_slots'] = min(container['used_slots'], new_slot_count)
             char_map = self.gvas_file.properties['worldSaveData']['value']['CharacterSaveParameterMap']['value']

@@ -184,7 +184,16 @@ chmod +x start_linux.sh
 
 ### Outils tout-en-un (AIO)
 
-L'interface principale pour une gestion complète des sauvegardes avec trois onglets :
+L'interface principale pour une gestion complète des sauvegardes avec cinq onglets :
+
+**Onglet Inventaire des joueurs** - Affichez et gérez l'inventaire de tous les joueurs sur le serveur.
+- Modifiez les statistiques des joueurs, l'inventaire et l'équipement équipé.
+- Possibilité de modifier la qualité, d'ajouter, de supprimer n'importe quoi de l'inventaire et de l'équipement équipé.
+
+**Onglet Inventaire de base** - Affichez et gérez les inventaires de toutes les bases sur le serveur.
+- Modifier l'inventaire de base.
+- Possibilité de vider les conteneurs, de modifier la qualité, d'ajouter, de supprimer quoi que ce soit des inventaires de base.
+- Filtrage inclus pour toute possibilité de triche.
 
 **Onglet Joueurs** - Affichez et gérez tous les joueurs sur le serveur
 - Modifiez les noms des joueurs, les niveaux et les comptes pal
@@ -375,6 +384,7 @@ scripts\build.cmd
 ```
 
 Cela crée `PST_standalone_v{version}.7z` à la racine du projet.
+
 ---
 
 ## Contribuer
