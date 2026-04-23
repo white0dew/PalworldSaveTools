@@ -80,8 +80,14 @@ jobs:
           New-Item -ItemType Directory -Path release-assets -Force | Out-Null
           $archiveName = "PST_standalone_v${env:APP_VERSION}.7z"
           $nuitkaName = "PalworldSaveTools_v${env:APP_VERSION}.exe"
+          $nuitkaExe = Get-ChildItem -Path ".build" -Recurse -Filter "*.exe" |
+            Where-Object { $_.Directory.Name -like "*.dist" } |
+            Select-Object -First 1
+          if (-not $nuitkaExe) {
+            throw "Unable to locate Nuitka executable under .build"
+          }
           Copy-Item $archiveName "release-assets\$archiveName" -Force
-          Copy-Item ".build\PalworldSaveTools.dist\PalworldSaveTools.exe" "release-assets\$nuitkaName" -Force
+          Copy-Item $nuitkaExe.FullName "release-assets\$nuitkaName" -Force
 
       - name: Create GitHub release and upload assets
         uses: softprops/action-gh-release@v2

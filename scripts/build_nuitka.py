@@ -132,14 +132,15 @@ def build_with_nuitka(project_root: Path, python_exe: Path, main_script: str='sr
     nuitka_cmd.extend([f"--include-data-dir={project_root / 'resources'}=resources/", f"--include-data-files={project_root / 'readme.md'}=readme.md", f"--include-data-files={project_root / 'license'}=license"])
     ooz_files = find_ooz_library(python_exe)
     nuitka_cmd.extend(ooz_files)
-    nuitka_cmd.extend(['--output-dir=' + str(project_root / output_dir), '--output-filename=PalworldSaveTools.exe', f'--windows-icon-from-ico={icon_path}', str(main_script_path)])
+    nuitka_cmd.extend(['--output-dir=' + str(project_root / output_dir), f'--windows-icon-from-ico={icon_path}', str(main_script_path)])
     print(f"Running: python {' '.join(nuitka_cmd)}")
     env = os.environ.copy()
     env['PYTHONPATH'] = str(project_root / 'src')
     result = subprocess.run([str(python_exe)] + nuitka_cmd, cwd=str(project_root), env=env, check=True)
-    dist_dir = project_root / output_dir / 'PalworldSaveTools.dist'
+    binary_name = main_script_path.stem
+    dist_dir = project_root / output_dir / f'{binary_name}.dist'
     print(f'\nBuild completed successfully!')
-    print(f"Executable location: {dist_dir / 'PalworldSaveTools.exe'}")
+    print(f"Executable location: {dist_dir / f'{binary_name}.exe'}")
 def main():
     parser = argparse.ArgumentParser(description='Build PalworldSaveTools with Nuitka')
     parser.add_argument('--use-venv', action='store_true', help='Use .venv instead of current Python interpreter (default: use current Python)')
