@@ -25,7 +25,7 @@ def check_dependencies(python_exe: Path) -> bool:
     except subprocess.CalledProcessError:
         print('Nuitka not found, installing...')
         try:
-            subprocess.run(['uv', 'pip', 'install', 'nuitka'], check=True)
+            subprocess.run([str(python_exe), '-m', 'pip', 'install', 'nuitka'], check=True)
             print('Nuitka installed successfully')
         except subprocess.CalledProcessError as e:
             print(f'ERROR: Failed to install Nuitka: {e}')
@@ -35,7 +35,7 @@ def check_dependencies(python_exe: Path) -> bool:
     except subprocess.CalledProcessError:
         print('zstandard not found, installing...')
         try:
-            subprocess.run(['uv', 'pip', 'install', 'zstandard'], check=True)
+            subprocess.run([str(python_exe), '-m', 'pip', 'install', 'zstandard'], check=True)
             print('zstandard installed successfully')
         except subprocess.CalledProcessError as e:
             print(f'ERROR: Failed to install zstandard: {e}')
