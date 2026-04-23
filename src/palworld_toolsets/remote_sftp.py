@@ -355,8 +355,10 @@ class RemoteSftpDialog(QDialog):
         settings = self._require_settings()
         if not settings:
             return
-        local_dir = core.build_world_cache_dir(settings)
-        if not local_dir.exists():
+        try:
+            local_dir = core.resolve_active_world_dir(settings)
+        except FileNotFoundError:
+            local_dir = core.build_world_cache_dir(settings)
             QMessageBox.warning(self, t('Warning'), t('remote_sftp.error.local_world_missing', path=str(local_dir)))
             return
 
@@ -375,7 +377,13 @@ class RemoteSftpDialog(QDialog):
             'username': self.username_edit.text().strip(),
             'remote_path': self.remote_path_edit.text().strip() or '.',
         }
-        path = core.get_savebackup_root() / core.build_cache_slug(settings)
+        path = core.build_world_cache_dir({
+            'host': settings['host'],
+            'port': int(self.port_edit.text().strip() or '22') if (self.port_edit.text().strip() or '22').isdigit() else 22,
+            'username': settings['username'],
+            'password': self.password_edit.text(),
+            'remote_path': settings['remote_path'],
+        })
         path.mkdir(parents=True, exist_ok=True)
         if open_file_with_default_app(str(path)):
             self._append_log(t('remote_sftp.log.opened_local', path=str(path)))

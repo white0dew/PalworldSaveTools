@@ -18,6 +18,7 @@ from common import get_base_directory
 
 SYNC_FILE_NAMES = ('Level.sav', 'LevelMeta.sav', 'WorldOption.sav')
 SETTINGS_KEY = 'remote_sftp'
+ACTIVE_STATE_FILE = '.remote_sftp_state.json'
 
 
 class SftpDependencyError(RuntimeError):
@@ -152,6 +153,49 @@ def get_savebackup_root(base_dir: str | os.PathLike[str] | None = None) -> Path:
 def build_world_cache_dir(settings: dict[str, Any], base_dir: str | os.PathLike[str] | None = None) -> Path:
     validate_settings(settings)
     return get_savebackup_root(base_dir) / build_cache_slug(settings, require_credentials=True)
+
+
+def get_state_file_path(world_root_dir: str | os.PathLike[str]) -> Path:
+    return Path(world_root_dir) / ACTIVE_STATE_FILE
+
+
+def build_download_timestamp() -> str:
+    return datetime.now().strftime('%Y%m%d_%H%M%S')
+
+
+def write_active_snapshot(world_root_dir: str | os.PathLike[str], snapshot_dir: str | os.PathLike[str]) -> None:
+    world_root = Path(world_root_dir)
+    snapshot = Path(snapshot_dir)
+    state_path = get_state_file_path(world_root)
+    state_path.write_text(json.dumps({'active_snapshot': snapshot.name}, indent=2, ensure_ascii=False), encoding='utf-8')
+
+
+def get_download_snapshots(world_root_dir: str | os.PathLike[str]) -> list[Path]:
+    world_root = Path(world_root_dir)
+    snapshots = []
+    for child in world_root.iterdir() if world_root.exists() else []:
+        if child.is_dir() and child.name != 'archives':
+            snapshots.append(child)
+    return sorted(snapshots, key=lambda item: item.name)
+
+
+def resolve_active_world_dir(settings: dict[str, Any], base_dir: str | os.PathLike[str] | None = None) -> Path:
+    world_root = build_world_cache_dir(settings, base_dir=base_dir)
+    state_path = get_state_file_path(world_root)
+    if state_path.exists():
+        try:
+            data = json.loads(state_path.read_text(encoding='utf-8'))
+            snapshot_name = data.get('active_snapshot')
+            if snapshot_name:
+                snapshot_path = world_root / snapshot_name
+                if snapshot_path.is_dir():
+                    return snapshot_path
+        except Exception:
+            pass
+    snapshots = get_download_snapshots(world_root)
+    if snapshots:
+        return snapshots[-1]
+    raise FileNotFoundError(f'Local world directory not found: {world_root}')
 
 
 def iter_sync_relative_paths(local_world_dir: str | os.PathLike[str]) -> list[str]:
@@ -306,20 +350,25 @@ def test_connection(settings: dict[str, Any]) -> dict[str, Any]:
 
 def download_world(settings: dict[str, Any], base_dir: str | os.PathLike[str] | None = None) -> dict[str, Any]:
     validated = validate_settings(settings)
-    target_dir = build_world_cache_dir(validated, base_dir=base_dir)
-    target_dir.parent.mkdir(parents=True, exist_ok=True)
-    temp_dir = Path(tempfile.mkdtemp(prefix=f'{target_dir.name}_', dir=target_dir.parent))
+    world_root = build_world_cache_dir(validated, base_dir=base_dir)
+    world_root.mkdir(parents=True, exist_ok=True)
+    timestamp = build_download_timestamp()
+    final_dir = world_root / timestamp
+    temp_dir = Path(tempfile.mkdtemp(prefix='incoming_', dir=world_root))
     try:
         with sftp_client(validated) as client:
             downloaded_files = download_directory(client, validated['remote_path'], temp_dir)
-        if target_dir.exists():
-            shutil.rmtree(target_dir)
-        temp_dir.rename(target_dir)
-        archive_path = create_zip_backup(target_dir)
+        if final_dir.exists():
+            shutil.rmtree(final_dir)
+        temp_dir.rename(final_dir)
+        write_active_snapshot(world_root, final_dir)
+        archive_path = create_zip_backup(final_dir, backup_root=world_root / 'archives')
         return {
-            'local_dir': str(target_dir),
+            'world_root': str(world_root),
+            'local_dir': str(final_dir),
             'archive_path': str(archive_path),
             'downloaded_files': downloaded_files,
+            'timestamp': timestamp,
         }
     except Exception as exc:
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -328,9 +377,7 @@ def download_world(settings: dict[str, Any], base_dir: str | os.PathLike[str] | 
 
 def upload_world(settings: dict[str, Any], base_dir: str | os.PathLike[str] | None = None) -> dict[str, Any]:
     validated = validate_settings(settings)
-    local_dir = build_world_cache_dir(validated, base_dir=base_dir)
-    if not local_dir.is_dir():
-        raise FileNotFoundError(f'Local world directory not found: {local_dir}')
+    local_dir = resolve_active_world_dir(validated, base_dir=base_dir)
     try:
         with sftp_client(validated) as client:
             uploaded_files = upload_world_targets(client, local_dir, validated['remote_path'])
