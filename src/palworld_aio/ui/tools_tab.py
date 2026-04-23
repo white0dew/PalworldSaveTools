@@ -35,7 +35,7 @@ def load_tool_icons():
     except Exception:
         return {}
 CONVERTING_TOOL_KEYS = ['tool.convert.saves', 'tool.convert.gamepass.steam', 'tool.convert.steamid', 'tool.restore_map']
-MANAGEMENT_TOOL_KEYS = ['tool.slot_injector', 'tool.modify_save', 'tool.character_transfer', 'tool.fix_host_save']
+MANAGEMENT_TOOL_KEYS = ['tool.slot_injector', 'tool.modify_save', 'tool.character_transfer', 'tool.fix_host_save', 'tool.remote_sftp']
 def center_window(win):
     win_center = win.frameGeometry().center()
     screen = QApplication.screenAt(win_center)
@@ -368,6 +368,8 @@ class ToolsTab(QWidget):
                 dialog = self._import_and_call('palworld_toolsets.character_transfer', 'character_transfer')
             elif index == 3:
                 dialog = self._import_and_call('palworld_toolsets.fix_host_save', 'fix_host_save')
+            elif index == 4:
+                dialog = self._import_and_call('palworld_toolsets.remote_sftp', 'remote_sftp_tool')
             if dialog is not None:
                 self._animate_dialog_slide_in(dialog)
                 if not hasattr(self, '_active_dialogs'):

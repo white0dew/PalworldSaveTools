@@ -18,7 +18,8 @@ dependencies = [
     "cx-freeze>=8.3.0",
     "nerdfont",
     "pydantic",
-    "loguru"
+    "loguru",
+    "paramiko"
 ]
 [tool.setuptools.packages.find]
 where = ["."]

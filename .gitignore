@@ -27,3 +27,7 @@ uv.lock
 PST_standalone_v*
 .build
 PalworldSaveTools-beta
+ppe_windows/
+psp_windows/
+tmp.txt
+savebackup/

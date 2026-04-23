@@ -7,5 +7,6 @@ nerdfont
 py7zr
 pydantic
 loguru
+paramiko
 
 git+https://github.com/oMaN-Rod/pyooz.git#egg=pyooz
