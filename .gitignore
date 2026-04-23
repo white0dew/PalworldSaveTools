@@ -1,5 +1,10 @@
 .git/
 .github/
+!.github/
+.github/*
+!.github/workflows/
+.github/workflows/*
+!.github/workflows/release-windows.yml
 __pycache__/
 venv/
 GamePassSave/
