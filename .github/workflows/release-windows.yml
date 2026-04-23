@@ -57,7 +57,7 @@ jobs:
         shell: pwsh
         run: |
           $tagVersion = "${{ github.ref_name }}".TrimStart("v")
-          $sourceVersion = .\.venv\Scripts\python -c "import pathlib, re; content = pathlib.Path('src/common.py').read_text(encoding='utf-8'); match = re.search(r""APP_VERSION\s*=\s*['""]([^'""]+)['""]"", content); print(match.group(1) if match else '')"
+          $sourceVersion = .\.venv\Scripts\python -c "from pathlib import Path; print(next(line.split('=', 1)[1].strip().strip(chr(34)+chr(39)) for line in Path('src/common.py').read_text(encoding='utf-8').splitlines() if line.strip().startswith('APP_VERSION')))"
           if (-not $sourceVersion) {
             throw "Unable to read APP_VERSION from src/common.py"
           }
